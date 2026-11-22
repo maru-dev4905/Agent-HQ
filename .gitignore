@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+.next/
+next-env.d.ts
+packages/database/src/generated/
+
+# local environment and data (never commit)
+.env
+.env.*
+!.env.example
+*.db
+.data/
+
+.DS_Store

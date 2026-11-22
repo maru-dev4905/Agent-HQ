@@ -210,3 +210,4 @@ Limit을 적용한다.
 - Claude Code에는 heartbeat가 없을 수 있다. `disconnected`/`unknown` 판정 근거는 RES-002에서 정한다 (RES-007 S6)
 - hook을 설치할 때 사용자 전역 설정을 자동으로 수정하지 않는다. 기존 hook(Orca, iTerm2)과 공존해야 한다 ([RSK-009](../operations/risks.md))
 - 이 프로젝트 자체의 개발 세션을 관찰(dogfooding)하는 것은 사용자 동의 후에만 한다
+- Adapter는 HQ 내부 ID(`agentInstanceId`, `taskId`)를 보내지 않는다. Runtime의 외부 ID를 `source.externalAgentId`·`externalTaskId`와 payload의 `externalToolCallId`로 보낸다 ([event-schema N7](event-schema.md#n7-hq-101-계약-구현-2026-11-22), ADR-0006).

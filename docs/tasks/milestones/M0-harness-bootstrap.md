@@ -92,7 +92,7 @@
   - feedback loop: 원인은 (a) 의존성을 그래프·Task·backlog 세 곳에 따로 적어 생긴 불일치. 그래프를 Edge 표 하나로 바꾸고, backlog와 같은 내용을 유지하는 규칙은 기존 task-protocol을 그대로 따른다
 
 ### HQ-003 — 저장소 스캐폴드 + 로컬 개발 환경 + 로컬 Quality Gate
-- Status: Blocked (Node 26 설치, 의존성 목록 승인, Docker 실행 승인 대기)
+- Status: Done (2026-11-22)
 - Risk: Medium
 - Objective: ADR-0003 스택으로 Monorepo 골격과 로컬 개발 환경(Docker Compose + PostgreSQL)을 만들고, G1·G2·G3·G6을 하나의 로컬 명령으로 실행할 수 있게 한다. 명세서 Phase 0 완료 조건을 충족한다.
 - Background: ADR-0003, [architecture 통합 노트 N3](../../foundation/architecture.md#n3-monorepo-8-채택-단계적-생성), RSK-014, NFR-007, quality-gates §2
@@ -101,18 +101,31 @@
 - Dependencies: HQ-002 ✅, **사용자의 Node 26 LTS 설치**, 의존성 목록 승인, Docker 실행 승인
 - Files Expected to Change: 루트 설정 파일, `apps/{api,web}/` 골격, `packages/*/` 골격, `docker-compose.yml`, `README.md`, `docs/engineering/quality-gates.md`, `docs/engineering/coding-standards.md`
 - Acceptance Criteria:
-  - [ ] 클린 클론에서 README 절차만으로 설치·검증 명령 성공
-  - [ ] 샘플 단위 테스트 1개가 Gate에서 실행됨
-  - [ ] 고의 타입 오류·lint 오류가 Gate를 실패시킴
-  - [ ] quality-gates.md의 G1·G2·G3·G6 상태가 `Local`, 명령 기록
-  - [ ] `docker compose`로 PostgreSQL을 기동하고 migration을 적용할 수 있다
-  - [ ] Compose의 모든 port publish가 `127.0.0.1:`로 시작한다
-  - [ ] 패키지 간 역방향 의존을 lint가 잡아낸다
-  - [ ] Prisma 버전이 정확히 7.10.x로 고정되어 있다 (`latest` 태그 미사용)
+  - [x] 클린 클론에서 README 절차만으로 설치·검증 명령 성공
+  - [x] 샘플 단위 테스트 1개가 Gate에서 실행됨 (5개)
+  - [x] 고의 타입 오류·lint 오류가 Gate를 실패시킴
+  - [x] quality-gates.md의 G1·G2·G3·G6 상태가 `Local`, 명령 기록
+  - [x] `docker compose`로 PostgreSQL을 기동하고 migration을 적용할 수 있다
+  - [x] Compose의 모든 port publish가 `127.0.0.1:`로 시작한다
+  - [x] 패키지 간 역방향 의존을 lint가 잡아낸다
+  - [x] Prisma 버전이 정확히 7.10.x로 고정되어 있다 (`latest` 태그 미사용)
+  - [x] (ADR-0005 추가) Compose에 Redis가 있고, API health가 PostgreSQL·Redis 상태를 보고한다
 - Verification Steps (quality-gates §3 Medium):
   1. scratch 디렉터리에 클론 후 README 절차 실행
   2. 오류 주입 → Gate 실패 확인 → 원복
   3. G8 독립 리뷰 (lockfile·의존성 목록 포함)
+- Execution Log:
+  #### Run 2026-11-22-6
+  - agent_id: claude-code:main · role: Worker · status: succeeded
+  - 사용자 결정: Node 26 업그레이드(nvm에 v26.13.1 설치, 기본 alias는 24 그대로 → `.nvmrc` 추가), Redis·BullMQ 도입(ADR-0005), "4번부터 진행"을 의존성·Docker 실행 승인으로 해석
+  - 환경 변경 (저장소 밖): Node 26용 전역 pnpm 10.33.2 설치(`npm i -g`), Docker Desktop 실행, Compose 컨테이너 `agent-hq-postgres-1`·`agent-hq-redis-1`과 볼륨 `agent-hq_postgres-data` 생성
+  - 의존성 (모두 정확한 버전 고정, 라이선스 MIT 또는 Apache-2.0): 루트 dev — typescript 6.0.3, @types/node 26.6.6, eslint 10.15.0, @eslint/js 10.0.1, typescript-eslint 8.73.0, prettier 3.10.1, vitest 5.1.1 / api — @nestjs/{common,core,platform-fastify,testing} 12.6.0, @nestjs/bullmq 12.0.2, bullmq 6.7.8, ioredis 6.0.0, reflect-metadata 0.2.2, rxjs 7.8.2 / database — prisma·@prisma/client·@prisma/adapter-pg 7.10.1, pg 8.23.1 / web — next 16.4.6, react·react-dom 19.3.1, @types/react·@types/react-dom 19.3.0
+  - 설치 스크립트: `@prisma/engines`, `prisma`, `msgpackr-extract` 차단 유지 (스크립트 없이 generate·migrate 동작 확인)
+  - verification: `pnpm verify` exit 0 (원 저장소, 추적 파일만 복사한 클린 복사본 모두). 오류 주입 4종(타입, 의존 방향, floating promise, 실패 테스트)이 각각 Gate를 실패시킴. API 스모크: `127.0.0.1:4000`에만 LISTEN, `/health` → ok, Redis 중지 시 degraded, 재시작 시 ok 복구
+  - 발견·수정: (1) 클린 복사본에서 `eslint.config.js` 타입 오류 발견 → 수정 (원 저장소에서는 tools typecheck 추가 후 전체 재실행을 빠뜨렸음) (2) Next build가 web tsconfig를 다시 써서 format 검사와 충돌 → Next 요구값 반영 (3) ioredis 미처리 error 로그 → 리스너 추가
+  - feedback loop: (d) 도구/환경 → troubleshooting.md에 3건 기록. (e) "설정을 바꾸면 전체 verify 재실행"은 기존 규칙 범위이므로 규칙 추가 없음
+  - G8 독립 리뷰: HQ-101과 합동 리뷰(Run 2026-11-22-7) → 반영 완료. HQ-003 관련 반영: 빈 `API_HOST`가 모든 인터페이스 바인딩으로 이어지던 문제 수정, pg 연결·ping timeout(2초), degraded면 `/health` 503, HealthService 단위 테스트, Nest factory provider로 클라이언트 생성, dev 스크립트 경합 제거, Compose 이미지 태그 고정(`postgres:18.7`, `redis:8.10.3`), `lint`·`test` 전에 Prisma generate
+  - 남은 한계 (Nit, 수용): 의존 방향 lint는 정적 import만 잡는다. 동적 `import()`와 다른 패키지로의 상대 경로는 잡지 못한다 (coding-standards §4에 기록)
 
 ### HQ-004 — CI 및 문서 검사 자동화
 - Status: Backlog

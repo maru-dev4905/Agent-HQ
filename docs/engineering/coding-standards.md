@@ -20,8 +20,9 @@
 - 외부 입력은 스키마 검증 후 타입을 얻는다 (스키마 → 타입 추론, 타입을 손으로 중복 정의하지 않음).
 - `enum` 대신 문자열 리터럴 유니온.
 - 모듈 경계는 패키지 `index.ts`의 public export로만 접근 (깊은 import 금지).
+- 모든 패키지는 ESM이다 (`"type": "module"`, `nodenext`). 상대 import에는 `.js` 확장자를 붙인다. NestJS 12가 ESM 패키지이기 때문이다 (2026-11-22 확인).
 - 비동기 함수의 Promise를 버리지 않는다 (floating promise lint 규칙).
-- NestJS: 기능 단위 모듈 하나가 디렉터리 하나다. 다른 모듈의 provider는 그 모듈이 export한 것만 주입한다. 컨트롤러에 도메인 로직을 넣지 않는다.
+- NestJS: 생성자 주입에는 **항상 `@Inject(토큰 또는 클래스)`를 명시한다.** `emitDecoratorMetadata`의 타입 추론에 의존하지 않아야 Vitest 변환기에서도 DI가 동작한다 (HQ-003에서 확인). 기능 단위 모듈 하나가 디렉터리 하나다. 다른 모듈의 provider는 그 모듈이 export한 것만 주입한다. 컨트롤러에 도메인 로직을 넣지 않는다.
 - Prisma: 버전은 ADR-0003의 고정 범위를 지킨다. Prisma Client는 `packages/database`의 저장소 계층 밖에서 직접 쓰지 않는다. raw SQL도 저장소 계층 안에서만 쓴다.
 - Next.js: UI 전용이다. 도메인 DB에 직접 접근하지 않고 API와 SSE만 쓴다 ([architecture](../foundation/architecture.md) §3.1).
 
@@ -31,12 +32,12 @@
 |---|---|---|
 | Event type | [event-schema §4](../foundation/event-schema.md) Namespace 형식: `<domain>.<sub?>.<verb past>` 소문자, 점 구분 | `tool.call.started`, `agent.status.changed` |
 | Event 필드 (wire format) | camelCase | `occurredAt`, `idempotencyKey` |
-| DB 컬럼 | Prisma 모델은 camelCase, 테이블·컬럼 매핑은 HQ-003에서 정한다 | — |
+| DB 테이블·컬럼 | Prisma 모델·필드는 PascalCase·camelCase, DB 이름은 `@@map`·`@map`으로 snake_case 복수형 | `Workspace` → `workspaces`, `createdAt` → `created_at` |
 | TS 변수/함수 | camelCase | `applyEvent` |
 | 타입/클래스 | PascalCase | `AgentState` |
 | 파일 | kebab-case | `agent-state.ts` |
 
-Wire format과 코드 내부가 모두 camelCase이므로 변환 계층을 두지 않는다. (이전 초안의 snake_case 규칙은 ADR-0004로 Deprecated)
+Wire format과 코드 내부가 모두 camelCase이므로 변환 계층을 두지 않는다. DB 이름 매핑은 Prisma 스키마에서만 한다. (이전 초안의 snake_case 규칙은 ADR-0004로 Deprecated)
 
 ## 4. 디렉터리 구조와 의존 방향
 
@@ -55,6 +56,7 @@ packages/domain   → (의존 없음)
 ```
 - `apps/*`끼리는 코드로 서로 import하지 않는다. 통신은 계약(`packages/contracts`)으로만 한다.
 - `packages/*`는 `apps/*`를 import하지 않는다.
+- 알려진 한계: lint 규칙(`no-restricted-imports`)은 정적 import와 type import만 잡는다. 동적 `import()`나 다른 패키지로 향하는 상대 경로는 리뷰에서 확인한다 (HQ-003 리뷰).
 
 ## 5. 의존성 추가 규칙
 - Task 또는 ADR에 근거가 있어야 한다. 사용자 승인 필요 ([CLAUDE.md §6](../../CLAUDE.md)).

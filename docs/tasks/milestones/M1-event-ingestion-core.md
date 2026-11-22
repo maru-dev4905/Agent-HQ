@@ -43,7 +43,7 @@
 ---
 
 ### HQ-101 — Event 계약 패키지 (Envelope + MVP Type)
-- Status: Backlog · Risk: High · Role: Architect → Worker → Reviewer
+- Status: Done (2026-11-22) · Risk: High · Role: Architect → Worker → Reviewer
 - Objective: 모든 컴포넌트가 공유하는 Event Envelope와 MVP Event Type을 Zod 스키마로 확정한다.
 - Background: [event-schema](../../foundation/event-schema.md) 본문과 통합 노트 N1~N5, [domain-model 통합 노트 N1](../../foundation/domain-model.md), NFR-006
 - Scope: `AgentEvent` Envelope, event-schema N4의 Type별 payload 스키마, `timestampQuality`, `sequence`, `sensitivity`, Agent `observedStatus` 열거형, 유효·무효 샘플 세트, 계약 테스트, payload 크기 상한 상수
@@ -55,8 +55,16 @@
   - [ ] 유효 샘플은 모두 통과하고, 무효 샘플은 필드별 사유와 함께 모두 거부된다
   - [ ] 알 수 없는 `type`과 지원하지 않는 `schemaVersion`을 거부한다
   - [ ] TS 타입을 스키마에서 추론한다 (손으로 중복 정의하지 않는다)
-- Verification: High 기준 Gate
+- Verification: High 기준 Gate (G4는 DB 경계가 없어 계약 테스트로 대체)
 - Risks: Claude Code 실제 신호와 맞지 않을 수 있다 (RSK-001) → HQ-110 결과로 M1 종료 전에 점검
+- Execution Log:
+  #### Run 2026-11-22-7
+  - agent_id: claude-code:main (Worker), claude-code:subagent:general-purpose (Reviewer, 읽기 전용) · status: succeeded (ADR-0006 승인 대기)
+  - result: `packages/events`(Zod 4.6.7) 계약과 `packages/domain` 상태 집합. 계약 테스트 37개 (16개 Type 유효 샘플, 무효 샘플, 하위 호환·콘텐츠 비저장)
+  - changed_files: `packages/{domain,events}/**`, `vitest.config.ts`, `docs/foundation/{event-schema,adapter-spec}.md`, `docs/decisions/ADR-0006-*.md`
+  - verification: `pnpm verify` exit 0 (테스트 50개). `dist`를 지운 상태에서도 테스트 통과 (Vitest가 `@agent-hq/*`를 소스로 resolve)
+  - 리뷰: Request Changes (HQ-003과 합동, Major 3·Minor 8·Nit 4) → 반영. 주요 반영: 미정의 필드 strip+보고, 외부 ID 모델(ADR-0006), 한 번에 모든 문제 보고, 제어 문자·공백 ID 거부, Gap 범위 검증, `sequence` → session 필수, Type별 필수 ID의 타입 반영
+  - decisions: ADR-0006 Accepted (2026-11-22 사용자 승인)
 
 ### HQ-102 — 결정적 시뮬레이터 (테스트용 Source)
 - Status: Backlog · Risk: Medium · Role: Worker → Reviewer
@@ -95,7 +103,7 @@
 - Status: Backlog · Risk: High · Role: Worker → Reviewer
 - Objective: append-only Event 저장과 Cursor 기반 순차 조회를 제공하고, 통합 테스트 Gate를 처음 도입한다.
 - Background: ADR-0002, ADR-0003(Prisma 7.10.x), FR-003~005, security T9
-- Scope: 저장소 인터페이스(**먼저 단독 커밋**), Prisma 스키마와 migration, 서버가 부여하는 단조 증가 `storeSequence`(Replay Cursor), Outbox 테이블과 계약(알림용, 발행 후 정리), `(workspaceId, connectionId, idempotencyKey)` 유일 제약, 중복 시 기존 건 참조(`ON CONFLICT DO NOTHING` 계열 — 저장소 계층 안에서만 raw SQL 허용), Cursor 조회, Docker Compose의 테스트용 DB로 G4 실행, quality-gates.md 갱신
+- Scope: 저장소 인터페이스(**먼저 단독 커밋**), Prisma 스키마와 migration, 외부 ID 매핑 테이블(ADR-0006), 서버가 부여하는 단조 증가 `storeSequence`(Replay Cursor), Outbox 테이블과 계약(알림용, 발행 후 정리), `(workspaceId, connectionId, idempotencyKey)` 유일 제약, 중복 시 기존 건 참조(`ON CONFLICT DO NOTHING` 계열 — 저장소 계층 안에서만 raw SQL 허용), Cursor 조회, Docker Compose의 테스트용 DB로 G4 실행, quality-gates.md 갱신
 - Out of Scope: 삭제 기능(RSK-004 후속 Task), Projection
 - Interfaces: Consumes `@agent-hq/events` / Produces `EventStore` 인터페이스(append, readFrom(storeSequence)), `Outbox` 인터페이스
 - Dependencies: HQ-101, Docker 실행 승인
@@ -112,7 +120,7 @@
 - Status: Backlog · Risk: High · Role: Worker → Reviewer (+ Security Review)
 - Objective: Event를 받아 인증·검증·마스킹·멱등 저장하고, Projection 갱신과 Outbox 기록을 한 트랜잭션에서 처리한다.
 - Background: FR-001~004, NFR-005, security T2/T3/T8, RSK-002, RSK-005
-- Scope: `POST /events:ingest` 계열(단건·배치, path는 계약으로 확정), `packages/contracts/src/ingestion/`, Connection 토큰 Guard(**`workspaceId`·`connectionId`는 토큰에서 가져오고, body 값이 다르면 거부**), 스키마 거부 응답(error envelope 계약), 2차 마스킹, `receivedAt` 부여, 크기 상한·Connection별 rate limit, `127.0.0.1` 기본 바인딩, Host/Origin 검증, Projector 호출, Outbox 기록
+- Scope: 외부 ID → HQ ID 매핑(`(workspaceId, connectionId, externalAgentId|externalTaskId)` → `agentInstanceId`|`taskId`, ADR-0006), **파싱 결과만 저장·로그(원본 입력 금지)**, `ignoredFields` 집계, `POST /events:ingest` 계열(단건·배치, path는 계약으로 확정), `packages/contracts/src/ingestion/`, Connection 토큰 Guard(**`workspaceId`·`connectionId`는 토큰에서 가져오고, body 값이 다르면 거부**), 스키마 거부 응답(error envelope 계약), 2차 마스킹, `receivedAt` 부여, 크기 상한·Connection별 rate limit, `127.0.0.1` 기본 바인딩, Host/Origin 검증, Projector 호출, Outbox 기록
 - Out of Scope: Projection 로직, Realtime 발행
 - Interfaces: Consumes EventStore, Projector 인터페이스, Guard / Produces Ingestion API 계약(문서화)
 - Dependencies: HQ-101, HQ-103, HQ-104 인터페이스, HQ-106 인터페이스
@@ -123,6 +131,7 @@
   - [ ] Secret 패턴이 든 payload를 넣으면 저장본에 원문이 없다 (Secret redaction test)
   - [ ] 잘못된 Host/Origin, 크기·빈도 초과 요청을 명확한 오류로 거부한다
   - [ ] 요청 로그에 payload 원문이 없다
+  - [ ] 서로 다른 Connection이 같은 외부 ID를 보내도 서로 다른 AgentInstance로 매핑된다
 - Verification: High 기준 Gate (G7 포함)
 - Risks: 동기 Projection 갱신이 처리량을 낮출 수 있다 → HQ-112에서 측정
 

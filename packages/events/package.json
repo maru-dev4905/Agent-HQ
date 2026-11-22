@@ -1,0 +1,16 @@
+{
+  "name": "@agent-hq/events",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@agent-hq/domain": "workspace:*",
+    "zod": "4.6.7"
+  }
+}

@@ -1,0 +1,35 @@
+# Local self-host infrastructure (ADR-0003, ADR-0005).
+# Every port is published on 127.0.0.1 only (architecture integration note N2).
+name: agent-hq
+
+services:
+  postgres:
+    image: postgres:18.7
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-agent_hq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agent_hq_local}
+      POSTGRES_DB: ${POSTGRES_DB:-agent_hq}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:8.10.3
+    # Redis holds job/cache data only; events are durable in PostgreSQL (ADR-0005).
+    command: ['redis-server', '--appendonly', 'no', '--save', '']
+    ports:
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  postgres-data:

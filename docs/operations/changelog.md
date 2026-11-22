@@ -4,6 +4,13 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
+## 2026-11-22 (3) — HQ-003 스캐폴드, HQ-101 Event 계약
+- [Added] ADR-0005 Redis + BullMQ 도입 (Accepted), ADR-0006 외부 ID·미정의 필드 처리 (Accepted)
+- [Added] pnpm Monorepo: `apps/{api,web}`, `packages/{domain,events,contracts,database,simulator}`, Docker Compose(PostgreSQL 18.7, Redis 8.10.3), Prisma 초기 migration, `pnpm verify`
+- [Added] `packages/events` Event 계약(Zod 4) + 계약 테스트, `packages/domain` 상태 집합
+- [Added] RSK-018 Redis 라이선스. troubleshooting 3건
+- [Changed] quality-gates: G1·G2·G3·G6 `Local`. coding-standards: ESM·`@Inject` 명시·DB 이름 매핑 규칙
+
 ## 2026-11-22 (2) — 명세서 통합, HQ-002
 - [Added] 기획 명세서 v0.1.0 원본 보존 `docs/research/source/chatgpt-spec-v0.1/` (수정 금지)
 - [Added] RES-007 명세서 검토, RES-001 결과(버전·라이선스 확인)

@@ -39,6 +39,7 @@
 | RSK-015 | 로컬 셀프호스트의 Docker 요구가 General Users에게 장벽 | H | H | Product | Open |
 | RSK-016 | Local Bridge·hook 경로가 가장 큰 공격 표면 | H | M | Security | Open |
 | RSK-017 | 재시도·중복 실행으로 인한 외부 부작용 (M5) | H | M | Architecture | Open |
+| RSK-018 | Redis 8 이미지 라이선스(RSALv2/SSPLv1/AGPLv3)가 재배포·관리형 제공에 미치는 영향 | M | L | Product | Open |
 
 ---
 
@@ -186,4 +187,13 @@
 - Proposed Solution: 명세서 pipeline-spec §7 — 멱등성이 보장되지 않으면 자동 재시도를 기본 금지하고, 재시도마다 새 Attempt를 기록한다.
 - Verification Method: M5 수용 조건.
 - Related Tasks: M5
+- Created / Updated: 2026-11-22
+
+### RSK-018 — Redis 라이선스
+- Status / Priority / 범위: Open / M×L / Product
+- Description: ADR-0005로 Redis를 도입했다. Redis 8 이상 공식 이미지는 RSALv2/SSPLv1/AGPLv3 중 선택하는 라이선스다. 로컬 개발·셀프호스트에서 받아 쓰는 데는 문제가 없지만, 이미지를 번들해 재배포하거나 Cloud에서 관리형으로 제공할 때는 의무가 생길 수 있다.
+- Impact: Cloud 단계에서 구성 변경이 필요할 수 있다.
+- Proposed Solution: 코드는 Redis 프로토콜(ioredis/BullMQ)에만 의존하게 해서 Valkey로 교체할 수 있게 둔다. Cloud 배포 ADR에서 라이선스를 검토한다.
+- Verification Method: Cloud 배포 ADR에 라이선스 검토 항목 포함.
+- Related Tasks: ADR-0005 Revisit Conditions
 - Created / Updated: 2026-11-22

@@ -281,7 +281,7 @@ agent-hq/
 ## 통합 노트 (Agent HQ, 2026-11-22)
 
 ### N1. 기술 스택 (§7 대체)
-§7 표는 명세서의 권장안이다. 실제 결정은 [ADR-0003](../decisions/ADR-0003-m1-tech-stack.md)을 따른다. **MVP에서는 Redis가 어디에도 없다** (§2 다이어그램, §3.5, §6 Queue의 Redis·BullMQ 포함). Object Storage(Artifact)도 MVP 범위가 아니다. 요약: TypeScript 6.0.x, Node 26 LTS, pnpm workspace, NestJS 12 + Fastify, Next.js 16, PostgreSQL, Prisma 7.10.x 고정, Zod, SSE + REST. **Redis/BullMQ는 MVP에서 도입하지 않는다** (DB Outbox). Zustand, TanStack Query, R3F, React Flow는 해당 Phase에서 확정한다.
+§7 표는 명세서의 권장안이다. 실제 결정은 [ADR-0003](../decisions/ADR-0003-m1-tech-stack.md)을 따른다. Redis는 MVP에서 로컬 Compose로 실행한다 (ADR-0005). §6 Queue 원칙대로 Redis는 Event 내구성의 근거가 아니다. Object Storage(Artifact)는 MVP 범위가 아니다. 요약: TypeScript 6.0.x, Node 26 LTS, pnpm workspace, NestJS 12 + Fastify, Next.js 16, PostgreSQL, Prisma 7.10.x 고정, Zod, SSE + REST, **Redis + BullMQ**([ADR-0005](../decisions/ADR-0005-adopt-redis-bullmq.md) — Background Job·주기 작업용이며 Event 내구성은 PostgreSQL이 보장). Zustand, TanStack Query, R3F, React Flow는 해당 Phase에서 확정한다.
 
 ### N2. MVP 배포 형태
 ```text
@@ -289,7 +289,7 @@ agent-hq/
   Claude Code ──hook──▶ Local Bridge ──HTTP(localhost)──▶ API (NestJS) ──▶ PostgreSQL
   Simulator ────────────────────────HTTP(localhost)──▶      │
   Browser ◀──── Web (Next.js) ◀──── REST + SSE ─────────────┘
-  (API·PostgreSQL은 Docker Compose. Web은 개발 서버 또는 Compose)
+  (PostgreSQL·Redis는 Docker Compose. API는 BullMQ로 Redis 사용. Web은 개발 서버 또는 Compose)
 ```
 - Cloud API(§2의 Cloud 노드)는 MVP에서 **로컬에서 실행하는 같은 API**로 대체한다. Bridge→API 연결을 TLS로 할지는 로컬에서는 선택 사항이며, Cloud 배포 시 필수다.
 - §2·§5의 "Cloud API"와 "HQ Cloud"는 MVP에서 **로컬에서 실행하는 API**를 뜻한다.

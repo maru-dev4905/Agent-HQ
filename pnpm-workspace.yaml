@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Install scripts are blocked by default (security §6). Verified 2026-11-22 that these
+# packages work without their scripts (prisma generate/migrate, bullmq), so keep them ignored.
+# To allow one, move it to onlyBuiltDependencies with a reason and get approval.
+ignoredBuiltDependencies:
+  - '@prisma/engines'
+  - prisma
+  - msgpackr-extract

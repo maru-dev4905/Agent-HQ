@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+docs/research/source/
+packages/database/src/generated/
+packages/database/prisma/migrations/
+.next/
+dist/
+
+# Documentation is prose, not code; formatting it creates noisy table diffs.
+**/*.md

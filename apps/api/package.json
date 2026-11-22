@@ -1,0 +1,27 @@
+{
+  "name": "@agent-hq/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsc -b && (tsc -b --watch --preserveWatchOutput & node --env-file-if-exists=../../.env --watch dist/main.js)",
+    "start": "node --env-file-if-exists=../../.env dist/main.js"
+  },
+  "dependencies": {
+    "@agent-hq/contracts": "workspace:*",
+    "@agent-hq/database": "workspace:*",
+    "@agent-hq/domain": "workspace:*",
+    "@agent-hq/events": "workspace:*",
+    "@nestjs/bullmq": "12.0.2",
+    "@nestjs/common": "12.6.0",
+    "@nestjs/core": "12.6.0",
+    "@nestjs/platform-fastify": "12.6.0",
+    "bullmq": "6.7.8",
+    "ioredis": "6.0.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "12.6.0"
+  }
+}

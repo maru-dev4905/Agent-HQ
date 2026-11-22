@@ -1,6 +1,6 @@
 # ADR-0003: MVP 기술 스택과 실행 형태
 
-- Status: Accepted (2026-11-22, 사용자 승인 — 질의응답 2회로 항목별 결정). 단, Decision의 "MVP에서 도입하지 않는 것"(Redis/BullMQ 보류)은 사용자 질의 대상이 아니었으므로 **Proposed로 남아 있으며 사용자 확인 대기**다.
+- Status: Accepted (2026-11-22, 사용자 승인 — 질의응답 2회로 항목별 결정). 단, Decision의 "MVP에서 도입하지 않는 것"(Redis/BullMQ 보류)은 사용자 질의 대상이 아니었으므로 Proposed로 남아 있었으나, **[ADR-0005](ADR-0005-adopt-redis-bullmq.md)로 대체되었다** (2026-11-22, 사용자 결정: Redis + BullMQ 도입).
 - Date: 2026-11-22
 - Deciders: 사용자 / 제안·조사: Claude (Architect)
 - Supersedes: 없음 (같은 날 작성한 초안 "React+Vite / SQLite / 단일 프로세스" 제안을 사용자 결정에 따라 수정한 뒤 승인. 초안은 커밋 `1234b4b`에 있다)

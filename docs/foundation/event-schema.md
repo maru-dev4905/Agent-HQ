@@ -231,3 +231,10 @@ Access Token - 비밀번호 및 인증 헤더 - 전체 파일 내용 - 개인 �
 
 ### N6. 이전 초안과의 관계
 초안 v0의 snake_case 필드(`event_id`, `occurred_at`)와 Type 이름(`tool.called`, `task.delegated`)은 Deprecated다. 이전 내용은 커밋 `1234b4b`에 있다.
+
+### N7. HQ-101 계약 구현 (2026-11-22)
+- 코드 위치: `packages/events/src/` — `envelope.ts`(`parseIncomingEvent`, `IncomingAgentEvent`, `AgentEvent`), `payloads.ts`(Type별 payload, 필수 외부 ID), `limits.ts`(크기 상한, `SUPPORTED_SCHEMA_VERSION = 1`), `fixtures/samples.ts`(계약 샘플). 상태 집합은 `packages/domain/src/`.
+- **외부 ID ([ADR-0006](../decisions/ADR-0006-external-ids-and-lenient-payloads.md))**: Source는 `source.externalAgentId`·`source.externalTaskId`와 payload의 `externalToolCallId`·`parentExternalAgentId`·`parentExternalTaskId`를 보낸다. `agentInstanceId`·`taskId`는 Ingestion이 매핑해 부여하는 서버 소유 필드다. `agent.*`·`tool.*`는 `externalAgentId`, `task.*`는 `externalTaskId`가 필수다.
+- **미정의 필드**: 거부하지 않고 버리며(strip), 버린 필드의 이름만 `ignoredFields`로 돌려준다. 서버 소유 필드(`receivedAt`, `storeSequence`, `agentInstanceId`, `taskId`)는 거부한다. **파싱 결과만 저장하고 로그에 남긴다. 원본 입력은 절대 저장·로그하지 않는다.**
+- 추가 검증: ID는 공백만이거나 제어 문자(NUL 포함)를 담을 수 없다. 요약은 500자 이하이고 NUL을 담을 수 없다. `sequence`가 있으면 `source.externalSessionId`가 필수다. `event.gap.detected`는 `fromSequence ≤ toSequence`여야 한다.
+- 본문 §5 예시와의 차이: `agentInstanceId`·`taskId`를 Source가 보내지 않는다 (위 외부 ID 규칙).

@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/domain" },
+    { "path": "packages/events" },
+    { "path": "packages/contracts" },
+    { "path": "packages/database" },
+    { "path": "packages/simulator" },
+    { "path": "apps/api" }
+  ]
+}

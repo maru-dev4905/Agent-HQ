@@ -29,3 +29,21 @@
 - 확인 방법: `orca status`에서 `runtimeState: ready`.
 - 관련: [orca-cli](../agents/orca-cli.md)
 - 비고: 가이드 기재 내용이며 이 프로젝트에서 실제로 겪은 사례는 아직 없다.
+
+### `node -v`가 Node 26 설치 후에도 24로 나온다
+- 환경: nvm, macOS zsh (2026-11-22)
+- 원인: nvm의 `default` alias가 24로 남아 있다. 새 셸과 Agent 셸은 default를 쓴다.
+- 해결: 저장소 루트에서 `nvm use`(`.nvmrc` = 26). Agent 셸처럼 nvm 함수가 없으면 `PATH="$HOME/.nvm/versions/node/v26.13.1/bin:$PATH"`. 기본값을 바꾸려면 사용자가 `nvm alias default 26`.
+- 확인 방법: `node -v` → v26.x. `package.json`의 `engines`가 26 외 버전에서 설치를 거부한다 (`.npmrc` engine-strict).
+
+### `next build` 후 `pnpm format:check`가 `apps/web/tsconfig.json`에서 실패
+- 환경: Next.js 16.4.6
+- 원인: Next가 build 중 tsconfig에 필요한 값(`allowJs`, `.next/dev/types` include)을 자기 형식으로 써 넣는다.
+- 해결: Next가 요구하는 값을 미리 넣고 Prettier로 정리해 둔다. 이후 build는 파일을 다시 쓰지 않는다.
+- 확인 방법: `pnpm build && pnpm format:check` exit 0.
+
+### Redis가 꺼졌을 때 API 로그에 `[ioredis] Unhandled error event`가 반복된다
+- 환경: ioredis 6.0.0
+- 원인: Redis 클라이언트에 `error` 리스너가 없다.
+- 해결: `apps/api/src/infrastructure.module.ts`의 `createRedisClient`처럼 리스너를 달고, 같은 오류는 한 번만 경고한다.
+- 확인 방법: Redis를 멈춘 상태에서 `Unhandled` 로그가 0건이다.

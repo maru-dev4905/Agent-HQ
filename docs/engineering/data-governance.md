@@ -148,7 +148,7 @@ Object Storage, Backup 및 외부 참조의 처리 범위를 안내해야 한다
 - 짧은 값의 단순 해시는 무차별 대입으로 원문을 복원할 수 있다. 해시는 Workspace별 비밀 키를 쓰는 keyed 해시(HMAC 계열)로 하고, D3가 섞일 수 있는 값은 마스킹한 뒤에만 해시한다.
 
 ### N3. MVP(로컬 셀프호스트) 기본값
-모든 데이터 클래스는 `local_only`로 시작한다. 본문 §7이 "Cloud Storage"로 분류한 PostgreSQL은 MVP에서 **로컬 Compose의 PostgreSQL**이며 Local Only로 본다. Redis와 Object Storage는 MVP에 없다. Cloud Sync는 MVP 범위가 아니다. 보존 기간 기본값은 미정이며(본문 §10), 로컬에서는 수동 삭제를 지원한다. 삭제 후 Projection을 재생성한다 ([RSK-004](../operations/risks.md)).
+모든 데이터 클래스는 `local_only`로 시작한다. 본문 §7이 "Cloud Storage"로 분류한 PostgreSQL은 MVP에서 **로컬 Compose의 PostgreSQL**이며 Local Only로 본다. Redis는 MVP 로컬 Compose에 있으며 Job·캐시용 임시 데이터만 둔다 (Local Only, 영구 데이터 금지 — ADR-0005). Object Storage는 MVP에 없다. Cloud Sync는 MVP 범위가 아니다. 보존 기간 기본값은 미정이며(본문 §10), 로컬에서는 수동 삭제를 지원한다. 삭제 후 Projection을 재생성한다 ([RSK-004](../operations/risks.md)).
 
 ### N4. 개발 과정의 데이터 (즉시 적용)
 - 실제 Agent 세션 데이터를 테스트·문서·이슈에 붙일 때 D2/D3를 제거한다.

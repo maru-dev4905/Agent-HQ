@@ -1,0 +1,20 @@
+// Agent HQ database schema. Prisma is pinned to 7.10.x (ADR-0003, TD-003).
+// Raw SQL and Prisma Client usage stay inside packages/database (coding-standards §2).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Top-level workspace (spec domain-model §2). Phase 1 runs a single local workspace.
+model Workspace {
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("workspaces")
+}

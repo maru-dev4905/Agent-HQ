@@ -20,4 +20,20 @@
 
 ## 개발 환경
 
-빌드·실행 방법은 HQ-003(Monorepo 골격) 완료 후 이 섹션에 추가한다. 필요 도구: Node 26 LTS, pnpm 10, Docker.
+필요 도구: Node 26 LTS(`.nvmrc`), pnpm 10.33.2(`packageManager`), Docker.
+
+```bash
+nvm use                      # Node 26
+pnpm install
+cp .env.example .env         # 로컬 전용 기본값. Secret을 넣지 않는다
+pnpm infra:up                # PostgreSQL 18, Redis 8 (127.0.0.1에만 publish)
+pnpm generate && pnpm db:migrate
+pnpm verify                  # typecheck → lint → format:check → test → build
+```
+
+실행:
+- API: `pnpm --filter @agent-hq/api start` (먼저 `pnpm build`) → `http://127.0.0.1:4000/health`
+- Web: `pnpm dev:web` → `http://127.0.0.1:3000`
+- 인프라 종료: `pnpm infra:down`
+
+구조: `apps/api`(NestJS + Fastify), `apps/web`(Next.js), `packages/{domain,events,contracts,database,simulator}`. 의존 방향 규칙은 [coding-standards §4](docs/engineering/coding-standards.md#4-디렉터리-구조와-의존-방향).

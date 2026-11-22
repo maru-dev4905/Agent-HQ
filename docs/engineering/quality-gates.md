@@ -2,18 +2,18 @@
 
 > 목적: 작업 완료 전에 통과해야 하는 검증 단계와 **실제 도입 상태**의 단일 원천.
 > 관리 책임: QA. 도구를 도입·변경하면 이 문서의 "상태"와 "명령"을 갱신한다.
-> 마지막 확인: 2026-11-22 — **현재 도입된 자동 Gate는 없다.**
+> 마지막 확인: 2026-11-22 (HQ-003) — G1·G2·G3·G6은 로컬 명령으로 동작한다. CI는 아직 없다 (HQ-004).
 
 ## 1. Gate 목록과 상태
 
 | Gate | 목적 | 상태 | 명령 | 도입 Task |
 |---|---|---|---|---|
-| G1 TypeScript | 타입 오류 0 | **Not introduced** | (HQ-003 후 기록) | HQ-003 |
-| G2 Lint/Format | 규칙 위반 0 | **Not introduced** | (HQ-003 후 기록) | HQ-003 |
-| G3 Unit Test | 단위 테스트 통과 | **Not introduced** | (HQ-003 후 기록) | HQ-003 |
+| G1 TypeScript | 타입 오류 0 (패키지, 테스트, 도구 설정, Web) | **Local** | `pnpm typecheck` | HQ-003 |
+| G2 Lint/Format | 규칙 위반 0, 의존 방향 규칙 포함 | **Local** | `pnpm lint`, `pnpm format:check` (Markdown은 대상 아님) | HQ-003 |
+| G3 Unit Test | 단위 테스트 통과 | **Local** | `pnpm test` (Vitest 5) | HQ-003 |
 | G4 Integration Test | 컴포넌트 통합 | **Not introduced** | — | HQ-104 |
 | G5 E2E Test | 사용자 시나리오 | **Not introduced** | — | HQ-111 |
-| G6 Build | 배포 산출물 생성 | **Not introduced** | — | HQ-003 |
+| G6 Build | 배포 산출물 생성 | **Local** | `pnpm build` (tsc -b + next build) | HQ-003 |
 | G6b Dependency Audit | 알려진 취약점 | **Not introduced** | — | HQ-003/HQ-004 |
 | G7 Security Review | Secret 노출, 입력 검증, 권한 | **Manual** | [security.md 체크리스트](security.md#7-security-review-체크리스트) | 즉시 적용 |
 | G8 Code Review | 독립 리뷰 | **Manual** | [review-protocol](../agents/review-protocol.md) | 즉시 적용 |
@@ -21,8 +21,10 @@
 
 > 상태 값: `Not introduced` | `Manual` | `Local` (로컬 명령 존재) | `CI` (CI에서 강제)
 
-## 2. 통합 명령 (Proposed)
-HQ-003/HQ-004에서 G1~G3, G6을 묶은 단일 명령(가칭 `pnpm verify`)을 만든다. **만들기 전까지 이 이름을 실행하거나 존재한다고 쓰지 않는다.**
+## 2. 통합 명령
+`pnpm verify` = `typecheck → lint → format:check → test → build` (G1·G2·G3·G6). HQ-003에서 도입했다.
+- 전제: Node 26 (`nvm use`). Prisma Client 생성은 `typecheck`·`build`가 먼저 실행한다.
+- G4(통합 테스트)는 `pnpm infra:up`으로 PostgreSQL·Redis가 떠 있어야 하며, HQ-104에서 별도 명령으로 추가한다.
 
 ## 3. 위험도별 필수 Gate
 
