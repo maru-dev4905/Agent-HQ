@@ -11,7 +11,7 @@
 
 마일스톤 파일:
 - [M0 — Harness Bootstrap](milestones/M0-harness-bootstrap.md)
-- [M1 — Simulated Event Pipeline](milestones/M1-simulated-event-pipeline.md)
+- [M1 — Event Ingestion Core](milestones/M1-event-ingestion-core.md)
 - M2 이후: 개요만 [roadmap](../foundation/roadmap.md)에 있고, 이전 마일스톤 종료 시점에 상세화한다.
 
 ## 규칙

@@ -16,9 +16,10 @@
 
 | ID | 제목 | 상태 | 날짜 |
 |---|---|---|---|
-| [ADR-0001](ADR-0001-record-architecture-decisions.md) | ADR로 의사결정을 기록한다 | Proposed (사용자 지시 기반, 확인 대기) | 2026-11-22 |
-| [ADR-0002](ADR-0002-event-sourced-core.md) | Event Log를 단일 진실 원천으로 하는 코어 | Proposed | 2026-11-22 |
-| [ADR-0003](ADR-0003-m1-tech-stack.md) | M1 기술 스택 | Proposed | 2026-11-22 |
+| [ADR-0001](ADR-0001-record-architecture-decisions.md) | ADR로 의사결정을 기록한다 | Accepted | 2026-11-22 |
+| [ADR-0002](ADR-0002-event-sourced-core.md) | Event Log를 단일 진실 원천으로 하는 코어 | Accepted | 2026-11-22 |
+| [ADR-0003](ADR-0003-m1-tech-stack.md) | MVP 기술 스택과 실행 형태 | Accepted | 2026-11-22 |
+| [ADR-0004](ADR-0004-adopt-spec-baseline.md) | 기획 명세서 v0.1.0을 제품 기준 문서로 채택 (D-001~D-009 Confirmed) | Accepted | 2026-11-22 |
 
 > 요청된 구조의 `ADR-0001-example.md`는 예시 대신 실제 첫 결정(ADR 프로세스 채택)으로 작성했다. 템플릿은 아래에 있다.
 

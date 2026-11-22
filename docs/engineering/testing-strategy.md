@@ -1,7 +1,7 @@
 # Testing Strategy
 
 > 목적: 테스트 계층, 계층별 책임, 작성 원칙.
-> 관리 책임: QA. 상태: **Proposed** — 도구 이름은 ADR-0003 승인 전까지 후보.
+> 관리 책임: QA. 상태: 원칙(§1)은 적용. 도구 이름은 HQ-003에서 의존성 승인과 함께 확정한다 (ADR-0003).
 > 실제로 실행 가능한 명령은 [quality-gates](quality-gates.md)에만 기록한다.
 
 ## 1. 원칙
@@ -16,24 +16,31 @@
 
 | 계층 | 대상 | 예시 | 후보 도구 |
 |---|---|---|---|
-| Unit | 순수 함수, Projector의 `apply(state, event)` | 상태 전이, 마스킹 함수 | Vitest |
+| Unit | 순수 함수, Projector의 `apply(state, event)` | 상태 전이, 마스킹 함수 | Vitest (후보) |
 | Contract | Event 스키마 | 유효/무효 Event 샘플 세트, 버전 호환 | 스키마 라이브러리 + Vitest |
-| Integration | Ingestion→Store→Projector (실제 SQLite, 임시 파일) | 멱등성, 거부 사유, Replay | Vitest |
-| E2E | Simulator→Server→Dashboard 브라우저 | 시나리오 실행 후 화면에 Agent 상태 표시 | Playwright |
+| Integration | Ingestion→Store→Projector (Docker Compose의 테스트용 PostgreSQL) | 멱등성, 거부 사유, Replay | Vitest (후보) |
+| E2E | Simulator→API→Web 브라우저 | 시나리오 실행 후 화면에 Agent 상태 표시 | Playwright (후보) |
 | Property (선택) | Projector | 임의 Event 순서에서 불변식 유지 | fast-check (도입 시 승인) |
 | Performance | Ingestion 처리량 | NFR-003 부하 | 자체 스크립트 |
 
 ## 3. 핵심 테스트 시나리오 (M1)
 
-| ID | 시나리오 | 계층 |
-|---|---|---|
-| TS-01 | 같은 Event를 2회 전송 → 1건 저장 | Integration |
-| TS-02 | 스키마 위반 Event → 4xx + 사유 | Integration |
-| TS-03 | 시나리오 전체 수신 후 Projection = 처음부터 Replay한 Projection (동일성) | Integration |
-| TS-04 | session 내 `seq` 역순 도착 → 최종 상태 동일 | Unit/Integration |
-| TS-05 | Secret 패턴이 포함된 payload → 저장본에 원문 없음 | Integration |
-| TS-06 | 시뮬레이터 실행 → Dashboard에 Agent N개, 상태 반영 (실시간) | E2E |
-| TS-07 | Realtime 연결 끊김 후 재연결 → 누락 없이 최신 상태 | E2E/Integration |
+| ID | 시나리오 | 계층 | Task |
+|---|---|---|---|
+| TS-01 | 같은 `idempotencyKey`의 Event를 2회 전송 → 1건 저장, 두 번째는 "중복" 응답 | Integration | HQ-104, HQ-105 |
+| TS-02 | 스키마 위반 Event → 4xx + 필드별 사유 | Integration | HQ-105 |
+| TS-03 | 시나리오 전체 수신 후 Projection = 처음부터 Replay한 Projection | Integration | HQ-106 |
+| TS-04 | 세션 내 `sequence` 역순 도착 → 최종 상태 동일 | Unit/Integration | HQ-106 |
+| TS-05 | Secret 패턴이 든 payload → 저장본에 원문 없음 | Integration | HQ-105 |
+| TS-06 | 시뮬레이터 실행 → Dashboard에 Agent N개와 상태가 실시간 반영 | E2E | HQ-111 |
+| TS-07 | SSE 끊김 후 `Last-Event-ID`로 재연결 → 누락·중복 없음 | Integration/E2E | HQ-107 |
+| TS-08 | 토큰 없음·폐기·만료 요청 거부 | Integration | HQ-103 |
+| TS-09 | `sequence` 불연속 → `event.gap.detected`, Connection 끊김 → Agent `unknown` (`idle` 아님) | Integration | HQ-108 |
+| TS-10 | 잘못된 Host/Origin 요청 거부 | Integration | HQ-105, HQ-107 |
+
+이후 Phase의 필수 테스트:
+- Adapter 테스트 9종: [adapter-spec §10](../foundation/adapter-spec.md) (Phase 2부터)
+- 보안 테스트 11종: [security §4.6](security.md#46-필수-보안-테스트) (해당 Phase의 수용 조건에 넣는다)
 
 ## 4. 커버리지
 - 수치 목표는 두지 않는다(Proposed). 대신 **Projector·스키마·마스킹·Ingestion 검증 로직은 분기 단위로 테스트** 필수.

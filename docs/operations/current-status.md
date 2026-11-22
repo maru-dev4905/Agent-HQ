@@ -1,32 +1,33 @@
 # Current Status
 
-> 목적: 프로젝트의 현재 상태와 세션 간 인계. **모든 세션이 시작 시 읽고 종료 시 갱신한다.**
+> 목적: 프로젝트의 현재 상태와 세션 간 인계. **모든 세션이 시작할 때 읽고, 끝날 때 갱신한다.**
 > 관리 책임: Coordinator (매 세션)
-> 최종 갱신: 2026-11-22 — Claude Code (Harness 구축 세션)
+> 최종 갱신: 2026-11-22 — Claude Code (HQ-001·HQ-002 수행, 기획 명세서 통합)
 
 ## 1. 요약
-- 단계: **M0 Harness Bootstrap — In Progress**
-- 제품 코드: 없음
-- 자동 Quality Gate: 없음 ([quality-gates](../engineering/quality-gates.md))
-- Git: `main` 브랜치, **커밋 없음**. 원격 `origin` = `https://github.com/maru-dev4905/Agent-HQ.git` (push는 승인 필요). 이번 세션의 문서는 모두 미커밋 상태.
+- 단계: **M0 / Phase 0 Foundation & Decisions — In Progress**
+- 제품 기준 문서: 기획 명세서 v0.1.0 채택 ([ADR-0004](../decisions/ADR-0004-adopt-spec-baseline.md)). 원본은 [research/source/chatgpt-spec-v0.1/](../research/source/chatgpt-spec-v0.1/README.md)
+- 기술 스택 결정 ([ADR-0003](../decisions/ADR-0003-m1-tech-stack.md)): 로컬 셀프호스트(Docker Compose), TypeScript 6.0.x, Node 26 LTS, pnpm, NestJS+Fastify, Next.js, PostgreSQL, Prisma 7.10.x, SSE+REST
+- 제품 코드: 없음 · 자동 Quality Gate: 없음
+- Git: `main`, 커밋 `1234b4b`(첫 커밋). 원격 `origin` = GitHub (push 안 함). **이번 세션의 명세서 통합 변경은 미커밋.**
 
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-000 Harness 문서 체계 | In Review | 사용자 검토 대기 |
-| HQ-001 첫 커밋 | Blocked | 커밋 승인 요청함 |
-| HQ-002 M1 핵심 ADR 결정 | Ready | RES-001 조사 후 ADR-0001~0003 승인 요청 |
+| HQ-003 Monorepo 골격 + 로컬 개발 환경 | Blocked | Node 26 LTS 설치(사용자), 의존성 목록 승인, Docker 실행 승인 필요 |
 | HQ-005 Claude Code 프로젝트 설정 | Backlog | 설정 변경 승인 필요 |
+| HQ-110 Claude Code 신호 조사 | Backlog | 언제든 병행 가능 (scratch hook 설정은 승인 후) |
 
 ## 3. 사용자 결정 대기
-1. 문서 일괄 첫 커밋 승인 (HQ-001)
-2. ADR-0001 (ADR 프로세스) 확인, ADR-0002 (Event Log 중심 코어) 승인 여부
-3. ADR-0003 (M1 기술 스택) 승인/수정
-4. product.md Open Questions (OQ-1 ~ OQ-7), 특히 OQ-2(Cloud 역할), OQ-5(Orca 등 기존 도구와의 관계)
-5. 프로젝트 `.claude/settings.json` 및 subagent 정의 도입 여부 (HQ-005)
+1. 명세서 통합 변경분 커밋 승인
+2. ADR-0003의 "MVP에서 Redis/BullMQ 미도입(DB Outbox 사용)" 확인 — 질의하지 않았던 항목이라 Proposed로 남아 있음
+3. Node 26 LTS 설치 (설치 방법은 사용자 선택 — nvm, fnm, 공식 설치 파일 등)
+4. HQ-003 의존성 목록 승인 (HQ-003 착수 시 정확한 패키지·버전 목록을 제시)
+5. 남은 Open Questions: OQ-5(Orca 등 기존 도구와의 관계), OQ-6(MVP 3D 최소 범위), 명세서 Open Decisions
+6. HQ-005(프로젝트 `.claude/settings.json`, subagent 정의) 도입 여부
 
 ## 4. 인계 사항 (직전 세션 → 다음 세션)
-- 이번 세션에서 docs/ 전체 구조와 CLAUDE.md, README.md를 처음 만들었다 ([changelog](changelog.md)).
-- 미커밋 파일: `CLAUDE.md`, `README.md`, `docs/**` 전체.
-- 다음 세션은 사용자 결정(§3)을 먼저 확인한다. 결정 전에는 HQ-003(스캐폴드)을 시작하지 않는다.
-- 첫 커밋 전에는 Orca `new-child` worktree 병렬 작업을 하지 않는다 ([ISS-001](issues.md)).
+- 제품·도메인·이벤트·보안·UX는 명세서가 기준이다. 통합 문서의 **"통합 노트"가 본문보다 우선**한다.
+- 이전 초안(snake_case Envelope, Event v0, M1 Simulated Pipeline)은 Deprecated다. 이력은 커밋 `1234b4b`에 있다.
+- ISS-001은 해소됐다. 이제 Orca `new-child` worktree 병렬 작업이 가능하다 (커밋된 기준이 있어야 함 — 통합 변경을 커밋한 뒤 사용).
+- HQ-003을 시작하기 전에 `node --version`이 26.x인지 확인한다.

@@ -1,6 +1,6 @@
 # ADR-0001: ADR로 의사결정을 기록한다
 
-- Status: **Proposed** — 사용자가 Harness 구축 요청(2026-11-22, §5)에서 ADR 체계를 지시했으나, "Claude는 ADR을 Accepted로 만들지 않는다" 규칙에 따라 사용자 확인 후 Accepted로 변경한다.
+- Status: Accepted (2026-11-22, 사용자 승인)
 - Date: 2026-11-22
 - Deciders: 사용자 / 작성: Claude (Technical Lead 역할)
 - Supersedes: 없음

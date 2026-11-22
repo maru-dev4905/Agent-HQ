@@ -2,17 +2,18 @@
 
 > 목적: Claude(및 모든 AI Agent)가 이 저장소에서 작업할 때 따라야 할 **최상위 규칙**.
 > 관리 책임: Coordinator(사람 승인 필요). 세부 규칙은 `docs/`에 있으며 여기에는 복사하지 않는다.
-> 최종 갱신: 2026-11-22
+> 최종 갱신: 2026-11-22 (명세서 채택 반영)
 
 ## 1. 프로젝트 목적
 
-Agent HQ는 AI Agent의 실행 상태·작업 흐름·도구(MCP) 사용을 **관찰 → 관리 → 오케스트레이션**하는 통합 플랫폼이다. 단순 모니터링 대시보드가 아니라 AI Agent의 Headquarters를 지향한다.
-제품 방향(Confirmed)은 [docs/foundation/product.md](docs/foundation/product.md)를 본다.
+Agent HQ는 다양한 AI 에이전트의 실행과 협업을 하나의 공간에서 구성·관찰·통제하는 Agent Operations Platform이다. 우선순위는 **정확한 관찰 → 신뢰할 수 있는 이벤트 → 이해 가능한 시각화**다.
+제품 정의(Confirmed)는 [docs/foundation/product.md](docs/foundation/product.md)를 본다. 핵심 원칙: 지원하지 않는 기능을 지원하는 것처럼 표현하지 않는다, 이벤트가 없다고 Idle로 추론하지 않는다, 애니메이션은 실제 Event 상태만 표현한다.
 
 ## 2. 현재 단계
 
-- **Pre-code 단계**다. 기술 스택은 확정되지 않았다(ADR-0003 Proposed).
-- 빌드·테스트·린트 명령은 **아직 존재하지 않는다.** 존재하지 않는 명령을 실행하거나 문서에 사용 중인 것처럼 쓰지 않는다.
+- **Pre-code 단계**다 (M0 / Phase 0). 제품 기준 문서는 기획 명세서 v0.1.0이다 ([ADR-0004](docs/decisions/ADR-0004-adopt-spec-baseline.md)). 기술 스택은 [ADR-0003](docs/decisions/ADR-0003-m1-tech-stack.md)에서 확정했다.
+- 빌드·테스트·린트 명령은 **아직 존재하지 않는다** (HQ-003에서 만든다). 존재하지 않는 명령을 실행하거나 문서에 사용 중인 것처럼 쓰지 않는다.
+- 명세서 기반 문서는 하단 "통합 노트"가 본문보다 우선한다. `docs/research/source/` 원본은 수정하지 않는다.
 - 현재 상태와 다음 작업: [docs/operations/current-status.md](docs/operations/current-status.md)
 
 ## 3. 필수 문서 읽기 순서
@@ -26,7 +27,10 @@ Agent HQ는 AI Agent의 실행 상태·작업 흐름·도구(MCP) 사용을 **�
 
 | 작업 유형 | 추가 문서 |
 |---|---|
-| 아키텍처/설계 | [architecture](docs/foundation/architecture.md), [domain-model](docs/foundation/domain-model.md), [decisions/](docs/decisions/README.md) |
+| 아키텍처/설계 | [architecture](docs/foundation/architecture.md), [domain-model](docs/foundation/domain-model.md), [event-schema](docs/foundation/event-schema.md), [decisions/](docs/decisions/README.md) |
+| Adapter/Bridge | [adapter-spec](docs/foundation/adapter-spec.md), [security §4](docs/engineering/security.md) |
+| UI | [ui-ux](docs/foundation/ui-ux.md) |
+| Pipeline/제어 | [pipeline-spec](docs/foundation/pipeline-spec.md) |
 | 구현 | [coding-standards](docs/engineering/coding-standards.md), [testing-strategy](docs/engineering/testing-strategy.md), [quality-gates](docs/engineering/quality-gates.md) |
 | 데이터/보안 관련 | [security](docs/engineering/security.md), [data-governance](docs/engineering/data-governance.md) |
 | 다중 Agent 작업 | [agent-workflow](docs/agents/agent-workflow.md), [subagent-roles](docs/agents/subagent-roles.md), [orca-cli](docs/agents/orca-cli.md) |

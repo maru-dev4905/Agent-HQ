@@ -1,58 +1,54 @@
 # Requirements
 
-> 목적: 기능(FR)·비기능(NFR) 요구사항을 ID로 관리. Task는 이 ID를 참조한다.
-> 관리 책임: Architect 제안 → 사용자 승인. 상태: Proposed | Confirmed | Deprecated
+> 목적: 기능(FR)·비기능(NFR) 요구사항에 ID를 붙여 관리한다. Task는 이 ID를 참조한다.
+> 관리 책임: Architect가 제안하고 사용자가 승인한다.
+> 출처: 제품 범위(P0/P1/P2)는 [product.md §7](product.md)이 원천이다(Confirmed, ADR-0004). 이 문서는 그 범위를 **검증 가능한 단위로 쪼갠 것**이며, 표기가 없으면 각 항목의 세부 서술은 **Proposed**다.
+> 갱신: 2026-11-22 (명세서 채택에 따라 재작성. 이전 FR/NFR 번호는 커밋 `1234b4b`)
 
-모든 항목은 별도 표기가 없으면 **Proposed**다.
+## 1. 기능 요구사항 (FR) — MVP(P0)
 
-## 1. 기능 요구사항 (FR)
+### Event 수집·저장 (Phase 1)
+| ID | 요구사항 | Phase | 근거 |
+|---|---|---|---|
+| FR-001 | [event-schema](event-schema.md)의 공통 Envelope를 따르는 Event를 인증된 Connection에서만 받는다 | 1 | P0 "Local Bridge의 인증된 연결", roadmap Phase 1 |
+| FR-002 | 스키마에 맞지 않는 Event는 거부하고 필드별 사유를 반환한다 | 1 | Phase 1 완료 조건 |
+| FR-003 | `(workspaceId, connectionId, idempotencyKey)`가 같은 Event를 중복 저장하지 않는다 | 1 | event-schema §7 |
+| FR-004 | `occurredAt`과 `receivedAt`을 분리해 저장한다. 원본 시각이 없으면 `timestampQuality`로 표시한다 | 1 | event-schema §3 |
+| FR-005 | Event는 append-only로 저장하고, Projection은 Event에서 재생성할 수 있다 | 1 | ADR-0002 |
+| FR-006 | 결정적(seed 기반) 시뮬레이터가 다중 Agent 시나리오 Event를 Ingestion API로 보낸다 | 1 | 테스트용 Source (ADR-0004 Consequences) |
+| FR-007 | Realtime 구독(SSE)이 끊겼다가 재연결되면 Cursor 이후 Event를 누락 없이 받는다 | 1 | Phase 1 완료 조건 |
+| FR-008 | 누락이 의심되는 구간을 `event.gap.detected`로 기록하고, 해당 Agent 상태를 Unknown 또는 Stale로 표시한다 | 1 | event-schema §8 |
+| FR-009 | Connection 상태(pending/connected/degraded/disconnected/error)를 heartbeat로 추적한다 | 1 | domain-model §4 |
 
-### Event 수집 / 저장
-| ID | 요구사항 | 마일스톤 |
+### Claude Code 연동 (Phase 2)
+| ID | 요구사항 | Phase |
 |---|---|---|
-| FR-001 | 시스템은 표준 Event Envelope([domain-model](domain-model.md#3-event-envelope-proposed-v0))을 따르는 Agent Event를 수신한다. | M1 |
-| FR-002 | 스키마에 맞지 않는 Event는 거부하고 거부 사유를 반환한다. | M1 |
-| FR-003 | 동일 `event_id`의 Event를 중복 수신해도 한 번만 저장한다 (멱등성). | M1 |
-| FR-004 | Event는 append-only로 저장하며 수정하지 않는다. | M1 |
-| FR-005 | 저장된 Event로부터 Projection을 처음부터 재생성할 수 있다 (Replay). | M1 |
-| FR-006 | 결정적(seed 기반) 시뮬레이터로 다중 Agent 시나리오 Event를 생성한다. | M1 |
+| FR-020 | Local Bridge가 Pairing으로 Connection 자격 증명을 받고 API와 연결한다 | 2 |
+| FR-021 | Claude Code Session, Subagent, Tool 이벤트를 지원되는 hook 범위에서 수집하고 정규화한다 | 2 |
+| FR-022 | Bridge는 전송 실패 시 Outbox에 보관하고 재전송한다 (중복·누락 처리) | 2 |
+| FR-023 | Adapter Capability를 선언하고, 지원하지 않는 기능을 UI에 정확히 표시한다 | 2 |
 
-### 관찰 화면
-| ID | 요구사항 | 마일스톤 |
+### 관찰 화면 (Phase 1 최소 / Phase 3 본격 / Phase 4 3D)
+| ID | 요구사항 | Phase |
 |---|---|---|
-| FR-010 | Dashboard는 Agent 목록과 각 Agent의 현재 상태를 보여준다. | M1 |
-| FR-011 | Dashboard는 Session/Task 단위 실행 타임라인을 보여준다. | M1 |
-| FR-012 | 새 Event가 들어오면 새로고침 없이 화면이 갱신된다 (목표 지연은 NFR-002). | M1 |
-| FR-013 | Agent 간 위임 관계(부모-자식)를 시각화한다. | M1(기본)/M3 |
-| FR-014 | 도구 호출(MCP 포함)의 입력·출력 요약, 소요 시간, 성공/실패를 보여준다. | M2/M3 |
-| FR-015 | 3D Office 화면에서 Agent를 공간 내 캐릭터/오브젝트로 표현하고 상태를 반영한다. | M4 |
+| FR-030 | 개발용 Dashboard v0: Agent Roster, 상태, Event Timeline, Connection 상태 | 1 |
+| FR-031 | Operations Dashboard: Workspace/Project Switcher, Agent Detail, Mission/Task Timeline, Tool Activity, Trace View, Unknown/Stale 표시 ([ui-ux §4](ui-ux.md)) | 3 |
+| FR-032 | 새 Event가 들어오면 새로고침 없이 반영되고, Dashboard와 API 상태가 일치한다 | 1·3 |
+| FR-033 | 3D Office가 같은 Projection을 표현하고 Unknown과 Idle을 구분한다. 3D를 끄더라도 주요 기능은 유지된다 | 4 |
 
-### 실제 Agent 연동
-| ID | 요구사항 | 마일스톤 |
-|---|---|---|
-| FR-020 | Claude Code 세션의 실행 이벤트를 수집한다 (방식: RES-002). | M2 |
-| FR-021 | MCP 서버/도구 호출 흐름을 수집한다 (방식: RES-003). | M3 |
-| FR-022 | 로컬 수집기는 네트워크 단절 시 Event를 버퍼링하고 재전송한다. | M2 |
-
-### 제어 / 오케스트레이션 (후순위)
-| ID | 요구사항 | 마일스톤 |
-|---|---|---|
-| FR-030 | 사용자는 실행 중 Agent를 일시정지/중단할 수 있다. | M5 |
-| FR-031 | 사용자는 워크플로를 정의하고 Agent에 작업을 배정할 수 있다. | M5 |
-| FR-032 | 모든 제어 명령은 감사 로그(Event)로 남는다. | M5 |
+P1/P2(Pipeline, Approval Inbox, 제어, MCP 관리, 팀 RBAC 등)는 [product.md §7](product.md)을 원천으로 두고, 해당 Phase를 착수할 때 FR로 쪼갠다.
 
 ## 2. 비기능 요구사항 (NFR)
 
-| ID | 요구사항 | 비고 |
+| ID | 요구사항 | 근거 |
 |---|---|---|
-| NFR-001 | Local 모드는 외부 네트워크·계정 없이 동작한다. | Hybrid Deployment 전제 |
-| NFR-002 | Event 수신부터 화면 반영까지 p95 1초 이내 (로컬, M1 부하 기준). | 목표치 — 측정 후 조정 |
-| NFR-003 | M1 기준 부하: 동시 Agent 50, 초당 Event 200 처리. | 가정치 — RES-005에서 검증 |
-| NFR-004 | 프롬프트·코드·파일 내용 등 콘텐츠는 기본 미저장 또는 마스킹. | [data-governance](../engineering/data-governance.md) |
-| NFR-005 | Secret 패턴은 저장 전 마스킹된다. | [security](../engineering/security.md) |
-| NFR-006 | Event 스키마는 버전을 가지며 하위 호환을 깨는 변경은 새 버전으로 낸다. | |
-| NFR-007 | 개발 환경은 문서화된 명령만으로 재현 가능해야 한다. | HQ-003 |
-| NFR-008 | 관찰 기능이 관찰 대상 Agent의 동작을 방해하지 않는다 (수집 실패 시 Agent는 계속 실행). | M2 hooks 설계 핵심 |
-
-## 3. Open Questions
-- NFR-002/003의 수치는 근거 없는 가정이다. 실제 Claude Code 세션의 Event 발생량을 측정(RES-002)한 뒤 확정한다.
+| NFR-001 | MVP는 로컬 셀프호스트에서 Cloud 계정이나 외부 네트워크 없이 동작한다 | ADR-0003, 제품 원칙 4 |
+| NFR-002 | Event 수신부터 화면 반영까지의 지연을 측정한다. 목표 수치는 측정 후 정한다 | 명세서 roadmap §13 "수치 목표는 실제 측정 후" |
+| NFR-003 | 측정 항목: ingestion latency, duplicate rate, reconnect recovery, projection correctness, dashboard update latency, event gap frequency | roadmap §13 |
+| NFR-004 | 관찰된 상태와 추정 상태를 구분한다. 이벤트가 없다는 이유로 Idle로 추론하지 않는다 | product §8, README 원칙 4 |
+| NFR-005 | Secret과 민감한 Tool 인자는 기본적으로 마스킹하고, `secret` 등급은 저장하지 않는다 | product §8, data-governance |
+| NFR-006 | 모든 Event는 `schemaVersion`을 가진다. 하위 호환을 깨는 변경은 새 버전과 변환 로직을 요구한다 | event-schema §11 |
+| NFR-007 | 개발 환경은 문서화된 명령만으로 재현할 수 있어야 한다 | Harness |
+| NFR-008 | 관찰 실패가 관찰 대상 Agent의 실행을 방해하지 않는다 | architecture 통합 노트 N4 |
+| NFR-009 | 이벤트 수집과 3D 렌더링을 분리한다. 이벤트가 폭주해도 렌더링이 수집을 방해하지 않는다 | product §8, Phase 4 |
+| NFR-010 | 핵심 상태를 색상과 애니메이션만으로 전달하지 않는다 | product §8, ui-ux §8 |

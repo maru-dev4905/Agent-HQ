@@ -24,7 +24,7 @@
 - [ ] 오류 경로: 삼켜지는 예외, 의미 없는 오류 메시지
 
 **구조**
-- [ ] 의존 방향 규칙 준수 ([coding-standards §4](../engineering/coding-standards.md#4-디렉터리-구조-proposed--hq-003에서-확정))
+- [ ] 의존 방향 규칙 준수 ([coding-standards §4](../engineering/coding-standards.md#4-디렉터리-구조와-의존-방향))
 - [ ] 계약(스키마·타입)과 구현의 일치, 중복 타입 정의 없음
 - [ ] 불필요한 복잡도·죽은 코드
 

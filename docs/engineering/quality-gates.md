@@ -12,7 +12,7 @@
 | G2 Lint/Format | 규칙 위반 0 | **Not introduced** | (HQ-003 후 기록) | HQ-003 |
 | G3 Unit Test | 단위 테스트 통과 | **Not introduced** | (HQ-003 후 기록) | HQ-003 |
 | G4 Integration Test | 컴포넌트 통합 | **Not introduced** | — | HQ-104 |
-| G5 E2E Test | 사용자 시나리오 | **Not introduced** | — | HQ-108 |
+| G5 E2E Test | 사용자 시나리오 | **Not introduced** | — | HQ-111 |
 | G6 Build | 배포 산출물 생성 | **Not introduced** | — | HQ-003 |
 | G6b Dependency Audit | 알려진 취약점 | **Not introduced** | — | HQ-003/HQ-004 |
 | G7 Security Review | Secret 노출, 입력 검증, 권한 | **Manual** | [security.md 체크리스트](security.md#7-security-review-체크리스트) | 즉시 적용 |
@@ -30,7 +30,7 @@ HQ-003/HQ-004에서 G1~G3, G6을 묶은 단일 명령(가칭 `pnpm verify`)을 �
 |---|---|---|
 | Low | 문서, 주석, UI 문구 | G8(자가 점검 허용), G9 |
 | Medium | 일반 기능, 단일 패키지 변경 | G1, G2, G3, G6, G8(독립 Reviewer) |
-| High | Event 스키마, 저장소, 마스킹·보안, 공용 패키지, hook(관찰 대상 Agent에 영향) | Medium + G4, G7, 해당 시 G5, ADR 확인 |
+| High | Event 스키마, 저장소, 마스킹·보안, 공용 패키지, hook(관찰 대상 Agent에 영향) | Medium + G4(DB·HTTP 등 외부 경계를 통합하는 Task. 순수 계약·도메인 패키지는 계약 테스트로 대체하고 그 사실을 보고), G7, 해당 시 G5, ADR 확인 |
 
 Task 작성 시 위험도를 기록한다 ([task-protocol](../agents/task-protocol.md)).
 

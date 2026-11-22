@@ -24,7 +24,7 @@
 |---|---|---|---|---|---|
 | RSK-001 | Claude Code 이벤트 수집 방식의 불확실성 | H | M | Architecture | Open |
 | RSK-002 | 패턴 기반 마스킹의 누락 → Secret 저장 | H | M | Security/Data | Open |
-| RSK-003 | Local/Cloud DB 차이로 인한 이중 구현 | M | M | Architecture | Open |
+| RSK-003 | Local/Cloud DB 차이로 인한 이중 구현 | M | L | Architecture | Mitigating (ADR-0003: 양쪽 모두 PostgreSQL) |
 | RSK-004 | append-only 저장과 삭제 요구의 충돌 | M | H | Data | Open |
 | RSK-005 | 인증 없는 로컬 API 노출 | H | M | Security | Open |
 | RSK-006 | 다중 소스 Event 순서·시계 불일치 | M | H | Architecture | Open |
@@ -36,6 +36,9 @@
 | RSK-012 | 병렬 Agent 간 파일·결정 충돌 | M | M | Process | Mitigating |
 | RSK-013 | 3D Office의 성능·범위 비대화 | M | M | Product | Open |
 | RSK-014 | 개발 환경 재현성 부재 | M | H | Process | Open |
+| RSK-015 | 로컬 셀프호스트의 Docker 요구가 General Users에게 장벽 | H | H | Product | Open |
+| RSK-016 | Local Bridge·hook 경로가 가장 큰 공격 표면 | H | M | Security | Open |
+| RSK-017 | 재시도·중복 실행으로 인한 외부 부작용 (M5) | H | M | Architecture | Open |
 
 ---
 
@@ -46,8 +49,8 @@
 - Root Cause: 외부 도구의 인터페이스에 의존.
 - Proposed Solution: M1 진행과 병행해 RES-002 스파이크 수행. Event 스키마 v0에 `source`별 확장 여지를 두고, M1 종료 전 실제 신호로 스키마를 점검.
 - Verification Method: RES-002 결과에서 FR-020에 필요한 신호(세션 시작/종료, 도구 호출, subagent) 매핑표 완성.
-- Related Tasks: HQ-101, RES-002
-- Created / Updated: 2026-11-22
+- Related Tasks: HQ-101, HQ-110
+- Created / Updated: 2026-11-22 / 2026-11-22 (명세서 decisions.md 위험 1 "Adapter별 이벤트 정보량 차이"와 같은 위험)
 
 ### RSK-002 — 패턴 기반 마스킹의 누락
 - Status / Priority / 범위: Open / H×M / Security, Data
@@ -56,12 +59,12 @@
 - Root Cause: 비정형 콘텐츠.
 - Proposed Solution: D2 콘텐츠 기본 미저장(data-governance), 2단계 마스킹, 마스킹 테스트(TS-05), Cloud 동기화 opt-in.
 - Verification Method: TS-05 통과, 알려진 키 형식 샘플 세트 테스트.
-- Related Tasks: HQ-103
+- Related Tasks: HQ-105
 - Created / Updated: 2026-11-22
 
 ### RSK-003 — Local/Cloud DB 차이
 - Status / Priority / 범위: Open / M×M / Architecture
-- Description: Local에 SQLite, Cloud에 다른 DB를 쓰면 SQL·동시성 모델 차이가 생긴다.
+- Description: Local과 Cloud가 서로 다른 DB를 쓰면 SQL·동시성 모델 차이가 생긴다. (2026-11-22 ADR-0003으로 양쪽 모두 PostgreSQL을 쓰기로 해 Mitigating. 단, Phase 2 Local Bridge의 로컬 Outbox DB는 별도로 선택해야 한다)
 - Impact: 저장소 계층 이중 구현, 환경별 버그.
 - Root Cause: Hybrid Deployment.
 - Proposed Solution: Event Store/Read Model 접근을 저장소 인터페이스 뒤로 숨기고, DB 특화 기능 사용 최소화. Cloud 결정(OQ-2) 시 ADR.
@@ -83,7 +86,7 @@
 - Description: Local 서버가 외부 인터페이스에 바인딩되거나 브라우저 경유(CSRF, DNS rebinding) 요청을 받을 수 있다.
 - Proposed Solution: 기본 `127.0.0.1`, Host/Origin 검증, 로컬 토큰 (security.md T2, T3).
 - Verification Method: 통합 테스트에서 잘못된 Host/Origin 요청 거부 확인.
-- Related Tasks: HQ-103, HQ-106
+- Related Tasks: HQ-103, HQ-105, HQ-107
 - Created / Updated: 2026-11-22
 
 ### RSK-006 — Event 순서·시계 불일치
@@ -91,7 +94,7 @@
 - Description: 로컬·클라우드·여러 프로세스에서 온 Event의 시계가 다르고 네트워크 지연으로 순서가 바뀐다.
 - Proposed Solution: session 내 `seq`, Projector는 순서 독립적 또는 seq 기반 재정렬 (TS-04). 전역 순서는 보장하지 않음을 명시.
 - Verification Method: TS-04, property 테스트.
-- Related Tasks: HQ-101, HQ-105
+- Related Tasks: HQ-101, HQ-106, HQ-108
 - Created / Updated: 2026-11-22
 
 ### RSK-007 — Cloud 저장 비용
@@ -99,7 +102,7 @@
 - Description: 고빈도 Tool Call Event를 콘텐츠까지 저장하면 비용이 빠르게 증가.
 - Proposed Solution: Selective Storage(D0/D1 위주), 보존 정책, 집계 Projection만 동기화하는 옵션.
 - Verification Method: RES-002에서 측정한 세션당 Event 수로 비용 추정.
-- Related Tasks: M6
+- Related Tasks: M5 이후 (Cloud 단계)
 - Created / Updated: 2026-11-22
 
 ### RSK-008 — 제어 기능의 보안·신뢰성
@@ -156,4 +159,31 @@
 - Proposed Solution: HQ-003에서 버전 고정(`packageManager` 필드, `.nvmrc` 또는 동등 수단), lockfile, `.gitignore`, `.env.example`, README 실행 절차.
 - Verification Method: 새 클론에서 README 절차만으로 HQ-003의 통합 Gate 명령 통과.
 - Related Tasks: HQ-003
+- Created / Updated: 2026-11-22
+
+### RSK-015 — 로컬 셀프호스트의 Docker 요구
+- Status / Priority / 범위: Open / H×H / Product
+- Description: ADR-0003에 따라 MVP는 Docker Compose로 API와 PostgreSQL을 실행한다. 대상 사용자인 General Users(비개발자)에게 Docker 설치와 실행은 큰 장벽이다.
+- Impact: 비개발자 대상 가치 검증이 늦어진다.
+- Root Cause: 로컬에서 Cloud와 같은 구성을 쓰기로 한 선택.
+- Proposed Solution: MVP는 개발자 대상으로 검증한다. General Users용 배포 형태(Cloud 호스팅, Desktop App — 명세서 Open Decision)는 MVP 이후 ADR로 정한다.
+- Verification Method: 배포 형태 ADR 작성 여부.
+- Related Tasks: ADR-0003 Revisit Conditions
+- Created / Updated: 2026-11-22
+
+### RSK-016 — Local Bridge·hook 경로의 공격 표면
+- Status / Priority / 범위: Open / H×M / Security
+- Description: Bridge는 사용자 머신의 파일·명령·자격 증명에 가깝다 (명세서 decisions.md 위험 2). 명세서는 hook → Bridge 로컬 구간의 인증을 다루지 않는다 (RES-007 S2).
+- Impact: Event 위조, 제어 명령 오남용, Secret 유출.
+- Proposed Solution: [security §4.3](../engineering/security.md#43-local-bridge-명세서-4--추가) — Pairing, 장치별 자격 증명, 로컬 구간 인증, Shell 기본 거부. Phase 2 착수 전 Bridge 보안 ADR.
+- Verification Method: Local Bridge pairing test, Event 위조 거부 테스트.
+- Related Tasks: M2
+- Created / Updated: 2026-11-22
+
+### RSK-017 — 재시도·중복 실행의 외부 부작용
+- Status / Priority / 범위: Open / H×M / Architecture
+- Description: 명세서 decisions.md 위험 7. 멱등성이 없는 Tool이나 Node를 재시도하면 메시지 중복 전송, 중복 배포 같은 부작용이 생긴다.
+- Proposed Solution: 명세서 pipeline-spec §7 — 멱등성이 보장되지 않으면 자동 재시도를 기본 금지하고, 재시도마다 새 Attempt를 기록한다.
+- Verification Method: M5 수용 조건.
+- Related Tasks: M5
 - Created / Updated: 2026-11-22

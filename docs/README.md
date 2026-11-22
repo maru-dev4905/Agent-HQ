@@ -16,10 +16,14 @@
 
 | 경로 | 책임 | 변경 빈도 |
 |---|---|---|
-| [foundation/product.md](foundation/product.md) | 제품 비전, 확정된 방향, 사용자, Non-goals | 낮음 |
+| [foundation/product.md](foundation/product.md) | 제품 정의, 원칙, 사용자, 기능 범위 (명세서 기준) | 낮음 |
 | [foundation/requirements.md](foundation/requirements.md) | 기능/비기능 요구사항 (ID 부여) | 중간 |
 | [foundation/architecture.md](foundation/architecture.md) | 시스템 구조, 컴포넌트 경계, 배포 형태 | 중간 |
-| [foundation/domain-model.md](foundation/domain-model.md) | 도메인 개념, Event 모델, 용어집 | 중간 |
+| [foundation/domain-model.md](foundation/domain-model.md) | 엔티티, 관계, 상태 모델 (명세서 기준) | 중간 |
+| [foundation/event-schema.md](foundation/event-schema.md) | Event Envelope, Type, 순서·중복·Gap (명세서 기준) | 중간 |
+| [foundation/adapter-spec.md](foundation/adapter-spec.md) | Runtime Adapter 계약, Capability, Claude Code Adapter (명세서 기준) | 중간 |
+| [foundation/pipeline-spec.md](foundation/pipeline-spec.md) | Pipeline 정의·검증·실행 (명세서 기준, Phase 5) | 낮음 |
+| [foundation/ui-ux.md](foundation/ui-ux.md) | 정보 구조, 화면, 3D Office, 접근성 (명세서 기준) | 중간 |
 | [foundation/roadmap.md](foundation/roadmap.md) | 마일스톤 순서와 목표 | 낮음 |
 | [decisions/](decisions/README.md) | ADR (의사결정 기록) | 결정 시 |
 | [engineering/coding-standards.md](engineering/coding-standards.md) | 코드 작성 규칙 | 낮음 |
@@ -38,10 +42,12 @@
 | [operations/risks.md](operations/risks.md) | 잠재 위험 | 발견 시 |
 | [operations/technical-debt.md](operations/technical-debt.md) | 기술 부채 | 발견 시 |
 | [operations/troubleshooting.md](operations/troubleshooting.md) | 재발 가능한 문제의 해결 방법 | 해결 시 |
-| [research/](research/README.md) | 조사 주제(RES)와 결과 | 조사 시 |
+| [research/](research/README.md) | 조사 주제(RES)와 결과. `research/source/`는 외부에서 받은 원본 자료(수정 금지) | 조사 시 |
 | [tasks/](tasks/README.md) | Backlog, 마일스톤별 Task 상세 | 매 작업 |
 
-> 요청된 기본 구조에 추가한 문서: `agents/orca-cli.md`(확인된 명령만 별도 관리), `operations/issues.md`(Issue와 Risk 분리).
+> 요청된 기본 구조에 추가한 문서: `agents/orca-cli.md`(확인된 명령만 별도 관리), `operations/issues.md`(Issue와 Risk 분리), 명세서에서 온 `foundation/{event-schema,adapter-spec,pipeline-spec,ui-ux}.md`.
+>
+> **명세서 기반 문서 규칙**: "(명세서 기준)" 문서는 본문이 기획 명세서 v0.1.0 원문이고, 하단 "통합 노트"가 본문보다 우선한다. 본문을 바꾸려면 ADR을 거친다. 일상적인 보완은 통합 노트에 쓴다.
 
 ## 3. 작성 원칙
 

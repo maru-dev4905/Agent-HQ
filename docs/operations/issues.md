@@ -21,7 +21,7 @@
 ---
 
 ### ISS-001 — 저장소에 커밋이 없어 worktree 기반 병렬 작업 불가
-- Status / Priority: Open / P1
+- Status / Priority: **Resolved** (2026-11-22) / P1
 - Description: `main` 브랜치에 커밋이 하나도 없다. 빈 저장소에서 `git worktree add`는 `fatal: not a valid object name: 'HEAD'`로 실패한다 (2026-11-22 scratch 저장소에서 재현).
 - Impact: Orca `--worktree new-child` 기반 병렬 Worker, 브랜치 기반 작업, diff 기반 리뷰(`git diff`의 기준점)가 불가능하다.
 - Root Cause: 저장소 초기화 직후 상태.
@@ -29,3 +29,4 @@
 - Verification Method: `git log --oneline -1` 출력 존재, scratch가 아닌 이 저장소에서 `git worktree list` 정상 동작.
 - Related Tasks: HQ-001
 - Created / Updated: 2026-11-22 / 2026-11-22
+- Resolution: 사용자 승인을 받아 첫 커밋 `1234b4b`를 만들었다. 이 저장소에서 `git worktree list`가 정상 출력되는 것을 확인했다.

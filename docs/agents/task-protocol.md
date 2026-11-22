@@ -15,14 +15,18 @@
 - Background: <왜 필요한가, 관련 FR/ADR/Issue>
 - Scope: <할 일>
 - Out of Scope: <하지 않을 일>
+- Interfaces: Consumes <사용하는 계약·모듈> / Produces <제공하는 계약·모듈>
 - Dependencies: <선행 Task ID, ADR 승인, 사용자 결정>
 - Files Expected to Change: <경로 목록 — 파일 소유권 선언>
 - Acceptance Criteria:
   - [ ] AC1 <관찰 가능한 결과>
 - Verification Steps:
   1. <실행할 명령 또는 확인 절차와 기대 결과>
+- Risks: <리뷰에서 집중할 부분, 해결되지 않은 위험>
 - Execution Log: (실행 시 추가 — [agent-workflow §6](agent-workflow.md#6-observability-작업-추적))
 ```
+
+> `Interfaces`와 `Risks` 항목은 기획 명세서 roadmap §11의 Task 템플릿에서 가져왔다 (2026-11-22).
 
 ## 2. 상태 전이
 

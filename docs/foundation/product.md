@@ -1,63 +1,250 @@
-# Product — Agent HQ
+# Product Definition
 
-> 목적: 제품 비전, 확정된 방향, 대상 사용자, Non-goals, 미결정 사항 정의.
-> 관리 책임: 사용자(Product Owner). Agent는 Proposed/Open Question만 추가할 수 있다.
+> 목적: 제품 정의, 원칙, 사용자, 영역, 기능 범위(P0/P1/P2), 제외 범위
+> 관리 책임: 사용자(Product Owner). Agent는 통합 노트에 Proposed/Open Question만 추가한다
+> 상태: 본문 Confirmed (ADR-0004)
+> 출처: 기획 명세서 v0.1.0 `product.md` ([원본](../research/source/chatgpt-spec-v0.1/product.md)) — [ADR-0004](../decisions/ADR-0004-adopt-spec-baseline.md)로 기준 문서로 채택(2026-11-22). 본문은 원문을 그대로 옮겼다. **하단 "통합 노트"가 본문보다 우선한다.**
+> 기술 스택에 관한 서술은 제안일 뿐이며, 실제 결정은 [ADR-0003](../decisions/ADR-0003-m1-tech-stack.md)을 따른다.
 
-## 1. 비전
+## 1. 제품 개요
 
-AI Agent를 위한 Headquarters. 여러 Agent가 무엇을 하고 있는지, 누가 누구에게 일을 넘겼는지, 어떤 도구와 데이터를 썼는지를 한눈에 **보고**, 문제가 생기면 **개입**하고, 최종적으로는 작업 흐름을 **지휘(오케스트레이션)**할 수 있게 한다.
+**Agent HQ**는 사용자가 다양한 AI 에이전트를 하나의 조직처럼 구성하고,
+실행하고, 관찰하고, 통제할 수 있도록 돕는 Agent Operations Platform이다.
 
-진화 단계: **Observe → Manage → Orchestrate**
+사용자는 외부 에이전트 런타임을 연결하거나 HQ가 관리하는 실행 환경에서
+에이전트를 실행할 수 있다. Agent HQ는 서로 다른 런타임의 상태와 활동을
+공통 도메인 및 이벤트 모델로 정규화해 Dashboard와 3D Office에 표현한다.
 
-## 2. 확정된 제품 방향 (Confirmed, 2026-11-22, 사용자 지시)
+### 제품 한 문장
 
-| 항목 | 결정 | 해석 (Proposed — 확인 필요) |
+> 다양한 AI 에이전트의 실행과 협업을 하나의 공간에서 구성·관찰·통제하는
+> 범용 운영 플랫폼.
+
+## 2. 해결할 문제
+
+### 2.1 관찰의 단절
+
+에이전트가 실행 중인지, 어떤 작업을 하는지, 어떤 도구를 호출했는지
+정보가 터미널·로그·개별 서비스에 흩어져 있다.
+
+### 2.2 협업 흐름의 불투명성
+
+Main Agent, Worker, Reviewer 등 여러 에이전트가 존재해도 역할, 부모-자식
+관계, 작업 전달 및 검증 흐름을 한눈에 파악하기 어렵다.
+
+### 2.3 운영 제어의 부족
+
+실패, 승인 대기, 비용 한도 초과, 장시간 정체 상황에서 사용자가 적절한
+시점에 개입하기 어렵다.
+
+### 2.4 구성의 반복
+
+프로젝트마다 Agent 역할, Tool 권한, Pipeline 규칙을 반복적으로 설정해야
+한다.
+
+### 2.5 런타임 종속성
+
+특정 SDK나 프레임워크에 의존하면 다른 런타임을 도입할 때 관제 및 운영
+체계를 다시 구축해야 한다.
+
+## 3. 제품 원칙
+
+1.  **Runtime agnostic:** 공통 Core는 특정 LLM 또는 Agent Framework에
+    종속되지 않는다.
+2.  **Observe before control:** 우선 정확한 관찰과 기록을 보장하고,
+    제어는 Runtime Capability가 확인된 범위에서만 제공한다.
+3.  **Human authority:** 사용자가 정한 권한·승인·비용·데이터 정책이
+    에이전트의 요청보다 우선한다.
+4.  **Local autonomy:** 로컬 실행과 데이터가 Cloud 연결 없이도 가능한
+    범위를 명시한다.
+5.  **Data choice:** 사용자가 데이터 유형별 저장 위치와 동기화 범위를
+    선택한다.
+6.  **One source of truth:** Dashboard와 3D Office는 동일한 도메인 및
+    이벤트 상태를 사용한다.
+7.  **Truthful visualization:** 알 수 없는 상태는 Unknown/Unobserved로
+    표현한다.
+8.  **Progressive complexity:** Easy Mode와 Developer Mode는 같은 Core를
+    사용하되 노출하는 설정의 복잡도를 달리한다.
+
+## 4. 대상 사용자
+
+### 4.1 AI 개발자 및 개발팀
+
+-   Claude Code, OpenAI Agents SDK, LangGraph 또는 자체 Agent를
+    사용한다.
+-   런타임별 실행 내역을 한 곳에서 확인하고 싶다.
+-   Tool 호출, Trace, 오류, 비용, 권한을 추적하고 싶다.
+-   파이프라인을 직접 구성하고 테스트하고 싶다.
+
+### 4.2 비개발자 및 일반 사용자
+
+-   코드를 작성하지 않고 목적 중심으로 에이전트를 사용하고 싶다.
+-   미리 준비된 Agent Template과 Pipeline을 선택하고 싶다.
+-   진행 상황과 결과물을 이해하기 쉬운 방식으로 확인하고 싶다.
+-   위험하거나 비용이 발생하는 작업은 직접 승인하고 싶다.
+
+### 4.3 팀 운영자
+
+-   Workspace 내 사용자, Agent, 프로젝트, 정책을 관리한다.
+-   누가 어떤 실행을 시작하고 승인했는지 확인한다.
+-   팀 단위 비용, 권한, 감사 기록을 관리한다.
+
+## 5. 핵심 제품 영역
+
+### 5.1 Office
+
+에이전트와 작업 현장을 시각적으로 보여주는 3D 공간이다. - Agent 캐릭터와
+업무 공간 - 실제 상태에 따른 캐릭터/공간 표현 - Mission과 Task의 진행
+상태 - 에이전트 간 관계 및 메시지 흐름 - Agent 상세 화면으로 진입
+
+3D Office는 장식용 게임이 아니다. 모든 상태 표현은 실제 Event 또는
+명시적인 추정 상태에 근거해야 한다.
+
+### 5.2 Studio
+
+Agent와 Pipeline을 생성·구성하는 영역이다. - Agent Definition 및
+Template - Adapter 및 Runtime 연결 - MCP Server / Tool 관리 - Pipeline
+Builder - 권한, 승인, 재시도, 비용 정책 - 테스트 및 버전 관리
+
+### 5.3 Operations
+
+실행을 관찰하고 관리하는 영역이다. - Mission / Task 목록과 상세 - 실시간
+Activity Timeline - Agent 상태와 실행 관계 - Trace 및 Tool 호출 기록 -
+Approval Inbox - 오류 및 재시도 - 사용량 및 비용
+
+### 5.4 Projects
+
+업무 결과와 실행 맥락을 관리하는 영역이다. - 프로젝트별 Mission 및
+Pipeline - 실행 이력 - Artifact - Pipeline Template - 프로젝트 지침 및
+정책
+
+## 6. 사용자 모드
+
+### Easy Mode
+
+-   자연어 Mission 입력
+-   추천 Agent / Pipeline Template
+-   기본 권한 및 안전 정책
+-   읽기 쉬운 진행 상태
+-   결과물 중심 화면
+-   필요한 시점에 명확한 승인 요청
+
+### Developer Mode
+
+-   Adapter / Runtime 세부 설정
+-   모델 및 프롬프트 설정
+-   Tool Allowlist
+-   입력/출력 Schema
+-   Pipeline 조건과 분기
+-   Trace, Raw Event, 로그
+-   Local Bridge 및 API 설정
+-   고급 보안 정책
+
+모드는 UI 표현의 차이다. 별도 데이터 모델이나 별도 실행 엔진을 만들지
+않는다.
+
+## 7. 기능 요구사항
+
+### P0 --- MVP 필수
+
+-   Workspace 및 Project 생성
+-   Agent Definition / Instance 조회
+-   Claude Code 연결을 위한 첫 Adapter
+-   Local Bridge의 인증된 연결
+-   Agent / Task / Tool 이벤트 수집
+-   공통 Event 저장 및 조회
+-   실시간 Dashboard 업데이트
+-   Mission 및 Task 타임라인
+-   Agent 상태의 Unknown 처리
+-   기본 3D Office에서 실제 이벤트 반영
+-   데이터 저장 위치 정책의 최소 모델
+-   Adapter Capability 표시
+-   연결 끊김 및 재연결 상태 표시
+
+### P1 --- MVP 이후
+
+-   Pipeline Builder 및 Pipeline Version
+-   HQ 관리 Local/Cloud 실행
+-   Approval Inbox와 정책 기반 승인
+-   지원되는 Runtime의 Pause/Resume/Cancel
+-   MCP Server 관리 및 Tool 관찰
+-   Artifact 관리
+-   비용 및 Token Usage 분석
+-   OpenAI Agents SDK Adapter
+-   팀 Workspace 및 역할 기반 접근 제어
+
+### P2 --- 확장
+
+-   LangGraph Adapter
+-   Custom Adapter SDK
+-   Pipeline / Agent Template 공유
+-   Marketplace
+-   고급 분석 및 성능 비교
+-   팀 정책과 조직 관리
+-   Office 커스터마이징 및 게임 요소 확장
+
+## 8. 비기능 요구사항
+
+-   **정확성:** 관찰된 상태와 추정 상태를 구분한다.
+-   **복구성:** 연결 중단 후 이벤트 재수집 또는 상태 재조정 경로를
+    제공한다.
+-   **보안:** Secret과 민감한 Tool 인자를 기본적으로 마스킹한다.
+-   **확장성:** Adapter 추가가 Core 도메인 변경을 최소화하도록 설계한다.
+-   **성능:** 이벤트 수집과 3D 렌더링을 분리한다.
+-   **접근성:** 핵심 상태를 색상과 애니메이션만으로 전달하지 않는다.
+-   **이식성:** Local 및 Cloud 실행 환경을 지원한다.
+-   **감사 가능성:** 승인과 제어 명령의 행위자·시각·결과를 기록한다.
+
+## 9. 성공 지표 후보
+
+초기 제품 지표는 다음과 같이 정의할 수 있다. 목표 수치는 실제 사용
+데이터를 확보한 뒤 결정한다.
+
+-   Runtime 연결 성공률
+-   Event 수집 지연 및 누락률
+-   Agent 상태 정합성
+-   Mission 완료율
+-   Pipeline 실패 및 재시도율
+-   Approval 응답 시간
+-   사용자당 관리 Agent 수
+-   주간 활성 Workspace
+-   데이터 동기화 실패율
+-   3D Office와 Dashboard의 상태 일치율
+
+## 10. 제품 범위에서 제외할 것
+
+초기 버전은 다음을 목표로 하지 않는다. - 모든 Agent Framework의 완전한
+기능 동등성 - 모든 외부 Runtime의 강제 일시정지/취소 - 완전 자동화된
+무인 Agent 조직 - Agent Marketplace 및 결제 - 고급 멀티테넌트
+엔터프라이즈 기능 - 게임 수준의 복잡한 시뮬레이션 - 모든 MCP 서버의
+무제한 프록시/중계
+
+## 11. 미결정 사항
+
+-   개인/팀 계정의 구체적인 요금제
+-   Cloud 제공 인프라 및 리전
+-   데이터 보존 기본 기간
+-   3D Office의 기본 카메라/아트 스타일
+-   사용자 초대 및 조직 권한 세분화
+-   Marketplace의 공개 범위 및 검수 정책
+
+---
+
+## 통합 노트 (Agent HQ, 2026-11-22)
+
+### N1. 확정된 제품 방향 요약
+D-001~D-009 → [ADR-0004](../decisions/ADR-0004-adopt-spec-baseline.md). 요구사항 ID 관리는 [requirements.md](requirements.md).
+
+### N2. MVP 실행 형태
+MVP는 **로컬 셀프호스트**로 실행한다 (Docker Compose로 API와 PostgreSQL 실행, [ADR-0003](../decisions/ADR-0003-m1-tech-stack.md)). 제품 원칙 4(Local autonomy)는 MVP에서 "HQ 전체가 Cloud 연결 없이 로컬에서 동작"으로 구체화한다.
+
+### N3. Open Questions (명세서 §11 미결정 사항에 추가)
+| ID | 질문 | 상태 |
 |---|---|---|
-| Execution Mode | Hybrid | 관찰 전용 모드 + 제어 모드를 모두 지원. 초기에는 관찰 중심 (OQ-1) |
-| Screen Focus | Dashboard + 3D Office | 같은 데이터(Projection)를 두 가지 화면으로 표현 |
-| Target Users | Developers + General Users | 개발자: 상세 이벤트·로그. 일반 사용자: 상태·진행률 중심 단순화 뷰 |
-| Deployment | Hybrid | Local 단독 실행 + Cloud(동기화/공유) (OQ-2) |
-| Data Storage | Selective | 메타데이터는 저장하고 프롬프트·코드 같은 콘텐츠는 선택해서 저장 ([data-governance](../engineering/data-governance.md)) |
-| Execution Environment | Local + Cloud | 관찰 대상 Agent가 로컬 머신과 클라우드 양쪽에서 실행됨 |
-
-> 오른쪽 "해석" 열은 Agent의 해석이며 **확정이 아니다.** 사용자 확인 후 Confirmed로 바꾼다.
-
-## 3. 핵심 기능 방향 (Confirmed — 범위 수준)
-
-- Agent 작업 상태 및 실행 과정 시각화
-- 여러 Agent 간 작업 위임과 실행 흐름 관찰
-- MCP를 통한 도구·데이터 흐름 관찰
-- Agent 실행 이벤트 수집 및 분석
-- 전문적인 Dashboard 화면
-- 게임화된 3D Office 화면
-- 향후 Agent 실행 제어 및 워크플로 오케스트레이션
-
-## 4. 대상 사용자 (Proposed 페르소나)
-
-| 페르소나 | 핵심 질문 | 필요한 화면 |
-|---|---|---|
-| 개발자 (Agent를 직접 돌리는 사람) | "지금 Agent가 뭘 하고 있지? 왜 실패했지? 어떤 파일을 건드렸지?" | Dashboard 상세, 타임라인, 도구 호출 로그 |
-| 팀 리드 / 운영자 | "여러 Agent가 어디서 막혔지? 비용·시간은?" | Dashboard 요약, 지표 |
-| 일반 사용자 | "내 Agent 팀이 일하고 있나? 끝났나?" | 3D Office, 단순 상태 |
-
-## 5. Non-goals (Proposed — 초기 단계)
-
-- Agent 프레임워크 자체를 만들지 않는다 (기존 Agent를 관찰·제어).
-- 초기(M1~M2)에는 Agent 실행 제어를 하지 않는다 — 관찰만.
-- LLM 호출 프록시/게이트웨이 역할은 하지 않는다 (재검토 가능).
-
-## 6. 차별화 및 포지셔닝 (Open Question)
-
-로컬에는 이미 Agent 오케스트레이션/관찰 도구가 존재한다(예: 이 개발 환경의 Orca는 worktree·worker·Run 관리 기능을 제공). Agent HQ가 이들과 **경쟁**하는지, **데이터 소스로 연동**하는지, **상위 계층**으로 위치하는지 결정이 필요하다. → OQ-5, [RSK-010](../operations/risks.md)
-
-## 7. Open Questions
-
-| ID | 질문 | 영향 |
-|---|---|---|
-| OQ-1 | Hybrid Execution Mode는 "관찰+제어 병행"인가, "Agent가 로컬/클라우드 어디서든 실행"인가? | 아키텍처 Control Plane 범위 |
-| OQ-2 | Hybrid Deployment에서 Cloud의 역할은? (동기화/팀 공유/원격 Agent 실행) 로컬 단독 사용이 1급 시나리오인가? | 인증, 저장소, 비용 |
-| OQ-3 | 첫 번째 실제 관찰 대상은 Claude Code만인가? (Codex, Cursor 등 포함 시점) | M2 범위 |
-| OQ-4 | General Users는 Agent를 직접 실행하는 사람인가, 결과만 보는 사람인가? | UX, 권한 모델 |
-| OQ-5 | Orca 등 기존 도구와의 관계 (경쟁/연동/상위 계층) | 포지셔닝, 통합 설계 |
-| OQ-6 | 3D Office의 목표 수준 (장식적 시각화 vs 조작 가능한 인터페이스) | 기술 스택, 일정 |
-| OQ-7 | 다중 사용자/팀 기능은 언제 필요한가? | 인증·권한 도입 시점 |
+| OQ-1 | Hybrid Execution Mode의 의미 | **해소** → D-001 (Attached + Managed) |
+| OQ-2 | Cloud의 역할과 시점 | 부분 해소 → MVP는 로컬 셀프호스트. Cloud 범위는 MVP 이후 결정 |
+| OQ-3 | 첫 실제 관찰 대상 | **해소** → D-007 (Claude Code) |
+| OQ-4 | General Users의 범위 | 명세서 §4.2로 정의됨. 로컬 셀프호스트의 Docker 요구가 이 사용자층에게 장벽이 된다 → [RSK-015](../operations/risks.md) |
+| OQ-5 | Orca 등 기존 Agent 도구와의 관계 (경쟁 / 데이터 소스 / 상위 계층) | Open → RES-006, [RSK-010](../operations/risks.md) |
+| OQ-6 | MVP 3D Office 최소 범위 | Open → Phase 4 착수 전 ADR (RES-004) |
+| OQ-7 | 팀 기능 시점 | 명세서 P1(팀 Workspace·RBAC)로 정의됨 |
