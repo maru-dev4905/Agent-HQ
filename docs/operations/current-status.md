@@ -24,7 +24,8 @@
 3. HQ-004(CI), HQ-005(프로젝트 `.claude/settings.json`, subagent 정의) 도입 여부
 
 ## 4. 인계 사항 (직전 세션 → 다음 세션)
-- HQ-104 완료(2026-11-23). 다음은 HQ-004(CI + CodeRabbit + PR 흐름) — 사용자가 CodeRabbit 설치 후 진행.
+- HQ-104 완료(`97c2e32`, main push 완료). HQ-004는 PR #1(`hq-004-ci-coderabbit`)로 진행 중: CI 두 job 통과. **사용자가 CodeRabbit GitHub App을 설치한 뒤** PR #1에 `@coderabbitai review` → 승인 시 `ready-to-merge` 알림 확인 → 사용자 머지 → main 브랜치 보호 설정.
+- 이제부터 작업 흐름은 [review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)을 따른다 (Task 브랜치 → 로컬 리뷰 → PR → CodeRabbit → 사용자 머지).
 - dev DB를 초기화(`prisma migrate reset`)해야 하는 상황이 오면 사용자 승인을 받는다. Prisma도 Agent 실행 시 이를 거부한다.
 - **Node 26 필요**: 저장소에서 `nvm use`. Agent 셸은 nvm 기본값(24)이 잡히므로 `PATH="$HOME/.nvm/versions/node/v26.13.1/bin:$PATH"`를 앞에 붙인다.
 - 로컬 인프라: `pnpm infra:up` (Docker Desktop이 실행 중이어야 한다). 컨테이너 `agent-hq-postgres-1`, `agent-hq-redis-1`.
