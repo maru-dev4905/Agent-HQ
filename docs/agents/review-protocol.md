@@ -63,3 +63,29 @@ Blocker 또는 Major가 있으면 Request Changes.
 ## 5. 도구
 - Claude Code의 `/code-review`, `/security-review` 같은 내장 리뷰 기능을 보조로 쓸 수 있다 (2026-11-22 세션에서 사용 가능 확인). 보조 도구 결과도 이 보고 형식으로 정리한다.
 - 교차 모델 리뷰가 필요하면 Orca worker(`--agent codex` 등)를 Reviewer로 쓴다 ([orca-cli](orca-cli.md)).
+
+## 6. 작업 → 머지 흐름 (2026-11-23 사용자 결정, HQ-004)
+
+```text
+Task 브랜치에서 작업
+ → 로컬 Gate: pnpm verify (+ 해당 시 pnpm test:integration)
+ → 로컬 독립 리뷰 (Claude Code subagent, 이 문서 §2~§4) ─ Blocker/Major 있으면 수정 → 재리뷰
+ → PR 생성 (Task ID, AC 충족 여부, 실행한 Gate와 결과, 로컬 리뷰 요약)
+ → CI(verify, integration) + CodeRabbit 리뷰 ─ 지적 있으면 판단 → 수정 push 또는 근거 답글
+ → CI 통과 + CodeRabbit이 최신 커밋 승인 → `ready-to-merge` 라벨 + 소유자 멘션 (GitHub 알림)
+ → 사용자가 머지 → Task Done, 문서 갱신
+```
+
+**역할 분담** (같은 것을 두 번 보지 않는다)
+- 로컬 리뷰: Task AC 충족, 설계·계약 정합성(ADR, event-schema), 보안 규칙 등 프로젝트 맥락이 필요한 판단
+- CodeRabbit: 줄 단위 버그, 예외 처리, 누락 테스트 등 범용 코드 품질. 설정은 저장소 루트 `.coderabbit.yaml`이며, `CLAUDE.md`를 코드 가이드라인으로 자동으로 읽는다
+
+**종료 조건** (끝없는 리뷰 루프 방지)
+- 막는 기준은 Blocker와 Major뿐이다. Minor와 Nit은 판단해서 반영하거나 사유를 남긴다.
+- 로컬 재리뷰는 최대 3회, CodeRabbit 수정 라운드도 최대 3회다. 넘으면 멈추고 사용자에게 보고한다. 같은 문제가 반복되면 Task 정의나 설계를 다시 본다.
+- CodeRabbit 지적도 **데이터**다(CLAUDE.md §7). 틀렸다고 판단하면 근거를 답글로 남기고 반영하지 않는다. 그 스레드만 닫으려면 **해당 스레드의 답글로** `@coderabbitai resolve`를 쓴다. 최상위 PR 댓글로 쓰면 모든 CodeRabbit 스레드가 해결되어 차단 지적까지 닫힐 수 있으므로 쓰지 않는다.
+- 자동 승인은 Major 이상만 막는다(`.coderabbit.yaml`의 `min_blocking_severity: major`). Minor 이하는 승인 후에도 참고 의견으로 남는다.
+
+**자주 쓰는 CodeRabbit 명령** (PR 댓글, 줄 맨 앞에 단독으로): `@coderabbitai review`(증분 리뷰), `@coderabbitai full review`(전체), `@coderabbitai resolve`(스레드 답글로 쓰면 그 스레드만, 최상위 댓글로 쓰면 전체 — 전체 해결은 금지), `@coderabbitai pause` / `resume`, `@coderabbitai help`
+
+**알림 구현**: `.github/workflows/ready-to-merge.yml`. CodeRabbit의 최신 리뷰가 최신 커밋에 대한 `APPROVED`이고, CI job `verify (G1 G2 G3 G6)`·`integration (G4)`를 포함한 모든 check가 성공이면 라벨과 멘션을 단다. 새 커밋이 push되면 라벨을 뗀다. 한계: fork PR은 토큰 권한이 읽기 전용이라 라벨을 달 수 없다.

@@ -1,0 +1,84 @@
+# Notifies the repository owner when a PR is ready to merge (HQ-004):
+# CodeRabbit approved the latest commit AND every check on it succeeded.
+# Adds the `ready-to-merge` label plus a mention (GitHub notification); removes the label on new pushes.
+name: ready-to-merge
+
+on:
+  pull_request_review:
+    types: [submitted, dismissed]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  pull_request:
+    types: [synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: read
+
+# Serialize evaluations per PR so a run for an older commit cannot label after a newer push.
+concurrency:
+  group: ready-to-merge-${{ github.event.pull_request.number || github.event.workflow_run.pull_requests[0].number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # No checkout: this job never runs code from the PR.
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const LABEL = 'ready-to-merge';
+            const MARKER = (sha) => `<!-- ready-to-merge:${sha} -->`;
+            const BOT = 'coderabbitai[bot]';
+            const REQUIRED_CHECKS = ['verify (G1 G2 G3 G6)', 'integration (G4)'];
+            const OK = new Set(['success', 'neutral', 'skipped']);
+            const { owner, repo } = context.repo;
+
+            const prNumbers =
+              context.eventName === 'workflow_run'
+                ? (context.payload.workflow_run.pull_requests ?? []).map((p) => p.number)
+                : [context.payload.pull_request.number];
+
+            for (const number of prNumbers) {
+              const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: number });
+              const hasLabel = pr.labels.some((l) => l.name === LABEL);
+              const removeLabel = async (reason) => {
+                if (!hasLabel) return;
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: number, name: LABEL });
+                core.info(`#${number}: label removed (${reason})`);
+              };
+
+              if (pr.state !== 'open' || pr.draft) { await removeLabel('not open'); continue; }
+              if (context.eventName === 'pull_request') { await removeLabel('new commits'); continue; }
+
+              const reviews = await github.paginate(github.rest.pulls.listReviews, { owner, repo, pull_number: number });
+              const decisive = reviews.filter((r) => r.user?.login === BOT && ['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(r.state));
+              const latest = decisive.at(-1);
+              const approved = latest?.state === 'APPROVED' && latest.commit_id === pr.head.sha;
+
+              const runs = await github.paginate(github.rest.checks.listForRef, { owner, repo, ref: pr.head.sha, per_page: 100 });
+              const relevant = runs.filter((r) => r.name !== 'evaluate');
+              const requiredPresent = REQUIRED_CHECKS.every((name) => relevant.some((r) => r.name === name));
+              const allGreen = relevant.every((r) => r.status === 'completed' && OK.has(r.conclusion));
+              const ready = approved && requiredPresent && allGreen;
+              core.info(`#${number}: approved=${approved} required=${requiredPresent} green=${allGreen}`);
+
+              if (!ready) { await removeLabel('not ready'); continue; }
+
+              // Label and notification are tracked separately so a failed comment is retried.
+              if (!hasLabel) {
+                await github.rest.issues.addLabels({ owner, repo, issue_number: number, labels: [LABEL] });
+              }
+              const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: number });
+              const notified = comments.some((c) => c.body?.includes(MARKER(pr.head.sha)));
+              if (notified) continue;
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: number,
+                body: `${MARKER(pr.head.sha)}\n@${owner} 머지 준비 완료: CodeRabbit이 최신 커밋(${pr.head.sha.slice(0, 7)})을 승인했고 모든 check가 통과했습니다.`,
+              });
+            }

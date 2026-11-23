@@ -1,0 +1,63 @@
+# Quality gates in CI (HQ-004, docs/engineering/quality-gates.md).
+# Actions are pinned to commit SHAs (supply-chain safety, security §6).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify (G1 G2 G3 G6)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - run: pnpm verify
+
+  integration:
+    name: integration (G4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.7
+        env:
+          POSTGRES_USER: agent_hq
+          POSTGRES_PASSWORD: agent_hq_local
+          POSTGRES_DB: agent_hq
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U agent_hq -d agent_hq"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+      redis:
+        image: redis:8.10.3
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - run: pnpm test:integration

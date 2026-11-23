@@ -1,0 +1,146 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit PR review settings (HQ-004). Keys verified against the official schema
+# (https://coderabbit.ai/integrations/schema.v2.json) on 2026-11-23.
+# Repository YAML is the single source of CodeRabbit settings: do not duplicate them in the web UI.
+# CodeRabbit also reads CLAUDE.md automatically as a code guideline.
+language: ko-KR
+tone_instructions: >-
+  간결하게 쓴다. 지적마다 근거(파일:줄)와 실제로 문제가 되는 시나리오를 함께 적는다.
+  추측이면 추측이라고 밝힌다. 칭찬과 반복 요약은 쓰지 않는다.
+
+reviews:
+  # chill = fewer, higher-signal comments; avoids endless nit loops (review-protocol §6).
+  profile: chill
+  # Request changes on blocking findings, approve once they are resolved. The approval is
+  # what the ready-to-merge workflow waits for.
+  auto_approvals:
+    enabled: true
+    # Only Major and above block approval; Minor/Nit stay advisory (review-protocol §6).
+    min_blocking_severity: major
+  # A review that errors out reports failure, so it can never look like a pass.
+  fail_commit_status: true
+  high_level_summary: true
+  review_details: true
+  sequence_diagrams: true
+  estimate_code_review_effort: true
+  # Solo repository: no reviewer suggestions, labels or decorative output.
+  suggested_reviewers: false
+  suggested_labels: false
+  in_progress_fortune: false
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    # Default 5 would silently stop reviewing long PRs; our loop limit is 3 rounds anyway.
+    auto_pause_after_reviewed_commits: 10
+    ignore_title_keywords: ['WIP', 'DO NOT REVIEW']
+  path_filters:
+    - '!pnpm-lock.yaml'
+    - '!**/dist/**'
+    - '!**/.next/**'
+    - '!packages/database/src/generated/**'
+    # Verbatim external source material; never edited (ADR-0004).
+    - '!docs/research/source/**'
+  path_instructions:
+    - path: 'packages/events/**'
+      instructions: >-
+        Event contract (docs/foundation/event-schema.md integration notes, ADR-0006).
+        Check that sources send external IDs only, server-owned fields are rejected, unknown
+        fields are stripped and never stored, and every change keeps schemaVersion
+        compatibility. Flag anything that could store prompt or file content (D2/D3 data).
+    - path: 'packages/database/**'
+      instructions: >-
+        Append-only event store (ADR-0002). Check workspace scoping on every query, that
+        events are never updated, and that raw SQL stays inside this package.
+        Migrations that already exist on main must never be modified.
+    - path: 'apps/api/**'
+      instructions: >-
+        NestJS API. Constructor injection must use explicit @Inject. The server must bind to
+        loopback by default and validate Host/Origin. Never log raw request bodies.
+    - path: '.github/workflows/**'
+      instructions: >-
+        Actions must be pinned to full commit SHAs. Workflows triggered by workflow_run or
+        pull_request_review must never check out or execute PR code. Use least-privilege
+        permissions.
+    - path: 'docs/decisions/**'
+      instructions: >-
+        Accepted ADRs must not be edited except the Status line; changes require a new ADR.
+  pre_merge_checks:
+    title:
+      mode: warning
+      requirements: 'Start with the task ID, e.g. "HQ-104: ...". Docs-only PRs may use "docs: ...".'
+    description:
+      mode: warning
+    # We do not mandate docstrings or GitHub issues.
+    docstrings:
+      mode: 'off'
+    issue_assessment:
+      mode: 'off'
+    custom_checks:
+      - name: Applied migrations unchanged
+        mode: error
+        instructions: >-
+          Fail if the PR modifies or deletes any file under packages/database/prisma/migrations/
+          that already exists on the base branch. Adding new migration directories is allowed.
+      - name: Accepted ADRs unchanged
+        mode: error
+        instructions: >-
+          Fail if the PR changes any line other than the "- Status:" line in a file under
+          docs/decisions/ whose Status on the base branch starts with "Accepted".
+      - name: No secrets or captured content
+        mode: error
+        instructions: >-
+          Fail if the PR adds a .env file (other than .env.example), a private key, an API
+          token, or a real credential value, or adds code that logs raw request bodies or
+          stores full prompt, file, or tool-output content.
+      - name: Task and verification in description
+        mode: warning
+        instructions: >-
+          Pass if the PR description names a task ID (HQ-xxx) or says it is docs-only, and
+          states which verification commands were run with their results.
+  tools:
+    eslint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    squawk:
+      enabled: true
+    yamllint:
+      enabled: true
+    # Korean prose: grammar/markdown linters produce noise, not defects.
+    markdownlint:
+      enabled: false
+    languagetool:
+      enabled: false
+    # We use ESLint + Prettier, not Biome.
+    biome:
+      enabled: false
+
+chat:
+  auto_reply: true
+  art: false
+
+knowledge_base:
+  web_search:
+    enabled: true
+  # Learnings from this repository's PRs stay in this repository.
+  learnings:
+    scope: local
+  code_guidelines:
+    enabled: true
+    # Object form: a plain path would only apply to files under docs/engineering/.
+    filePatterns:
+      - files: docs/engineering/coding-standards.md
+        applyTo: '**'
+      - files: docs/engineering/security.md
+        applyTo: '**'
+
+# No GitHub issues are used for planning (tasks live in docs/tasks/).
+issue_enrichment:
+  planning:
+    enabled: false
