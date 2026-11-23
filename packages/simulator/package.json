@@ -10,7 +10,12 @@
     }
   },
   "dependencies": {
-    "@agent-hq/contracts": "workspace:*",
     "@agent-hq/events": "workspace:*"
+  },
+  "bin": {
+    "agent-hq-sim": "./dist/bin.js"
+  },
+  "scripts": {
+    "simulate": "node dist/bin.js"
   }
 }
