@@ -35,7 +35,7 @@ describe('sendEvents', () => {
   it('stops at the first rejected batch without echoing the response body', async () => {
     const { calls, impl } = fakeFetch(401);
     await expect(
-      sendEvents(events, { url: 'http://x', token: 't', batchSize: 5, fetch: impl }),
+      sendEvents(events, { url: 'http://127.0.0.1/x', token: 't', batchSize: 5, fetch: impl }),
     ).rejects.toThrow('HTTP 401');
     expect(calls).toHaveLength(1);
   });
@@ -44,7 +44,7 @@ describe('sendEvents', () => {
     const failing: typeof fetch = () =>
       Promise.reject(new TypeError('fetch failed', { cause: new Error('connect ECONNREFUSED') }));
     const error = await sendEvents(events, {
-      url: 'http://secret-host:1/x',
+      url: 'http://127.0.0.1:1/x',
       token: 't',
       fetch: failing,
     }).then(
@@ -65,13 +65,32 @@ describe('sendEvents', () => {
         });
       });
     await expect(
-      sendEvents(events, { url: 'http://x', token: 't', timeoutMs: 20, fetch: stalled }),
+      sendEvents(events, { url: 'http://127.0.0.1/x', token: 't', timeoutMs: 20, fetch: stalled }),
     ).rejects.toThrow('Could not reach the ingestion endpoint: timed out after 20ms');
+  });
+
+  it('treats a redirect as a failure, never as delivery', async () => {
+    const { calls, impl } = fakeFetch(302);
+    await expect(
+      sendEvents(events, { url: 'http://127.0.0.1/x', token: 't', fetch: impl }),
+    ).rejects.toThrow('HTTP 302');
+    expect(calls[0]?.init.redirect).toBe('manual');
+  });
+
+  it('refuses cleartext HTTP to non-loopback hosts before sending the token', async () => {
+    const { calls, impl } = fakeFetch();
+    await expect(
+      sendEvents(events, { url: 'http://ingest.example/x', token: 't', fetch: impl }),
+    ).rejects.toThrow(/HTTPS/);
+    expect(calls).toHaveLength(0);
+    await expect(
+      sendEvents(events, { url: 'https://ingest.example/x', token: 't', fetch: impl }),
+    ).resolves.toMatchObject({ events: events.length });
   });
 
   it('rejects batch sizes outside the contract limit', async () => {
     await expect(
-      sendEvents(events, { url: 'http://x', token: 't', batchSize: 501 }),
+      sendEvents(events, { url: 'http://127.0.0.1/x', token: 't', batchSize: 501 }),
     ).rejects.toThrow(RangeError);
   });
 });

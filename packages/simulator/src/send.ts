@@ -18,6 +18,21 @@ export interface SendReport {
   statuses: number[];
 }
 
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', '[::1]', 'localhost']);
+
+/**
+ * The bearer token must not cross a network in cleartext: plain HTTP is allowed only for
+ * loopback (local self-host, security §4.3); anything else must use HTTPS.
+ */
+export function assertSecureEndpoint(raw: string): void {
+  const url = new URL(raw);
+  if (url.protocol === 'https:') return;
+  if (url.protocol === 'http:' && LOOPBACK_HOSTS.has(url.hostname)) return;
+  throw new Error(
+    'Ingestion endpoint must use HTTPS unless it is on loopback (127.0.0.1, ::1, localhost)',
+  );
+}
+
 /** Posts events in batches as `{ "events": [...] }`. Stops at the first non-2xx response. */
 export async function sendEvents(
   events: readonly IncomingAgentEvent[],
@@ -27,6 +42,7 @@ export async function sendEvents(
   if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > EVENT_LIMITS.maxBatchEvents) {
     throw new RangeError(`batchSize must be between 1 and ${EVENT_LIMITS.maxBatchEvents}`);
   }
+  assertSecureEndpoint(options.url);
   const doFetch = options.fetch ?? fetch;
   const report: SendReport = { batches: 0, events: 0, statuses: [] };
 
@@ -42,6 +58,8 @@ export async function sendEvents(
         },
         body: JSON.stringify({ events: batch }),
         signal: AbortSignal.timeout(options.timeoutMs ?? 10_000),
+        // Never follow redirects: a 302 to a login page must not count as delivered.
+        redirect: 'manual',
       });
     } catch (error) {
       // Report the network cause (e.g. ECONNREFUSED) but never the URL or token.

@@ -44,16 +44,16 @@ describe('runCli', () => {
 
   it('reads the token from AGENT_HQ_TOKEN, never from arguments', async () => {
     await expect(
-      runCli(['--scenario', 'delegation', '--url', 'http://x'], io().value),
+      runCli(['--scenario', 'delegation', '--url', 'http://127.0.0.1/x'], io().value),
     ).rejects.toThrow(/AGENT_HQ_TOKEN/);
     await expect(
       runCli(
-        ['--scenario', 'delegation', '--url', 'http://x', '--token', 'leak'],
+        ['--scenario', 'delegation', '--url', 'http://127.0.0.1/x', '--token', 'leak'],
         io({ AGENT_HQ_TOKEN: 't' }).value,
       ),
     ).rejects.toThrow(/Unknown option '--token'/);
     const ok = io({ AGENT_HQ_TOKEN: 't' });
-    await runCli(['--scenario', 'delegation', '--url', 'http://x'], ok.value);
+    await runCli(['--scenario', 'delegation', '--url', 'http://127.0.0.1/x'], ok.value);
     expect(ok.out.join('')).toMatch(/^sent \d+ events/);
   });
 
@@ -82,7 +82,7 @@ describe('runCli', () => {
   it('rejects unknown scenarios and conflicting outputs', async () => {
     await expect(runCli(['--scenario', 'nope'], io().value)).rejects.toThrow(/--scenario/);
     await expect(
-      runCli(['--scenario', 'delegation', '--out', 'a', '--url', 'http://x'], io().value),
+      runCli(['--scenario', 'delegation', '--out', 'a', '--url', 'http://127.0.0.1/x'], io().value),
     ).rejects.toThrow(/either/);
   });
 });

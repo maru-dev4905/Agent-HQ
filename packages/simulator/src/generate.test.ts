@@ -16,6 +16,21 @@ describe('generate — determinism', () => {
     expect(a).not.toBe(b);
   });
 
+  it('never shares idempotency keys between streams of different seeds', () => {
+    const a = new Set(generate({ scenario: 'single-agent', seed: 1 }).map((e) => e.idempotencyKey));
+    const b = generate({ scenario: 'single-agent', seed: 2 }).map((e) => e.idempotencyKey);
+    expect(b.some((key) => a.has(key))).toBe(false);
+  });
+
+  it('requires an explicit time zone for the start time', () => {
+    expect(() =>
+      generate({ scenario: 'single-agent', seed: 1, startAt: '2026-11-20T05:00:00' }),
+    ).toThrow(/time zone/);
+    expect(() =>
+      generate({ scenario: 'single-agent', seed: 1, startAt: '2026-11-20T14:00:00+09:00' }),
+    ).not.toThrow();
+  });
+
   it('never reads the wall clock (fixed default start time)', () => {
     const events = generate({ scenario: 'single-agent', seed: 7 });
     expect(events[0]?.occurredAt.startsWith('2026-11-20T05:00:')).toBe(true);
@@ -131,6 +146,7 @@ describe('delivery options', () => {
       { seed: 4294967297 },
       { seed: 1, cutAfter: 0 },
       { seed: 1, cutAfter: 999 },
+      { seed: 1, duplicateRate: Number.NaN },
     ];
     for (const options of bad) {
       expect(() => generate({ scenario: 'single-agent', ...options })).toThrow(RangeError);

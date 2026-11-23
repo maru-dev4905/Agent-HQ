@@ -30,7 +30,7 @@ export const MAX_SEED = 0xffffffff;
  */
 export function generate(options: GenerateOptions): IncomingAgentEvent[] {
   const duplicateRate = options.duplicateRate ?? 0;
-  if (duplicateRate < 0 || duplicateRate > 1)
+  if (!Number.isFinite(duplicateRate) || duplicateRate < 0 || duplicateRate > 1)
     throw new RangeError('duplicateRate must be in [0, 1]');
   if (!Number.isInteger(options.seed) || options.seed < 0 || options.seed > MAX_SEED) {
     throw new RangeError(`seed must be an integer between 0 and ${MAX_SEED}`);
@@ -44,7 +44,7 @@ export function generate(options: GenerateOptions): IncomingAgentEvent[] {
 
   const random = createRandom(options.seed);
   const clock = createClock(options.startAt ?? DEFAULT_START_AT);
-  const emitted = SCENARIOS[options.scenario]({ random, clock });
+  const emitted = SCENARIOS[options.scenario]({ random, clock, seed: options.seed });
   if (options.cutAfter !== undefined && options.cutAfter >= emitted.length) {
     // A cut at or past the end would end with the scenario's closing events: no silent drop.
     throw new RangeError(`cutAfter must be smaller than ${emitted.length} for ${options.scenario}`);

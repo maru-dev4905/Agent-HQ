@@ -6,12 +6,20 @@ import { SimSession } from './session.js';
 export interface ScenarioContext {
   clock: SimClock;
   random: Random;
+  /** Part of every session ID, so streams from different seeds never share idempotency keys. */
+  seed: number;
 }
 
 export type Scenario = (ctx: ScenarioContext) => IncomingAgentEvent[];
 
 function session(name: string, id: string, ctx: ScenarioContext): SimSession {
-  return new SimSession(name, id, `run_${name}`, ctx.clock, ctx.random);
+  return new SimSession(
+    name,
+    `${id}_s${ctx.seed}`,
+    `run_${name}_s${ctx.seed}`,
+    ctx.clock,
+    ctx.random,
+  );
 }
 
 /** Milliseconds between an earlier event and a timestamp, so durations match the timeline. */

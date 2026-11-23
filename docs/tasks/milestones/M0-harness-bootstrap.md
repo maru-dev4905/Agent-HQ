@@ -2,7 +2,7 @@
 
 > 목표: Agent와 사람이 일관되게 개발할 수 있는 문서·규칙·도구 기반을 만들고, 기술 스택을 결정하고, Monorepo와 로컬 개발 환경을 만든다.
 > 종료 조건: (1) 첫 커밋 존재 ✅ (2) ADR-0001~0004 Accepted ✅ (3) 로컬 Quality Gate 명령 동작 (4) quality-gates.md에 실제 명령 기록 (5) 명세서 Phase 0 완료 조건: 의존성 방향 명시, 기본 빌드·테스트 통과, 로컬 DB migration 실행 가능. Event Schema contract test는 HQ-101(M1 첫 Task)에서 충족한다
-> 상태: In Progress
+> 상태: Done (2026-11-23). 종료 조건 (1)~(5) 충족: 첫 커밋, ADR-0001~0004 Accepted, 로컬·CI Gate(`pnpm verify`), quality-gates 기록, Phase 0 완료 조건. HQ-005는 선택 Task로 Backlog에 남는다
 
 ---
 
