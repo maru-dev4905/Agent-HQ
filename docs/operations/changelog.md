@@ -4,6 +4,11 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
+## 2026-11-23 — HQ-004 CI·CodeRabbit (Done)
+- [Added] GitHub Actions CI(verify, integration), `.coderabbit.yaml`, `ready-to-merge` 알림 워크플로 (PR #1)
+- [Changed] main 브랜치 보호: 필수 check 3개, 승인 1건(CodeRabbit), 새 push 시 승인 무효화
+- [Changed] quality-gates: G1·G2·G3·G4·G6 상태 `CI`
+
 ## 2026-11-23 — HQ-104 Event Store (Done)
 - [Added] EventStore(append·외부 ID 매핑·Outbox, Workspace별 advisory lock), migration 3개, EventStore 계약 테스트, G4 `pnpm test:integration`
 - [Added] troubleshooting 2건 (Prisma의 Agent 실행 차단, 잠자기로 인한 멈춤)

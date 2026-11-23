@@ -128,7 +128,7 @@
   - 남은 한계 (Nit, 수용): 의존 방향 lint는 정적 import만 잡는다. 동적 `import()`와 다른 패키지로의 상대 경로는 잡지 못한다 (coding-standards §4에 기록)
 
 ### HQ-004 — CI 및 문서 검사 자동화
-- Status: In Progress (2026-11-23)
+- Status: Done (2026-11-23)
 - Risk: Medium
 - Objective: PR마다 Gate를 자동 실행하고, CodeRabbit 리뷰와 머지 준비 알림을 포함한 PR 흐름([review-protocol §6](../../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004))을 만든다. (2026-11-23 사용자 결정으로 범위 확장)
 - 범위 변경: GitHub Actions CI(verify, integration), `.coderabbit.yaml`, `ready-to-merge` 알림 워크플로, main 브랜치 보호(사용자 확인 후). 문서 링크 검사 자동화(TD-002)는 후속으로 미룬다
@@ -138,13 +138,20 @@
 - Dependencies: HQ-003, CI 도입 승인
 - Files Expected to Change: `.github/workflows/*`, `docs/engineering/quality-gates.md`, `docs/operations/technical-debt.md`
 - Acceptance Criteria:
-  - [ ] PR에서 Gate(verify, integration) 실행, 실패 시 표시
-  - [ ] CodeRabbit이 PR을 한국어로 리뷰하고, Major 이상이 없으면 승인한다
-  - [ ] CodeRabbit 승인 + 모든 check 통과 시 `ready-to-merge` 라벨과 소유자 멘션 알림이 온다
-  - [ ] (머지 후) main 브랜치 보호에 필수 check 지정 (사용자 확인 후)
+  - [x] PR에서 Gate(verify, integration) 실행, 실패 시 표시
+  - [x] CodeRabbit이 PR을 한국어로 리뷰하고, Major 이상이 없으면 승인한다
+  - [x] CodeRabbit 승인 + 모든 check 통과 시 `ready-to-merge` 라벨과 소유자 멘션 알림이 온다
+  - [x] (머지 후) main 브랜치 보호에 필수 check 지정 (사용자 확인 후)
   - 후속으로 이동: 깨진 문서 링크가 CI를 실패시킴 (TD-002)
 - Verification Steps:
   1. 실패를 의도한 테스트 PR로 확인 (사용자 승인 후)
+
+- Execution Log:
+  #### Run 2026-11-23-2
+  - agent_id: claude-code:main (Worker), CodeRabbit (PR Reviewer) · status: succeeded
+  - result: PR #1 머지(`ecbb753`, 사용자). CI(verify, integration) 첫 실행부터 통과. CodeRabbit 1차 CHANGES_REQUESTED(Minor 6건: 승인 차단 기준, 가이드라인 적용 범위, 알림 재시도·동시성, resolve 안내, AC 정리) → 공식 스키마로 확인 후 전부 반영 → 최신 커밋 APPROVED → `ready-to-merge` 라벨과 소유자 멘션 자동 생성 확인
+  - main 브랜치 보호 (사용자 승인 2026-11-23): 필수 check `verify (G1 G2 G3 G6)`·`integration (G4)`·`CodeRabbit`, 승인 1건(CodeRabbit APPROVED가 충족), 새 push 시 기존 승인 무효화, force push·삭제 금지, 관리자 우회는 비상용으로 허용(Agent는 사용하지 않음)
+  - 알게 된 점: `CodeRabbit` check는 수정 요청 상태에서도 success로 끝난다. 그래서 승인 여부는 check가 아니라 "승인 1건 필수" 규칙으로 막아야 한다
 
 ### HQ-005 — Claude Code 프로젝트 설정
 - Status: Backlog
