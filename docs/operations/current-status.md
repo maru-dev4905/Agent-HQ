@@ -5,26 +5,25 @@
 > 최종 갱신: 2026-11-22 — Claude Code (HQ-001·HQ-002 수행, 기획 명세서 통합)
 
 ## 1. 요약
-- 단계: **M1 / Phase 1 Event Ingestion Core — In Progress** (M0 완료, HQ-004·HQ-005는 Backlog)
-- 제품 기준 문서: 기획 명세서 v0.1.0 ([ADR-0004](../decisions/ADR-0004-adopt-spec-baseline.md))
-- 스택: [ADR-0003](../decisions/ADR-0003-m1-tech-stack.md) + [ADR-0005](../decisions/ADR-0005-adopt-redis-bullmq.md)(Redis + BullMQ). Event 계약 규칙: [ADR-0006](../decisions/ADR-0006-external-ids-and-lenient-payloads.md)
-- 로컬 Gate: `pnpm verify` 동작 (G1·G2·G3·G6). CI 없음
-- Git: `main`. Task마다 커밋한다 (사용자 승인, push는 매번 승인). 원격 push는 아직 한 번도 하지 않았다
+- 단계: **M1 / Phase 1 Event Ingestion Core — In Progress**. M0 완료(HQ-005는 Backlog)
+- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2). 진행 중: HQ-103 Connection 인증(PR #3)
+- Gate: CI가 PR마다 `verify`·`integration` 실행. main은 보호됨 (필수 check 3개 + CodeRabbit 승인 1건)
+- Git: Task마다 브랜치 → PR → CodeRabbit → 사용자 머지 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004))
 
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-102 시뮬레이터, HQ-103 Connection | Ready | HQ-101 완료로 착수 가능 |
+| HQ-103 Connection 인증 | In Review | PR #3 (`hq-103-connections`), main 병합으로 충돌 해결 후 재리뷰 |
+| HQ-106 Projector + Replay | Ready | HQ-103 머지 후 시작 (스키마·migration 순서 때문) |
 | HQ-110 Claude Code 신호 조사 | Backlog | 언제든 병행 가능 (scratch hook 설정은 승인 후) |
-| HQ-004 CI, HQ-005 Claude Code 설정 | Backlog | 각각 승인 필요 |
+| HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 
 ## 3. 사용자 결정 대기
-1. 원격 push 여부 (지금까지 로컬 커밋만 있음)
-2. 남은 Open Questions: OQ-5(Orca 등 기존 도구와의 관계), OQ-6(MVP 3D 최소 범위), 명세서 Open Decisions
-3. HQ-004(CI), HQ-005(프로젝트 `.claude/settings.json`, subagent 정의) 도입 여부
+1. 남은 Open Questions: OQ-5(Orca 등 기존 도구와의 관계), OQ-6(MVP 3D 최소 범위), 명세서 Open Decisions
+2. HQ-005(프로젝트 `.claude/settings.json`, subagent 정의) 도입 여부
 
 ## 4. 인계 사항 (직전 세션 → 다음 세션)
-- HQ-104 완료(`97c2e32`, main push 완료). HQ-004는 PR #1(`hq-004-ci-coderabbit`)로 진행 중: CI 두 job 통과. **사용자가 CodeRabbit GitHub App을 설치한 뒤** PR #1에 `@coderabbitai review` → 승인 시 `ready-to-merge` 알림 확인 → 사용자 머지 → main 브랜치 보호 설정.
+- main은 보호되어 직접 push할 수 없다. 모든 변경은 Task 브랜치와 PR로 들어간다. 머지는 사용자만 한다.
 - 이제부터 작업 흐름은 [review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)을 따른다 (Task 브랜치 → 로컬 리뷰 → PR → CodeRabbit → 사용자 머지).
 - dev DB를 초기화(`prisma migrate reset`)해야 하는 상황이 오면 사용자 승인을 받는다. Prisma도 Agent 실행 시 이를 거부한다.
 - **Node 26 필요**: 저장소에서 `nvm use`. Agent 셸은 nvm 기본값(24)이 잡히므로 `PATH="$HOME/.nvm/versions/node/v26.13.1/bin:$PATH"`를 앞에 붙인다.

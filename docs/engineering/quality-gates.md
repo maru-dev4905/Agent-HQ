@@ -8,12 +8,12 @@
 
 | Gate | 목적 | 상태 | 명령 | 도입 Task |
 |---|---|---|---|---|
-| G1 TypeScript | 타입 오류 0 (패키지, 테스트, 도구 설정, Web) | **Local** | `pnpm typecheck` | HQ-003 |
-| G2 Lint/Format | 규칙 위반 0, 의존 방향 규칙 포함 | **Local** | `pnpm lint`, `pnpm format:check` (Markdown은 대상 아님) | HQ-003 |
-| G3 Unit Test | 단위 테스트 통과 | **Local** | `pnpm test` (Vitest 5) | HQ-003 |
-| G4 Integration Test | 실제 PostgreSQL 통합 | **Local** | `pnpm test:integration` (먼저 `pnpm infra:up`. 테스트 DB `agent_hq_test`를 자동 생성·migrate) | HQ-104 |
+| G1 TypeScript | 타입 오류 0 (패키지, 테스트, 도구 설정, Web) | **CI** | `pnpm typecheck` | HQ-003 |
+| G2 Lint/Format | 규칙 위반 0, 의존 방향 규칙 포함 | **CI** | `pnpm lint`, `pnpm format:check` (Markdown은 대상 아님) | HQ-003 |
+| G3 Unit Test | 단위 테스트 통과 | **CI** | `pnpm test` (Vitest 5) | HQ-003 |
+| G4 Integration Test | 실제 PostgreSQL 통합 | **CI** | `pnpm test:integration` (먼저 `pnpm infra:up`. 테스트 DB `agent_hq_test`를 자동 생성·migrate) | HQ-104 |
 | G5 E2E Test | 사용자 시나리오 | **Not introduced** | — | HQ-111 |
-| G6 Build | 배포 산출물 생성 | **Local** | `pnpm build` (tsc -b + next build) | HQ-003 |
+| G6 Build | 배포 산출물 생성 | **CI** | `pnpm build` (tsc -b + next build) | HQ-003 |
 | G6b Dependency Audit | 알려진 취약점 | **Not introduced** | — | HQ-003/HQ-004 |
 | G7 Security Review | Secret 노출, 입력 검증, 권한 | **Manual** | [security.md 체크리스트](security.md#7-security-review-체크리스트) | 즉시 적용 |
 | G8 Code Review | 독립 리뷰 | **Manual** | [review-protocol](../agents/review-protocol.md) | 즉시 적용 |
@@ -21,7 +21,7 @@
 
 > 상태 값: `Not introduced` | `Manual` | `Local` (로컬 명령 존재) | `CI` (CI에서 강제)
 >
-> **CI 도입 중 (HQ-004)**: `.github/workflows/ci.yml`이 PR과 main push마다 `verify`(G1·G2·G3·G6)와 `integration`(G4)을 실행한다. 첫 PR에서 실제로 동작하는 것을 확인하고, main 브랜치 보호(필수 check 지정)를 건 뒤에 상태를 `CI`로 바꾼다. G8에는 CodeRabbit PR 리뷰가 추가된다 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)).
+> **CI (HQ-004 완료, 2026-11-23)**: `.github/workflows/ci.yml`이 PR과 main push마다 `verify`(G1·G2·G3·G6)와 `integration`(G4)을 실행하며, main 브랜치 보호의 필수 check다. G8에는 CodeRabbit PR 리뷰가 추가되었고, CodeRabbit 승인 1건이 머지 조건이다 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)).
 
 ## 2. 통합 명령
 `pnpm verify` = `typecheck → lint → format:check → test → build` (G1·G2·G3·G6). HQ-003에서 도입했다.

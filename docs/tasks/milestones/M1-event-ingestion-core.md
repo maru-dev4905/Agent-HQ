@@ -67,7 +67,7 @@
   - decisions: ADR-0006 Accepted (2026-11-22 사용자 승인)
 
 ### HQ-102 — 결정적 시뮬레이터 (테스트용 Source)
-- Status: Backlog · Risk: Medium · Role: Worker → Reviewer
+- Status: Done (2026-11-23, PR #2 머지) · Risk: Medium · Role: Worker → Reviewer
 - Objective: seed와 시나리오 정의로 같은 Event 스트림을 재현해 Ingestion API로 보내거나 파일로 출력한다.
 - Background: FR-006, architecture 통합 노트 N4, event-schema N5
 - Scope: 시나리오 3종(단일 Agent / Main+Subagent 위임 / 실패·재시도·Gap 유발), seed·Clock 주입, 순서 섞기·중복 재전송·끊김 모드, Connection 토큰으로 전송, CLI
@@ -81,6 +81,15 @@
   - [ ] 파일 출력 모드와 HTTP 전송 모드가 있다
 - Verification: Medium 기준 Gate. 같은 seed로 2회 실행한 출력에 diff가 없음
 - Risks: 시나리오가 실제 Claude Code와 다르게 생길 수 있다 → HQ-110 이후 시나리오 보정
+- Execution Log:
+  #### Run 2026-11-23-3
+  - agent_id: claude-code:main (Worker), claude-code:subagent:general-purpose (로컬 Reviewer) · status: In Review (PR)
+  - result: `packages/simulator` — seed 기반 PRNG(mulberry32)와 시뮬레이션 시계, 시나리오 3종(single-agent, delegation, failure-gap), 전달 옵션(shuffle, duplicateRate, **cutAfter 끊김 모드**), 생성 이벤트 자체 계약 검증, JSON Lines 출력, HTTP 전송(Bearer 토큰, timeout, 배치), CLI `agent-hq-sim`(토큰은 `AGENT_HQ_TOKEN` 환경 변수로만)
+  - 로컬 리뷰: 1회차 Request Changes (Major 1: 수용 조건의 끊김 모드 누락. Minor 5, Nit 4) → 전부 반영 → 2회차 Approve (Minor 1, Nit 3 → 반영)
+  - 주요 반영: 종료 신호 없는 끊김 모드, Task–Agent 소유 관계와 상위 Task, 이벤트 시각과 일치하는 tool duration, URL 자격 증명 거부, seed 범위 제한, 엄격한 숫자 파싱, fetch timeout
+  - verification: `pnpm verify` exit 0 (단위 84개). CLI를 별도 프로세스로 두 번 실행한 출력의 SHA-256이 같음. HTTP 모드의 실서버 검증은 HQ-105 이후
+  - AC: 같은 seed → 바이트 동일 ✅ · 모든 이벤트 계약 통과 ✅ · 파일·HTTP 모드 존재 ✅ (HTTP는 가짜 fetch로만 검증)
+  - PR #2: CodeRabbit 1차 CHANGES_REQUESTED(Major 2: 리디렉션을 전송 성공으로 처리, 루프백 외 HTTP 평문 토큰 전송. Minor 4: seed별 idempotency 키 분리, startAt 시간대, NaN, M0 상태) → 전부 반영 → APPROVED → 사용자 머지 (`77aef9f`)
 
 ### HQ-103 — Connection 모델 + 토큰 인증
 - Status: In Review (PR, 2026-11-23) · Risk: High · Role: Worker → Reviewer (+ Security Review)
