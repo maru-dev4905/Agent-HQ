@@ -21,6 +21,11 @@ export const summarySchema = z
   .max(EVENT_LIMITS.maxSummaryLength)
   .regex(NO_NUL, 'Must not contain NUL characters');
 
-/** ISO-8601 UTC timestamp with a `Z` suffix (no local offsets). */
-export const utcTimestampSchema = z.iso.datetime();
+/**
+ * ISO-8601 UTC timestamp with a `Z` suffix and at most millisecond precision. Storage keeps
+ * milliseconds (timestamptz(3)), so finer precision would be silently lost.
+ */
+export const utcTimestampSchema = z.iso
+  .datetime()
+  .refine((value) => !/\.\d{4,}Z$/.test(value), 'At most millisecond precision is supported');
 export const nonNegativeIntSchema = z.number().int().nonnegative();

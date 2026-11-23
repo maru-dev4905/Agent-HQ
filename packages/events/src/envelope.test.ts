@@ -86,6 +86,12 @@ describe('parseIncomingEvent — invalid samples', () => {
       paths(buildEvent('task.started', { occurredAt: '2026-11-20T14:00:00+09:00' })),
     ).toContain('occurredAt');
     expect(paths(buildEvent('task.started', { occurredAt: 'yesterday' }))).toContain('occurredAt');
+    expect(
+      paths(buildEvent('task.started', { occurredAt: '2026-11-20T05:00:00.123456Z' })),
+    ).toContain('occurredAt');
+    expect(
+      parseIncomingEvent(buildEvent('task.started', { occurredAt: '2026-11-20T05:00:00.123Z' })).ok,
+    ).toBe(true);
   });
 
   it.each(['receivedAt', 'storeSequence', 'agentInstanceId', 'taskId'])(

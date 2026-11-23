@@ -100,12 +100,12 @@
 - Risks: Prisma 스키마 파일을 여러 Task가 같이 건드린다 → 스키마 변경은 Coordinator가 통합한다
 
 ### HQ-104 — Event Store + 통합 테스트 Gate(G4) 도입
-- Status: Backlog · Risk: High · Role: Worker → Reviewer
+- Status: Done (2026-11-23)
 - Objective: append-only Event 저장과 Cursor 기반 순차 조회를 제공하고, 통합 테스트 Gate를 처음 도입한다.
 - Background: ADR-0002, ADR-0003(Prisma 7.10.x), FR-003~005, security T9
 - Scope: 저장소 인터페이스(**먼저 단독 커밋**), Prisma 스키마와 migration, 외부 ID 매핑 테이블(ADR-0006), 서버가 부여하는 단조 증가 `storeSequence`(Replay Cursor), Outbox 테이블과 계약(알림용, 발행 후 정리), `(workspaceId, connectionId, idempotencyKey)` 유일 제약, 중복 시 기존 건 참조(`ON CONFLICT DO NOTHING` 계열 — 저장소 계층 안에서만 raw SQL 허용), Cursor 조회, Docker Compose의 테스트용 DB로 G4 실행, quality-gates.md 갱신
 - Out of Scope: 삭제 기능(RSK-004 후속 Task), Projection
-- Interfaces: Consumes `@agent-hq/events` / Produces `EventStore` 인터페이스(append, readFrom(storeSequence)), `Outbox` 인터페이스
+- Interfaces: Consumes `@agent-hq/events` / Produces `EventStore` 인터페이스(append, readFrom(storeSequence)). Outbox는 테이블과 기록만 제공하고, 읽기·정리 인터페이스는 HQ-107로 이동 (리뷰 #5)
 - Dependencies: HQ-101, Docker 실행 승인
 - Files Expected to Change: `packages/database/**`, `docs/engineering/quality-gates.md`
 - Acceptance Criteria:
@@ -115,6 +115,28 @@
   - [ ] quality-gates.md에 G4가 `Local`로 기록된다
 - Verification: High 기준 Gate (G4 포함)
 - Risks: Prisma 8 전환 시 raw SQL 부분이 영향을 받는다 (TD-003)
+- Execution Log:
+  #### Run 2026-11-23-1
+  - agent_id: claude-code:main · role: Worker · status: In Review
+  - result: `packages/database/src/event-store.ts`(`createEventStore`: `transaction`·`readFrom`, append·외부 ID 매핑·Outbox), Prisma 스키마(Connection 기본, AgentInstance·Task 매핑, Event, EventOutbox), migration 3개, EventStore 계약 테스트(`packages/database/test/event-store.contract.ts`)와 PostgreSQL 구현 적용, G4(`pnpm test:integration`)
+  - 설계 결정: (1) append 트랜잭션은 Workspace별 `pg_advisory_xact_lock`으로 직렬화한다. 시퀀스 번호와 커밋 순서를 맞춰 Cursor 읽기가 늦게 커밋된 행을 건너뛰지 않게 하기 위해서다. lock을 빼면 해당 계약 테스트가 실패하는 것을 확인했다(mutation test) (2) `(connection_id, workspace_id)` 복합 FK로 다른 Workspace의 Connection 사용을 DB에서 막는다 (3) 같은 idempotency key의 내용이 다르면 `content_hash`로 감지해 `conflict: true`를 돌려준다(덮어쓰지 않음)
+  - migration 사고와 처리: 1차 `event_store` migration 폴더를 지운 뒤 다시 만들려 했으나, Prisma가 Claude Code 실행을 감지해 `migrate reset`(dev DB 초기화)을 거부했다. dev DB 초기화는 데이터 삭제라 승인 대상이므로 우회하지 않았다. 대신 같은 스키마 diff로 지운 migration을 재생성했다(checksum이 DB 기록과 일치함을 확인). 이후 변경은 `migrate diff` + `migrate deploy`로 새 migration 2개를 추가했다. dev DB에는 drift가 없다(`migrate diff --from-config-datasource` 결과가 빈 migration)
+  - 테스트 DB: `agent_hq_test`는 Agent가 이 테스트용으로 만든 DB이며, 설정 변경 후 한 번 삭제하고 다시 생성했다
+  - verification: `pnpm verify` exit 0 (단위 50개), `pnpm test:integration` 11개 통과
+  - G8 독립 리뷰 (2026-11-23, 3번째 시도에서 완료): Request Changes (Major 1, Minor 7, Nit 2) → 반영
+    - #1 Major: lock 대상 Workspace와 append·매핑 대상 Workspace가 다르면 `WorkspaceMismatchError`
+    - #2: 시각은 밀리초 정밀도까지만 계약에서 허용, 저장·해시 전에 정규화 (같은 시각의 다른 표기는 중복으로 판정)
+    - #3: 이벤트 `id` 유일성을 `(workspace_id, id)`로 축소 (Workspace 간 충돌·존재 여부 노출 방지)
+    - #4: 트랜잭션 `maxWait` 5초·`timeout` 10초 명시, 부하 위험은 RSK-019
+    - #5: Outbox 읽기·정리 API는 실제 소비자인 HQ-107 범위로 이동
+    - #6: `events` UPDATE를 막는 DB trigger 추가 (DELETE는 RSK-004 보존·삭제 정책용으로 남김)
+    - #7: 늦은 커밋 테스트를 sleep 의존에서 barrier 방식으로 교체 (lock 제거 시 여전히 실패 확인)
+    - #8: `readFrom` limit 1~1000, cursor ≥ 0 검증
+    - #9: 매핑 조회를 SELECT 먼저 → 없을 때만 INSERT로 변경 (매 이벤트마다 쓰기 없음)
+    - #10 Nit: DB에서 읽은 JSON의 타입 단언은 유지 → TD-004
+  - 추가 migration: `20261123010000_append_only_hardening`
+  - verification (반영 후): `pnpm verify` exit 0 (단위 50개), `pnpm test:integration` 16개 통과
+  - AC: update/delete 미노출 ✅ · 중복 시 기존 유지+중복 반환 ✅ · 계약 테스트 분리 ✅ · G4 `Local` 기록 ✅ · (원문 AC "DB 파일 0600"은 PostgreSQL Docker 볼륨 구성으로 바뀌어 해당 없음. 데이터는 저장소 밖 Docker 볼륨 `agent-hq_postgres-data`에 있다)
 
 ### HQ-105 — Ingestion API
 - Status: Backlog · Risk: High · Role: Worker → Reviewer (+ Security Review)
@@ -154,7 +176,7 @@
 - Status: Backlog · Risk: Medium · Role: Worker → Reviewer
 - Objective: Read Model 조회 API와, 재연결 시 Cursor부터 이어 받는 SSE 스트림을 제공한다.
 - Background: FR-007, FR-032, ADR-0003(SSE + REST), security T2/T3
-- Scope: 조회 엔드포인트(Agent·Task·Connection·Event Cursor 조회), SSE 스트림(Outbox 알림으로 새 Event를 감지하고, `Last-Event-ID` = `storeSequence` 이후를 Event Store에서 읽어 Replay), `packages/contracts/src/query/`, `127.0.0.1` 바인딩, Host/Origin 검증, API 계약 문서화
+- Scope: Outbox 읽기·정리 인터페이스(`packages/database`, HQ-104에서 이동), 조회 엔드포인트(Agent·Task·Connection·Event Cursor 조회), SSE 스트림(Outbox 알림으로 새 Event를 감지하고, `Last-Event-ID` = `storeSequence` 이후를 Event Store에서 읽어 Replay), `packages/contracts/src/query/`, `127.0.0.1` 바인딩, Host/Origin 검증, API 계약 문서화
 - Out of Scope: 양방향 제어, 사용자 인증
 - Interfaces: Consumes Read Model, Outbox / Produces Query API·SSE 계약
 - Dependencies: HQ-105, HQ-106

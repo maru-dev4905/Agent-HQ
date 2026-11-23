@@ -4,6 +4,12 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
+## 2026-11-23 — HQ-104 Event Store (Done)
+- [Added] EventStore(append·외부 ID 매핑·Outbox, Workspace별 advisory lock), migration 3개, EventStore 계약 테스트, G4 `pnpm test:integration`
+- [Added] troubleshooting 2건 (Prisma의 Agent 실행 차단, 잠자기로 인한 멈춤)
+- [Security] `events` UPDATE 차단 trigger, Workspace 범위 이벤트 id, lock 대상 Workspace 검증 (리뷰 반영)
+- [Added] RSK-019, TD-004
+
 ## 2026-11-22 (3) — HQ-003 스캐폴드, HQ-101 Event 계약
 - [Added] ADR-0005 Redis + BullMQ 도입 (Accepted), ADR-0006 외부 ID·미정의 필드 처리 (Accepted)
 - [Added] pnpm Monorepo: `apps/{api,web}`, `packages/{domain,events,contracts,database,simulator}`, Docker Compose(PostgreSQL 18.7, Redis 8.10.3), Prisma 초기 migration, `pnpm verify`

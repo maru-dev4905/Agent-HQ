@@ -14,7 +14,114 @@ datasource db {
 model Workspace {
   id        String   @id
   name      String
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  connections    Connection[]
+  events         Event[]
+  agentInstances AgentInstance[]
+  tasks          Task[]
 
   @@map("workspaces")
+}
+
+/// Runtime or bridge connection (spec domain-model AgentConnection). HQ-103 adds auth columns.
+model Connection {
+  id          String   @id
+  workspaceId String   @map("workspace_id")
+  adapterId   String   @map("adapter_id")
+  runtime     String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id])
+  events         Event[]
+  agentInstances AgentInstance[]
+  tasks          Task[]
+
+  /// Lets child rows reference (id, workspaceId) so a connection can never be used by another workspace.
+  @@unique([id, workspaceId])
+  @@index([workspaceId])
+  @@map("connections")
+}
+
+/// HQ identity for an external agent: (workspace, connection, externalAgentId) is unique (ADR-0006).
+model AgentInstance {
+  id              String   @id
+  workspaceId     String   @map("workspace_id")
+  connectionId    String   @map("connection_id")
+  externalAgentId String   @map("external_agent_id")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  workspace  Workspace  @relation(fields: [workspaceId], references: [id])
+  connection Connection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId])
+
+  @@unique([workspaceId, connectionId, externalAgentId])
+  @@map("agent_instances")
+}
+
+/// HQ identity for an external task: (workspace, connection, externalTaskId) is unique (ADR-0006).
+model Task {
+  id             String   @id
+  workspaceId    String   @map("workspace_id")
+  connectionId   String   @map("connection_id")
+  externalTaskId String   @map("external_task_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  workspace  Workspace  @relation(fields: [workspaceId], references: [id])
+  connection Connection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId])
+
+  @@unique([workspaceId, connectionId, externalTaskId])
+  @@map("tasks")
+}
+
+/// Append-only event log (ADR-0002). Rows are never updated; `storeSequence` is the replay cursor.
+model Event {
+  storeSequence     BigInt   @id @default(autoincrement()) @map("store_sequence")
+  id                String
+  workspaceId       String   @map("workspace_id")
+  connectionId      String   @map("connection_id")
+  idempotencyKey    String   @map("idempotency_key")
+  /// SHA-256 of the canonical event body, used to detect same-key/different-content conflicts.
+  contentHash       String   @map("content_hash")
+  schemaVersion     Int      @map("schema_version")
+  type              String
+  occurredAt        DateTime @map("occurred_at") @db.Timestamptz(3)
+  receivedAt        DateTime @map("received_at") @db.Timestamptz(3)
+  timestampQuality  String?  @map("timestamp_quality")
+  agentInstanceId   String?  @map("agent_instance_id")
+  taskId            String?  @map("task_id")
+  projectId         String?  @map("project_id")
+  missionId         String?  @map("mission_id")
+  pipelineRunId     String?  @map("pipeline_run_id")
+  nodeRunId         String?  @map("node_run_id")
+  correlationId     String   @map("correlation_id")
+  causationId       String?  @map("causation_id")
+  externalSessionId String?  @map("external_session_id")
+  sequence          Int?
+  sensitivity       String?
+  source            Json
+  payload           Json
+
+  workspace  Workspace    @relation(fields: [workspaceId], references: [id])
+  connection Connection   @relation(fields: [connectionId, workspaceId], references: [id, workspaceId])
+  outbox     EventOutbox?
+
+  @@unique([workspaceId, connectionId, idempotencyKey])
+  /// Event IDs may come from sources, so uniqueness is per workspace (no cross-tenant collisions).
+  @@unique([workspaceId, id])
+  @@index([workspaceId, storeSequence])
+  @@index([connectionId, externalSessionId, sequence])
+  @@map("events")
+}
+
+/// Transactional outbox: a row per stored event, written in the same transaction (ADR-0002).
+/// It only signals "new events exist"; replay always reads from `events`.
+model EventOutbox {
+  storeSequence BigInt   @id @map("store_sequence")
+  workspaceId   String   @map("workspace_id")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  event Event @relation(fields: [storeSequence], references: [storeSequence])
+
+  @@index([workspaceId, storeSequence])
+  @@map("event_outbox")
 }

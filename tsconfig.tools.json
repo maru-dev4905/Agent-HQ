@@ -8,5 +8,11 @@
     "allowJs": true,
     "checkJs": false
   },
-  "include": ["eslint.config.js", "vitest.config.ts", "packages/database/prisma.config.ts"]
+  "include": [
+    "eslint.config.js",
+    "vitest.config.ts",
+    "packages/database/prisma.config.ts",
+    "vitest.integration.config.ts",
+    "vitest.shared.ts"
+  ]
 }

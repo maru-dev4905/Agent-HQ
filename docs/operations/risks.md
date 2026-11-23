@@ -39,6 +39,7 @@
 | RSK-015 | 로컬 셀프호스트의 Docker 요구가 General Users에게 장벽 | H | H | Product | Open |
 | RSK-016 | Local Bridge·hook 경로가 가장 큰 공격 표면 | H | M | Security | Open |
 | RSK-017 | 재시도·중복 실행으로 인한 외부 부작용 (M5) | H | M | Architecture | Open |
+| RSK-019 | Workspace별 append 직렬화로 인한 연결 풀 고갈 | M | M | Architecture | Open |
 | RSK-018 | Redis 8 이미지 라이선스(RSALv2/SSPLv1/AGPLv3)가 재배포·관리형 제공에 미치는 영향 | M | L | Product | Open |
 
 ---
@@ -197,3 +198,13 @@
 - Verification Method: Cloud 배포 ADR에 라이선스 검토 항목 포함.
 - Related Tasks: ADR-0005 Revisit Conditions
 - Created / Updated: 2026-11-22
+
+### RSK-019 — Workspace별 append 직렬화로 인한 연결 풀 고갈
+- Status / Priority / 범위: Open / M×M / Architecture
+- Description: HQ-104는 커밋 순서를 보장하려고 같은 Workspace의 append 트랜잭션을 advisory lock으로 직렬화한다. 기다리는 트랜잭션도 연결 풀의 연결을 하나씩 잡고 있다(pg 기본 최대 10).
+- Impact: 한 Workspace에 동시 append가 몰리면 풀이 고갈되어 append와 `readFrom`이 timeout으로 실패할 수 있다.
+- Root Cause: 정합성(늦은 커밋을 건너뛰지 않는 Cursor)을 처리량보다 우선했다.
+- Proposed Solution: 트랜잭션 `maxWait`·`timeout`을 명시했다(HQ-104). Ingestion에서 배치로 묶어 한 트랜잭션에 여러 이벤트를 넣는다(HQ-105). HQ-112에서 측정해 풀 크기와 배치 전략을 정한다.
+- Verification Method: HQ-112 부하 측정에서 timeout 0건.
+- Related Tasks: HQ-104, HQ-105, HQ-112
+- Created / Updated: 2026-11-23

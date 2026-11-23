@@ -48,3 +48,12 @@
 - Verification Method: `package.json`에 정확한 버전 범위가 있고, lockfile에 8.x RC가 없다.
 - Related Tasks: HQ-003, HQ-104
 - Created / Updated: 2026-11-22
+
+### TD-004 — Event Store가 읽어 온 JSON을 재검증 없이 타입 단언
+- Status / Priority: Open / Low
+- Description: `toStoredEvent`가 DB의 `source`·`payload` JSON을 `as unknown as StoredEvent`로 단언한다. 근거는 "append만 쓰고, append는 계약 검증된 이벤트만 받으며, UPDATE는 trigger로 막힌다"는 것이다.
+- Impact: 스키마 버전이 바뀌거나 DB를 수동으로 고치면 잘못된 형태가 타입 검사 없이 전달될 수 있다.
+- Proposed Solution: `schemaVersion`이 2가 되는 시점에 읽기 경로에서 버전별 변환·검증을 추가한다. 그 전에는 테스트에서 round-trip 동일성을 검증한다(현재 계약 테스트).
+- Verification Method: schemaVersion 2 도입 Task의 AC에 포함.
+- Related Tasks: HQ-104
+- Created / Updated: 2026-11-23

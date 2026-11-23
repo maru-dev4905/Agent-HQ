@@ -11,7 +11,7 @@
 | G1 TypeScript | 타입 오류 0 (패키지, 테스트, 도구 설정, Web) | **Local** | `pnpm typecheck` | HQ-003 |
 | G2 Lint/Format | 규칙 위반 0, 의존 방향 규칙 포함 | **Local** | `pnpm lint`, `pnpm format:check` (Markdown은 대상 아님) | HQ-003 |
 | G3 Unit Test | 단위 테스트 통과 | **Local** | `pnpm test` (Vitest 5) | HQ-003 |
-| G4 Integration Test | 컴포넌트 통합 | **Not introduced** | — | HQ-104 |
+| G4 Integration Test | 실제 PostgreSQL 통합 | **Local** | `pnpm test:integration` (먼저 `pnpm infra:up`. 테스트 DB `agent_hq_test`를 자동 생성·migrate) | HQ-104 |
 | G5 E2E Test | 사용자 시나리오 | **Not introduced** | — | HQ-111 |
 | G6 Build | 배포 산출물 생성 | **Local** | `pnpm build` (tsc -b + next build) | HQ-003 |
 | G6b Dependency Audit | 알려진 취약점 | **Not introduced** | — | HQ-003/HQ-004 |

@@ -47,3 +47,14 @@
 - 원인: Redis 클라이언트에 `error` 리스너가 없다.
 - 해결: `apps/api/src/infrastructure.module.ts`의 `createRedisClient`처럼 리스너를 달고, 같은 오류는 한 번만 경고한다.
 - 확인 방법: Redis를 멈춘 상태에서 `Unhandled` 로그가 0건이다.
+
+### `prisma migrate reset`이 "invoked by Claude Code"로 거부되고, `migrate dev`가 non-interactive로 멈춘다
+- 환경: Prisma 7.10.1, Claude Code에서 실행 (2026-11-22)
+- 원인: Prisma가 AI Agent 실행을 감지하면 파괴적 명령(reset)을 막는다. `migrate dev`는 확인 프롬프트가 필요한 변경(예: unique 제약 추가)에서 비대화형이면 멈춘다.
+- 해결: 이미 적용된 migration 폴더는 지우거나 고치지 않는다. 스키마를 바꾸면 `prisma migrate diff --from-schema <이전 스키마> --to-schema prisma/schema.prisma --script -o prisma/migrations/<timestamp>_<name>/migration.sql`로 새 migration을 만들고 `prisma migrate deploy`로 적용한다. dev DB 초기화가 필요하면 사용자에게 요청한다.
+- 확인 방법: `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script` 결과가 빈 migration이다.
+
+### 긴 명령이 멈춘 것처럼 보이고 Docker 명령도 응답하지 않는다
+- 환경: macOS, Docker Desktop (2026-11-23)
+- 원인: 실행 중에 머신이 잠자기에 들어갔다. 프로세스는 깨어난 뒤 이어서 실행된다.
+- 해결: `docker info`가 응답하는지 확인한 뒤 명령을 다시 실행한다. macOS에는 `timeout` 명령이 없다.

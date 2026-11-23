@@ -38,3 +38,12 @@ export async function pingDatabase(
     clearTimeout(timer);
   }
 }
+
+export { createEventStore, MAX_READ_LIMIT, WorkspaceMismatchError } from './event-store.js';
+export type {
+  AppendOutcome,
+  EventStore,
+  EventStoreTransaction,
+  ExternalRef,
+  StoredEvent,
+} from './event-store.js';
