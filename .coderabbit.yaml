@@ -11,6 +11,8 @@ reviews:
   # The approval is what the ready-to-merge workflow waits for.
   auto_approvals:
     enabled: true
+    # Only Major and above block approval; Minor/Nit stay advisory (review-protocol §6).
+    min_blocking_severity: major
   auto_review:
     enabled: true
     drafts: false
@@ -45,9 +47,12 @@ reviews:
 knowledge_base:
   code_guidelines:
     enabled: true
+    # Object form: a plain path would only apply to files under docs/engineering/.
     filePatterns:
-      - docs/engineering/coding-standards.md
-      - docs/engineering/security.md
+      - files: docs/engineering/coding-standards.md
+        applyTo: '**'
+      - files: docs/engineering/security.md
+        applyTo: '**'
 
 chat:
   auto_reply: true

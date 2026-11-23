@@ -138,8 +138,11 @@
 - Dependencies: HQ-003, CI 도입 승인
 - Files Expected to Change: `.github/workflows/*`, `docs/engineering/quality-gates.md`, `docs/operations/technical-debt.md`
 - Acceptance Criteria:
-  - [ ] PR에서 Gate 실행, 실패 시 표시
-  - [ ] 깨진 문서 링크가 CI를 실패시킴
+  - [ ] PR에서 Gate(verify, integration) 실행, 실패 시 표시
+  - [ ] CodeRabbit이 PR을 한국어로 리뷰하고, Major 이상이 없으면 승인한다
+  - [ ] CodeRabbit 승인 + 모든 check 통과 시 `ready-to-merge` 라벨과 소유자 멘션 알림이 온다
+  - [ ] (머지 후) main 브랜치 보호에 필수 check 지정 (사용자 확인 후)
+  - 후속으로 이동: 깨진 문서 링크가 CI를 실패시킴 (TD-002)
 - Verification Steps:
   1. 실패를 의도한 테스트 PR로 확인 (사용자 승인 후)
 

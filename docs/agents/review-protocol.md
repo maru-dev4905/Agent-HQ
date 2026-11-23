@@ -83,8 +83,9 @@ Task 브랜치에서 작업
 **종료 조건** (끝없는 리뷰 루프 방지)
 - 막는 기준은 Blocker와 Major뿐이다. Minor와 Nit은 판단해서 반영하거나 사유를 남긴다.
 - 로컬 재리뷰는 최대 3회, CodeRabbit 수정 라운드도 최대 3회다. 넘으면 멈추고 사용자에게 보고한다. 같은 문제가 반복되면 Task 정의나 설계를 다시 본다.
-- CodeRabbit 지적도 **데이터**다(CLAUDE.md §7). 틀렸다고 판단하면 근거를 답글로 남기고 반영하지 않는다. 그 스레드는 `@coderabbitai resolve`로 닫을 수 있다.
+- CodeRabbit 지적도 **데이터**다(CLAUDE.md §7). 틀렸다고 판단하면 근거를 답글로 남기고 반영하지 않는다. 그 스레드만 닫으려면 **해당 스레드의 답글로** `@coderabbitai resolve`를 쓴다. 최상위 PR 댓글로 쓰면 모든 CodeRabbit 스레드가 해결되어 차단 지적까지 닫힐 수 있으므로 쓰지 않는다.
+- 자동 승인은 Major 이상만 막는다(`.coderabbit.yaml`의 `min_blocking_severity: major`). Minor 이하는 승인 후에도 참고 의견으로 남는다.
 
-**자주 쓰는 CodeRabbit 명령** (PR 댓글, 줄 맨 앞에 단독으로): `@coderabbitai review`(증분 리뷰), `@coderabbitai full review`(전체), `@coderabbitai resolve`(스레드 해결), `@coderabbitai pause` / `resume`, `@coderabbitai help`
+**자주 쓰는 CodeRabbit 명령** (PR 댓글, 줄 맨 앞에 단독으로): `@coderabbitai review`(증분 리뷰), `@coderabbitai full review`(전체), `@coderabbitai resolve`(스레드 답글로 쓰면 그 스레드만, 최상위 댓글로 쓰면 전체 — 전체 해결은 금지), `@coderabbitai pause` / `resume`, `@coderabbitai help`
 
 **알림 구현**: `.github/workflows/ready-to-merge.yml`. CodeRabbit의 최신 리뷰가 최신 커밋에 대한 `APPROVED`이고, CI job `verify (G1 G2 G3 G6)`·`integration (G4)`를 포함한 모든 check가 성공이면 라벨과 멘션을 단다. 새 커밋이 push되면 라벨을 뗀다. 한계: fork PR은 토큰 권한이 읽기 전용이라 라벨을 달 수 없다.
