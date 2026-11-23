@@ -16,21 +16,30 @@ model Workspace {
   name      String
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  connections    Connection[]
-  events         Event[]
-  agentInstances AgentInstance[]
-  tasks          Task[]
+  connections       Connection[]
+  registrationCodes RegistrationCode[]
+  events            Event[]
+  agentInstances    AgentInstance[]
+  tasks             Task[]
 
   @@map("workspaces")
 }
 
 /// Runtime or bridge connection (spec domain-model AgentConnection). HQ-103 adds auth columns.
 model Connection {
-  id          String   @id
-  workspaceId String   @map("workspace_id")
-  adapterId   String   @map("adapter_id")
-  runtime     String
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id              String    @id
+  workspaceId     String    @map("workspace_id")
+  adapterId       String    @map("adapter_id")
+  runtime         String
+  displayName     String?   @map("display_name")
+  /// pending | connected | degraded | disconnected | error (spec domain-model §4)
+  status          String    @default("pending")
+  /// SHA-256 of the connection token; the token itself is never stored (HQ-103).
+  tokenHash       String    @unique @map("token_hash")
+  tokenExpiresAt  DateTime  @map("token_expires_at") @db.Timestamptz(3)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(3)
+  lastHeartbeatAt DateTime? @map("last_heartbeat_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   workspace      Workspace       @relation(fields: [workspaceId], references: [id])
   events         Event[]
@@ -124,4 +133,19 @@ model EventOutbox {
 
   @@index([workspaceId, storeSequence])
   @@map("event_outbox")
+}
+
+/// One-time code a user creates locally to register a connection (security §5). Stored hashed.
+model RegistrationCode {
+  id          String    @id
+  workspaceId String    @map("workspace_id")
+  codeHash    String    @unique @map("code_hash")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt      DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@map("registration_codes")
 }

@@ -44,6 +44,10 @@ export type {
   AppendOutcome,
   EventStore,
   EventStoreTransaction,
+  ExpectedConnectionState,
   ExternalRef,
   StoredEvent,
 } from './event-store.js';
+
+export { createConnectionStore } from './connection-store.js';
+export type { ConnectionRecord, ConnectionStore, NewConnection } from './connection-store.js';

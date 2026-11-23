@@ -7,11 +7,19 @@
     "emitDecoratorMetadata": true
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test-helpers.ts"],
   "references": [
-    { "path": "../../packages/domain" },
-    { "path": "../../packages/events" },
-    { "path": "../../packages/contracts" },
-    { "path": "../../packages/database" }
+    {
+      "path": "../../packages/domain"
+    },
+    {
+      "path": "../../packages/events"
+    },
+    {
+      "path": "../../packages/contracts"
+    },
+    {
+      "path": "../../packages/database"
+    }
   ]
 }

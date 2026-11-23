@@ -7,3 +7,5 @@ export {
   TASK_STATUSES,
 } from './statuses.js';
 export type { ConnectionStatus, ExecutionLocation, Sensitivity, TaskStatus } from './statuses.js';
+export { DEFAULT_HEARTBEAT_THRESHOLDS, evaluateConnectionHealth } from './connection-health.js';
+export type { ConnectionHealthInput, HeartbeatThresholds } from './connection-health.js';

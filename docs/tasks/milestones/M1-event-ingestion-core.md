@@ -83,7 +83,7 @@
 - Risks: 시나리오가 실제 Claude Code와 다르게 생길 수 있다 → HQ-110 이후 시나리오 보정
 
 ### HQ-103 — Connection 모델 + 토큰 인증
-- Status: Backlog · Risk: High · Role: Worker → Reviewer (+ Security Review)
+- Status: In Review (PR, 2026-11-23) · Risk: High · Role: Worker → Reviewer (+ Security Review)
 - Objective: Source가 Connection을 등록해 토큰을 받고, heartbeat로 상태를 보고한다.
 - Background: FR-001, FR-009, [security §5](../../engineering/security.md#5-인증--권한--mvp-범위-proposed-res-007-s4), domain-model AgentConnection
 - Scope: 로컬 단일 Workspace 시드, Connection 등록 부트스트랩([security §5](../../engineering/security.md#5-인증--권한--mvp-범위-proposed-res-007-s4)의 일회성 등록 코드 방식), 토큰 발급(저장은 해시)·폐기·만료, heartbeat 엔드포인트, Connection 상태 전이, 토큰 검증 Guard(Ingestion에서 사용), `packages/contracts/src/connections/`
@@ -98,6 +98,16 @@
   - [ ] heartbeat가 끊기면 Connection 상태가 `degraded` → `disconnected`로 바뀐다 (임계값은 설정)
 - Verification: High 기준 Gate (G7 포함)
 - Risks: Prisma 스키마 파일을 여러 Task가 같이 건드린다 → 스키마 변경은 Coordinator가 통합한다
+- 범위 변경 (2026-11-23, 구현 중 확정): Coordinator 소유 파일(Prisma 스키마, `app.module.ts`, `config.ts`)도 이 Task에서 함께 수정했다(단일 Worker라 충돌 없음). 추가로 만든 것: `packages/domain/src/connection-health.ts`(상태 전이 순수 함수), `packages/database/src/connection-store.ts`, Event Store 트랜잭션의 `setConnectionStatus`(상태 CAS), `apps/api/src/admin/`(관리 CLI), 전역 오류 envelope 필터(`apps/api/src/http/`). `packages/contracts`에 Zod 의존성 추가(ADR-0003에서 승인된 도구, 워크스페이스에 이미 있는 4.6.7)
+- Execution Log:
+  #### Run 2026-11-23-4
+  - agent_id: claude-code:main (Worker), claude-code:subagent:general-purpose (로컬 Reviewer + 보안 검토) · status: In Review (PR)
+  - result: Connection 등록(일회성 등록 코드 → 토큰 1회 발급, DB에는 SHA-256 해시만), `ConnectionTokenGuard`(Workspace·Connection은 토큰에서), heartbeat, 상태 판정(pending → connected ↔ degraded → disconnected, 폐기 → disconnected)과 `connection.health.changed` 이벤트(상태 변경과 같은 트랜잭션), BullMQ 주기 판정, 관리 CLI(`registration-code`, `revoke`), 전역 오류 envelope
+  - migration 사고: 처음 만든 `connection_auth` migration이 NOT NULL 컬럼을 기존 행 처리 없이 추가해 행이 있는 DB(통합 테스트 DB)에서 실패했다. 기존 행을 쓸 수 없는 표식 해시로 채우고 폐기 상태로 만드는 방식으로 고쳤다(행이 있는 scratch DB에서 적용 확인). main에 올라가기 전이라 파일 자체를 고쳤다. 테스트 DB(Agent가 만든 테스트 전용)는 다시 만들었고, dev DB는 결과 스키마가 같아 migration 기록의 checksum만 새 파일 값으로 갱신했다
+  - 로컬 리뷰: 1회차 Request Changes (Major 2: 폐기가 상태·이벤트에 반영되지 않음, 판정 중 heartbeat가 들어와도 잘못된 상태 이력이 기록되는 경합. Minor 5, Nit 4) → 반영 → 2회차 Approve (Minor 1, Nit 2 → 반영)
+  - verification: `pnpm verify` exit 0 (단위 73개), `pnpm test:integration` 33개 통과. 원본 토큰·등록 코드가 모든 테이블 행과 앱 로그에 없음을 테스트로 확인
+  - AC: 토큰 없음·폐기·만료 거부 ✅ · 일회성 등록 코드 ✅ · 토큰 원문 DB·로그 미기록 ✅ · heartbeat 끊김 시 degraded → disconnected (임계값 설정 가능) ✅
+  - feedback loop: (c) 테스트 부재 — "기존 행이 있는 DB에 migration 적용" 검증이 없었다 → coding-standards §6 Migration 규칙 추가
 
 ### HQ-104 — Event Store + 통합 테스트 Gate(G4) 도입
 - Status: Done (2026-11-23)

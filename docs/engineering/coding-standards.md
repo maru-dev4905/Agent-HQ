@@ -62,3 +62,9 @@ packages/domain   → (의존 없음)
 - Task 또는 ADR에 근거가 있어야 한다. 사용자 승인 필요 ([CLAUDE.md §6](../../CLAUDE.md)).
 - 유지보수 상태·라이선스를 확인하고 Task 기록에 남긴다.
 - 버전은 lockfile로 고정한다.
+
+## 6. DB Migration 규칙 (HQ-103 사고에서 도출, 2026-11-23)
+- **main에 들어간 migration 파일은 절대 수정하지 않는다.** 바꿀 것이 있으면 새 migration을 추가한다 (CodeRabbit 사전 머지 검사로도 차단된다).
+- **NOT NULL 컬럼을 추가할 때는 기존 행을 반드시 처리한다.** nullable로 추가 → 기존 행 채우기(UPDATE) → NOT NULL 설정 순서로 쓰거나, 의미가 맞는 DEFAULT를 둔다. 빈 dev DB에서 통과했다고 안전한 것이 아니다.
+- 스키마 변경은 `prisma migrate diff --from-schema <이전 스키마> --to-schema prisma/schema.prisma --script`로 SQL을 만들고 `prisma migrate deploy`로 적용한다 (`migrate dev`/`reset`은 Agent 실행 환경에서 멈추거나 거부된다 — troubleshooting 참고).
+- 데이터가 있는 상태에서 적용되는지 확인한다: 이전 migration까지 적용한 scratch DB에 행을 넣고 새 migration을 적용해 본다.
