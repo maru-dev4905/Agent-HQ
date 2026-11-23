@@ -34,7 +34,13 @@ export function fakeConnectionStore(records: ConnectionRecord[] = []) {
       record.lastHeartbeatAt = now;
       return Promise.resolve(record);
     },
-    revoke: () => Promise.resolve(true),
+    revoke: (id, now) => {
+      // Same contract as the real store: false when missing or already revoked.
+      const record = [...byHash.values()].find((r) => r.id === id);
+      if (record === undefined || record.revokedAt !== null) return Promise.resolve(false);
+      record.revokedAt = now;
+      return Promise.resolve(true);
+    },
     listActive: () => Promise.resolve([...byHash.values()].filter((r) => r.revokedAt === null)),
   };
   return { store, byHash, codes };

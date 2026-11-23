@@ -62,6 +62,42 @@ describe('ConnectionsService', () => {
     });
   });
 
+  it('answers a heartbeat with the stored status, not the computed one', async () => {
+    const fake = fakeConnectionStore([
+      {
+        id: 'conn_1',
+        workspaceId: 'local',
+        status: 'pending',
+        tokenExpiresAt: new Date(now.getTime() + 60_000),
+        revokedAt: null,
+        lastHeartbeatAt: null,
+      },
+    ]);
+    // A revocation commits while the heartbeat is being evaluated: the CAS loses.
+    const health = {
+      refresh: async () => {
+        const record = await fake.store.findById('conn_1');
+        if (record !== null) {
+          record.revokedAt = now;
+          record.status = 'disconnected';
+        }
+        return { status: 'connected' as const, changed: false };
+      },
+    };
+    const svc = new ConnectionsService(
+      fake.store,
+      health as never,
+      settings,
+      () => now,
+      () => 'x',
+    );
+    const response = await svc.heartbeat(
+      { connectionId: 'conn_1', workspaceId: 'local' },
+      'conn_1',
+    );
+    expect(response.status).toBe('disconnected');
+  });
+
   it('refuses a heartbeat for a connection other than the caller', async () => {
     const { svc } = service();
     await expect(

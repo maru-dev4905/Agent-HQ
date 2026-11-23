@@ -41,6 +41,7 @@ export interface ConnectionStore {
   }): Promise<{ workspaceId: string } | null>;
   findByTokenHash(tokenHash: string): Promise<ConnectionRecord | null>;
   findById(connectionId: string): Promise<ConnectionRecord | null>;
+  /** Advances the last heartbeat to `now` unless a newer one is stored; returns the stored row. */
   recordHeartbeat(connectionId: string, now: Date): Promise<ConnectionRecord>;
   /** Returns false when the connection does not exist or was already revoked. */
   revoke(connectionId: string, now: Date): Promise<boolean>;
@@ -116,11 +117,16 @@ export function createConnectionStore(db: DatabaseClient): ConnectionStore {
     },
 
     async recordHeartbeat(connectionId, now) {
-      const row = await db.connection.update({
-        where: { id: connectionId },
+      // Only move the heartbeat forward: an overlapping, slower request with an older `now`
+      // must not roll it back (which could wrongly degrade the connection).
+      await db.connection.updateMany({
+        where: {
+          id: connectionId,
+          OR: [{ lastHeartbeatAt: null }, { lastHeartbeatAt: { lt: now } }],
+        },
         data: { lastHeartbeatAt: now },
-        select,
       });
+      const row = await db.connection.findUniqueOrThrow({ where: { id: connectionId }, select });
       return toRecord(row);
     },
 

@@ -70,7 +70,14 @@ export class ConnectionsService {
     }
     const now = this.clock();
     const record = await this.store.recordHeartbeat(connectionId, now);
-    const { status } = await this.health.refresh(record, now);
-    return { connectionId, status, lastHeartbeatAt: now.toISOString() };
+    await this.health.refresh(record, now);
+    // Answer with what is stored, not what was computed: a concurrent revocation or
+    // evaluation may have won the compare-and-set.
+    const stored = (await this.store.findById(connectionId)) ?? record;
+    return {
+      connectionId,
+      status: stored.status,
+      lastHeartbeatAt: (stored.lastHeartbeatAt ?? now).toISOString(),
+    };
   }
 }

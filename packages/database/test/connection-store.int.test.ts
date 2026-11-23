@@ -91,6 +91,14 @@ describe('ConnectionStore', () => {
     expect(await store.findByTokenHash('other')).toBeNull();
   });
 
+  it('never moves the heartbeat backwards when requests overlap', async () => {
+    const created = connection();
+    await store.register({ codeHash: 'code_hash_1', now, connection: created });
+    await store.recordHeartbeat(created.id, later(60_000));
+    const stale = await store.recordHeartbeat(created.id, later(1_000));
+    expect(stale.lastHeartbeatAt).toEqual(later(60_000));
+  });
+
   it('revokes only once', async () => {
     const created = connection();
     await store.register({ codeHash: 'code_hash_1', now, connection: created });

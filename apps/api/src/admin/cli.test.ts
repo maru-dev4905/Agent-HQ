@@ -38,7 +38,7 @@ describe('runAdmin', () => {
         workspaceId: 'local',
         status: 'connected',
         tokenExpiresAt: new Date(now.getTime() + 60_000),
-        revokedAt: now,
+        revokedAt: null,
         lastHeartbeatAt: now,
       },
     ]);
@@ -46,6 +46,13 @@ describe('runAdmin', () => {
     await runAdmin(['revoke', 'conn_1'], io);
     expect(out.join('')).toBe('revoked conn_1\n');
     expect(transactions).toEqual(['local']);
+  });
+
+  it('reports an unknown or already revoked connection without recording anything', async () => {
+    const { io, out, transactions } = adminIo(fakeConnectionStore().store);
+    await runAdmin(['revoke', 'missing'], io);
+    expect(out.join('')).toBe('no active connection missing\n');
+    expect(transactions).toEqual([]);
   });
 
   it('rejects unknown commands', async () => {

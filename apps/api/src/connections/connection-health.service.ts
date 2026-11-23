@@ -27,9 +27,12 @@ export class ConnectionHealthService {
 
   /** Evaluates every connection that can still change; one failure never skips the rest. */
   async evaluateAll(): Promise<number> {
+    const connections = await this.connections.listActive();
+    // Take the time after reading: every row is then at least as old as `now`, so a delayed
+    // sweep can never apply an older instant over a newer recorded transition.
     const now = this.clock();
     let changed = 0;
-    for (const connection of await this.connections.listActive()) {
+    for (const connection of connections) {
       try {
         if ((await this.refresh(connection, now)).changed) changed += 1;
       } catch (error) {
