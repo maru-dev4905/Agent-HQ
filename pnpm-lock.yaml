@@ -145,9 +145,6 @@ importers:
 
   packages/simulator:
     dependencies:
-      '@agent-hq/contracts':
-        specifier: workspace:*
-        version: link:../contracts
       '@agent-hq/events':
         specifier: workspace:*
         version: link:../events
