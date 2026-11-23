@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit PR review settings (HQ-004). Keys verified against docs.coderabbit.ai on 2026-11-23.
+# CodeRabbit also reads CLAUDE.md automatically as a code guideline.
+language: ko-KR
+
+reviews:
+  # chill = fewer, higher-signal comments; avoids endless nit loops (review-protocol §6).
+  profile: chill
+  high_level_summary: true
+  # Request changes on blocking findings, approve once they are resolved.
+  # The approval is what the ready-to-merge workflow waits for.
+  auto_approvals:
+    enabled: true
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+  path_filters:
+    - '!pnpm-lock.yaml'
+    - '!**/dist/**'
+    - '!**/.next/**'
+    - '!packages/database/src/generated/**'
+    # Verbatim external source material; never edited (ADR-0004).
+    - '!docs/research/source/**'
+  path_instructions:
+    - path: 'packages/events/**'
+      instructions: >-
+        Event contract (docs/foundation/event-schema.md integration notes, ADR-0006).
+        Check that sources send external IDs only, server-owned fields are rejected, unknown
+        fields are stripped and never stored, and every change keeps schemaVersion
+        compatibility. Flag anything that could store prompt or file content (D2/D3 data).
+    - path: 'packages/database/**'
+      instructions: >-
+        Append-only event store (ADR-0002). Check workspace scoping on every query, that
+        events are never updated, that migrations already applied are not edited, and that
+        raw SQL stays inside this package. Applied migrations must never be modified.
+    - path: 'apps/api/**'
+      instructions: >-
+        NestJS API. Constructor injection must use explicit @Inject. The server must bind to
+        loopback by default and validate Host/Origin. Never log raw request bodies.
+    - path: 'docs/decisions/**'
+      instructions: >-
+        Accepted ADRs must not be edited except the Status line; changes require a new ADR.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - docs/engineering/coding-standards.md
+      - docs/engineering/security.md
+
+chat:
+  auto_reply: true

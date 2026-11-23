@@ -20,6 +20,8 @@
 | G9 Docs Consistency | 링크 오류·문서 모순 | **Manual** | 아래 §4 | 즉시 적용 |
 
 > 상태 값: `Not introduced` | `Manual` | `Local` (로컬 명령 존재) | `CI` (CI에서 강제)
+>
+> **CI 도입 중 (HQ-004)**: `.github/workflows/ci.yml`이 PR과 main push마다 `verify`(G1·G2·G3·G6)와 `integration`(G4)을 실행한다. 첫 PR에서 실제로 동작하는 것을 확인하고, main 브랜치 보호(필수 check 지정)를 건 뒤에 상태를 `CI`로 바꾼다. G8에는 CodeRabbit PR 리뷰가 추가된다 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)).
 
 ## 2. 통합 명령
 `pnpm verify` = `typecheck → lint → format:check → test → build` (G1·G2·G3·G6). HQ-003에서 도입했다.

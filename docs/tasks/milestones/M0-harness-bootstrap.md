@@ -128,9 +128,10 @@
   - 남은 한계 (Nit, 수용): 의존 방향 lint는 정적 import만 잡는다. 동적 `import()`와 다른 패키지로의 상대 경로는 잡지 못한다 (coding-standards §4에 기록)
 
 ### HQ-004 — CI 및 문서 검사 자동화
-- Status: Backlog
+- Status: In Progress (2026-11-23)
 - Risk: Medium
-- Objective: PR마다 로컬 Gate와 문서 링크 검사를 자동 실행한다.
+- Objective: PR마다 Gate를 자동 실행하고, CodeRabbit 리뷰와 머지 준비 알림을 포함한 PR 흐름([review-protocol §6](../../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004))을 만든다. (2026-11-23 사용자 결정으로 범위 확장)
+- 범위 변경: GitHub Actions CI(verify, integration), `.coderabbit.yaml`, `ready-to-merge` 알림 워크플로, main 브랜치 보호(사용자 확인 후). 문서 링크 검사 자동화(TD-002)는 후속으로 미룬다
 - Background: TD-002, RSK-011
 - Scope: GitHub Actions 워크플로(승인 필요), 링크 검사, 의존성 취약점 검사 도입 검토
 - Out of Scope: 배포
