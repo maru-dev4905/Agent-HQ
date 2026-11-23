@@ -24,6 +24,24 @@ describe('loadConfig', () => {
   });
 });
 
+describe('loadConfig — connections', () => {
+  it('uses documented defaults', () => {
+    expect(loadConfig(base).connections).toEqual({
+      tokenTtlMs: 30 * 86_400_000,
+      thresholds: { degradedAfterMs: 30_000, disconnectedAfterMs: 90_000 },
+      healthCheckIntervalMs: 10_000,
+    });
+  });
+
+  it('allows disabling the health job but rejects inconsistent thresholds', () => {
+    expect(
+      loadConfig({ ...base, HEALTH_CHECK_INTERVAL_MS: '0' }).connections.healthCheckIntervalMs,
+    ).toBe(0);
+    expect(() => loadConfig({ ...base, HEARTBEAT_DEGRADED_MS: '90000' })).toThrow(/smaller/);
+    expect(() => loadConfig({ ...base, CONNECTION_TOKEN_TTL_DAYS: '0' })).toThrow(/positive/);
+  });
+});
+
 describe('isLoopbackHost', () => {
   it('recognises loopback addresses only', () => {
     expect(['127.0.0.1', '::1', 'localhost'].every(isLoopbackHost)).toBe(true);

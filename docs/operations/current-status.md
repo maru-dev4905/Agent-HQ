@@ -6,15 +6,15 @@
 
 ## 1. 요약
 - 단계: **M1 / Phase 1 Event Ingestion Core — In Progress**. M0 완료(HQ-005는 Backlog)
-- 완료: HQ-101 Event 계약, HQ-104 Event Store. 진행 중: HQ-102 시뮬레이터
+- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2). 진행 중: HQ-103 Connection 인증(PR #3)
 - Gate: CI가 PR마다 `verify`·`integration` 실행. main은 보호됨 (필수 check 3개 + CodeRabbit 승인 1건)
 - Git: Task마다 브랜치 → PR → CodeRabbit → 사용자 머지 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004))
 
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-102 시뮬레이터 | In Progress | 브랜치 `hq-102-simulator` |
-| HQ-103 Connection 인증 | Ready | HQ-102 다음 |
+| HQ-103 Connection 인증 | In Review | PR #3 (`hq-103-connections`), main 병합으로 충돌 해결 후 재리뷰 |
+| HQ-106 Projector + Replay | Ready | HQ-103 머지 후 시작 (스키마·migration 순서 때문) |
 | HQ-110 Claude Code 신호 조사 | Backlog | 언제든 병행 가능 (scratch hook 설정은 승인 후) |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 

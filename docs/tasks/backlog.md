@@ -20,8 +20,8 @@
 | ID | 제목 | 상태 | 위험도 | 의존성 | 병렬 그룹 |
 |---|---|---|---|---|---|
 | HQ-101 | Event 계약 패키지 (Envelope + MVP Type) | Done | High | HQ-003 | A |
-| HQ-102 | 결정적 시뮬레이터 (테스트용 Source) | In Review (PR) | Medium | HQ-101 | B |
-| HQ-103 | Connection 모델 + 토큰 인증 | Backlog | High | HQ-101, HQ-104 인터페이스 | B |
+| HQ-102 | 결정적 시뮬레이터 (테스트용 Source) | Done | Medium | HQ-101 | B |
+| HQ-103 | Connection 모델 + 토큰 인증 | In Review (PR) | High | HQ-101, HQ-104 인터페이스 | B |
 | HQ-104 | Event Store + G4 도입 | Done | High | HQ-101, Docker 실행 승인 | B |
 | HQ-106 | Projector + Projections + Replay | Backlog | High | HQ-104 | C |
 | HQ-105 | Ingestion API | Backlog | High | HQ-101, HQ-103, HQ-104 인터페이스, HQ-106 인터페이스 | C |

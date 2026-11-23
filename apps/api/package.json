@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsc -b && (tsc -b --watch --preserveWatchOutput & node --env-file-if-exists=../../.env --watch dist/main.js)",
-    "start": "node --env-file-if-exists=../../.env dist/main.js"
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "admin": "node --env-file-if-exists=../../.env dist/admin/bin.js"
   },
   "dependencies": {
     "@agent-hq/contracts": "workspace:*",

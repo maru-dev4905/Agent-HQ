@@ -20,6 +20,20 @@ export interface EventStoreTransaction {
   resolveAgentInstance(ref: ExternalRef, newId: () => string): Promise<string>;
   /** Returns the HQ ID for an external task, creating the mapping with `newId` if absent. */
   resolveTask(ref: ExternalRef, newId: () => string): Promise<string>;
+  /**
+   * Compare-and-set of a connection's status in the same transaction as the event that
+   * records the change. The status is changed only if status, last heartbeat and revocation
+   * are all still what the caller evaluated; otherwise returns false (a newer heartbeat or a
+   * revocation won the race).
+   */
+  setConnectionStatus(expected: ExpectedConnectionState, to: string): Promise<boolean>;
+}
+
+export interface ExpectedConnectionState {
+  id: string;
+  status: string;
+  lastHeartbeatAt: Date | null;
+  revokedAt: Date | null;
 }
 
 export interface ExternalRef {
@@ -244,6 +258,19 @@ export function createEventStore(db: DatabaseClient): EventStore {
           resolveAgentInstance: (ref, newId) => {
             assertWorkspace(workspaceId, ref.workspaceId);
             return resolveIdentity(tx, 'agent', ref, newId);
+          },
+          setConnectionStatus: async (expected, to) => {
+            const { count } = await tx.connection.updateMany({
+              where: {
+                id: expected.id,
+                workspaceId,
+                status: expected.status,
+                lastHeartbeatAt: expected.lastHeartbeatAt,
+                revokedAt: expected.revokedAt,
+              },
+              data: { status: to },
+            });
+            return count === 1;
           },
           resolveTask: (ref, newId) => {
             assertWorkspace(workspaceId, ref.workspaceId);

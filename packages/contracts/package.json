@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@agent-hq/domain": "workspace:*",
-    "@agent-hq/events": "workspace:*"
+    "@agent-hq/events": "workspace:*",
+    "zod": "4.6.7"
   }
 }
