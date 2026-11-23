@@ -31,7 +31,8 @@ export function fakeConnectionStore(records: ConnectionRecord[] = []) {
     recordHeartbeat: (id, now) => {
       const record = [...byHash.values()].find((r) => r.id === id);
       if (record === undefined) return Promise.reject(new Error('missing'));
-      record.lastHeartbeatAt = now;
+      if (record.lastHeartbeatAt === null || record.lastHeartbeatAt < now)
+        record.lastHeartbeatAt = now;
       return Promise.resolve(record);
     },
     revoke: (id, now) => {

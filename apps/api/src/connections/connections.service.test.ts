@@ -98,6 +98,43 @@ describe('ConnectionsService', () => {
     expect(response.status).toBe('disconnected');
   });
 
+  it('does not evaluate status for a stale heartbeat that lost to a newer one', async () => {
+    const newer = new Date(now.getTime() + 60_000);
+    const fake = fakeConnectionStore([
+      {
+        id: 'conn_1',
+        workspaceId: 'local',
+        status: 'disconnected',
+        tokenExpiresAt: new Date(now.getTime() + 600_000),
+        revokedAt: null,
+        lastHeartbeatAt: newer,
+      },
+    ]);
+    let refreshed = 0;
+    const health = {
+      refresh: () => {
+        refreshed += 1;
+        return Promise.resolve({ status: 'connected' as const, changed: true });
+      },
+    };
+    const svc = new ConnectionsService(
+      fake.store,
+      health as never,
+      settings,
+      () => now,
+      () => 'x',
+    );
+    const response = await svc.heartbeat(
+      { connectionId: 'conn_1', workspaceId: 'local' },
+      'conn_1',
+    );
+    expect(refreshed).toBe(0);
+    expect(response).toMatchObject({
+      status: 'disconnected',
+      lastHeartbeatAt: newer.toISOString(),
+    });
+  });
+
   it('refuses a heartbeat for a connection other than the caller', async () => {
     const { svc } = service();
     await expect(

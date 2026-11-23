@@ -70,7 +70,10 @@ export class ConnectionsService {
     }
     const now = this.clock();
     const record = await this.store.recordHeartbeat(connectionId, now);
-    await this.health.refresh(record, now);
+    // If a newer heartbeat was already stored, this request is stale: evaluating with its
+    // older `now` could roll the status back, so only the newer request evaluates.
+    const stale = record.lastHeartbeatAt !== null && record.lastHeartbeatAt > now;
+    if (!stale) await this.health.refresh(record, now);
     // Answer with what is stored, not what was computed: a concurrent revocation or
     // evaluation may have won the compare-and-set.
     const stored = (await this.store.findById(connectionId)) ?? record;
