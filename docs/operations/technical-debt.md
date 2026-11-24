@@ -67,3 +67,13 @@
 - Verification Method: 큰 로그에서 replay 소요 시간 측정 (HQ-112).
 - Related Tasks: HQ-106, HQ-112
 - Created / Updated: 2026-11-24
+
+### TD-006 — Ingestion rate limit이 프로세스 메모리에 있다
+- Status / Priority: Open / Low
+- Description: Connection별 token bucket(`apps/api/src/ingestion/rate-limiter.ts`)을 API 프로세스 메모리에 둔다. 재시작하면 초기화되고, API 프로세스가 여럿이면 각자 따로 센다.
+- Impact: 로컬 셀프호스트(프로세스 하나)에서는 문제가 없다. 수평 확장하거나 Cloud에 배포하면 한도가 프로세스 수만큼 늘어난다.
+- Root Cause: M1은 단일 프로세스이고, 새 의존성(`@fastify/rate-limit` 등) 없이 T8을 막는 것을 우선했다.
+- Proposed Solution: 여러 프로세스를 띄우는 시점에 Redis 기반 카운터(ADR-0005의 Redis 재사용)로 옮긴다.
+- Verification Method: 프로세스 2개에서 같은 Connection 한도가 합산되어 적용되는지 확인.
+- Related Tasks: HQ-105
+- Created / Updated: 2026-11-24

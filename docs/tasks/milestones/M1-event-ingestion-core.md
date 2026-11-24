@@ -158,7 +158,7 @@
   - AC: update/delete 미노출 ✅ · 중복 시 기존 유지+중복 반환 ✅ · 계약 테스트 분리 ✅ · G4 `Local` 기록 ✅ · (원문 AC "DB 파일 0600"은 PostgreSQL Docker 볼륨 구성으로 바뀌어 해당 없음. 데이터는 저장소 밖 Docker 볼륨 `agent-hq_postgres-data`에 있다)
 
 ### HQ-105 — Ingestion API
-- Status: Backlog · Risk: High · Role: Worker → Reviewer (+ Security Review)
+- Status: In Review (2026-11-24) · Risk: High · Role: Worker → Reviewer (+ Security Review)
 - Objective: Event를 받아 인증·검증·마스킹·멱등 저장하고, Projection 갱신과 Outbox 기록을 한 트랜잭션에서 처리한다.
 - Background: FR-001~004, NFR-005, security T2/T3/T8, RSK-002, RSK-005
 - Scope: 외부 ID → HQ ID 매핑(`(workspaceId, connectionId, externalAgentId|externalTaskId)` → `agentInstanceId`|`taskId`, ADR-0006), **파싱 결과만 저장·로그(원본 입력 금지)**, `ignoredFields` 집계, `POST /events:ingest` 계열(단건·배치, path는 계약으로 확정), `packages/contracts/src/ingestion/`, Connection 토큰 Guard(**`workspaceId`·`connectionId`는 토큰에서 가져오고, body 값이 다르면 거부**), 스키마 거부 응답(error envelope 계약), 2차 마스킹, `receivedAt` 부여, 크기 상한·Connection별 rate limit, `127.0.0.1` 기본 바인딩, Host/Origin 검증, Projector 호출, Outbox 기록
@@ -175,9 +175,18 @@
   - [ ] 서로 다른 Connection이 같은 외부 ID를 보내도 서로 다른 AgentInstance로 매핑된다
 - Verification: High 기준 Gate (G7 포함)
 - Risks: 동기 Projection 갱신이 처리량을 낮출 수 있다 → HQ-112에서 측정
+- 범위 변경 (2026-11-24, 구현 중 확정): 단일 Worker라 Coordinator 소유 파일도 함께 수정했다 — `apps/api/src/{app.module,config,main,tokens}.ts`, `.env.example`(선택 환경 변수 문서화, Secret 아님). Host/Origin 검사는 모든 경로에 적용되므로 `apps/api/src/http/`(전역 Guard, 공용 Fastify adapter)에 두었다. 기록 문서: TD-006, ISS-002, RSK-019 측정값, HQ-112 측정 항목
+- Execution Log:
+  #### Run 2026-11-24-2
+  - agent_id: claude-code:main (Worker), claude-code:subagent:general-purpose (로컬 Reviewer + 보안 검토) · status: In Review
+  - result: `POST /events`(배치 1~500, 원자적), `packages/contracts/src/ingestion/` 계약, 2차 마스킹(`redaction.ts`), Connection별 token bucket(`rate-limiter.ts`), 전역 `RequestOriginGuard`(Host/Origin), body 4 MiB 상한, 같은 트랜잭션의 외부 ID 매핑·append·Outbox·Projection, 요청 로그는 개수와 필드 이름만. API 계약은 architecture N6
+  - 로컬 리뷰 1회차: Request Changes (Major 2: 짝 없는 서로게이트가 500을 냄, 흔한 Secret 형태(`GITHUB_TOKEN=`, JSON `"password"`) 미마스킹. Minor 4, Nit 5) → 전부 반영: Unicode 검사(400, ISS-002), 패턴 보강·오탐 축소와 테스트, 처리 순서 문서 정정, RSK-019 측정 기록, 로그용 필드 이름의 제어 문자 치환, Host 설정의 포트 무시, 마스킹 범위·rate 차감 시점 문서화
+  - 로컬 리뷰 2회차: Approve (Minor 2, Nit 3) → 반영: 값 뒤 기호로 인한 오탐 수정(패턴별 기호 집합), 알려진 누락을 테스트와 RSK-002에 고정, 오류 표에 Unicode 추가. 남긴 것: `max_token=4096` 같은 숫자 설정값 오탐, URL 안 assignment가 호스트까지 가리는 것(원문 유출 없음)
+  - verification: `pnpm verify` 통과(단위 156개), `pnpm test:integration` 통과(51개, Ingestion 10개). 변이 검사: 마스킹 제거·충돌 무시·소유권 검사 제거 각각 해당 테스트가 실패함. 시뮬레이터 HTTP 전송 모드를 실제 서버에 보내 검증함(HQ-102의 남은 검증)
+  - AC: 무효 거부(필드별)·중복 미저장·시각 분리 ✅ · 토큰과 다른 workspace/connection 거부, 저장본 connectionId ✅ · Secret redaction test ✅ · Host/Origin·크기·빈도 초과 거부 ✅ · 로그에 payload 원문 없음 ✅ · Connection별 외부 ID 분리 ✅
 
 ### HQ-106 — Projector + Projections + Replay
-- Status: In Review (2026-11-24) · Risk: High · Role: Worker → Reviewer
+- Status: Done (2026-11-24, PR #4 머지 `8c029cf`) · Risk: High · Role: Worker → Reviewer
 - Objective: Event로 `agent_current_state`, `task_current_state`, `connection_health`, Timeline용 Read Model을 만들고, 전체 재생성을 지원한다.
 - Background: event-schema §6, domain-model 통합 노트 N1, FR-005, NFR-004, RSK-006
 - Scope: 순수 함수 `apply(state, event)`, 이벤트 순서는 전순서 규칙(event-schema 통합 노트 N8: 발생 시각 → 세션 → `sequence` → idempotencyKey)으로 판정, `observedStatus`와 `rawStatus` 보존, `lastSeenAt`, Replay 명령, 적용 인터페이스(**먼저 커밋**)
@@ -278,7 +287,7 @@
 - Status: Backlog · Risk: Low · Role: QA
 - Objective: 명세서 roadmap §13의 측정 항목 중 M1에서 측정 가능한 것을 측정하고, 목표 수치를 제안한다.
 - Background: NFR-002, NFR-003, ADR-0002/0003 Revisit Conditions
-- Scope: 시뮬레이터 부하 모드, 측정 스크립트, 측정 조건(하드웨어, Event 수, 동시 Agent 수) 기록
+- Scope: 시뮬레이터 부하 모드, 측정 스크립트, 측정 조건(하드웨어, Event 수, 동시 Agent 수) 기록. 같은 Workspace에 동시 full batch(500개) N건을 보낼 때 timeout 여부(RSK-019)
 - Out of Scope: 최적화 (결과에 따라 별도 Task)
 - Dependencies: HQ-102, HQ-105, HQ-107, HQ-109
 - Files Expected to Change: `packages/simulator/**`(부하 모드), 측정 스크립트, `docs/research/README.md`, `docs/foundation/requirements.md`

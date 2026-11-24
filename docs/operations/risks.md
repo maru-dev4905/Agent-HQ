@@ -62,7 +62,8 @@
 - Proposed Solution: D2 콘텐츠 기본 미저장(data-governance), 2단계 마스킹, 마스킹 테스트(TS-05), Cloud 동기화 opt-in.
 - Verification Method: TS-05 통과, 알려진 키 형식 샘플 세트 테스트.
 - Related Tasks: HQ-105
-- Created / Updated: 2026-11-22
+- 2차 마스킹의 알려진 누락 (HQ-105, 2026-11-24): 구분자 없이 붙은 키(`mytoken=`), 숫자·기호 없는 16자 미만 값(`password: correcthorse`), 대입 기호 없는 형태(`set PASSWORD x`). 일반 문장의 오탐을 줄이려고 받아들인 선택이며 `redaction.test.ts`에 고정했다.
+- Created / Updated: 2026-11-22 / 2026-11-24
 
 ### RSK-003 — Local/Cloud DB 차이
 - Status / Priority / 범위: Open / M×M / Architecture
@@ -206,5 +207,6 @@
 - Root Cause: 정합성(늦은 커밋을 건너뛰지 않는 Cursor)을 처리량보다 우선했다.
 - Proposed Solution: 트랜잭션 `maxWait`·`timeout`을 명시했다(HQ-104). Ingestion에서 배치로 묶어 한 트랜잭션에 여러 이벤트를 넣는다(HQ-105). HQ-112에서 측정해 풀 크기와 배치 전략을 정한다.
 - Verification Method: HQ-112 부하 측정에서 timeout 0건.
+- 측정 (HQ-105 로컬 리뷰, 2026-11-24, 개발 머신 1회): 500개 배치 1건 약 0.9초. 같은 Workspace에 500개 배치 4건 동시 → 약 3.6초에 전부 200. 트랜잭션 timeout(10초)이 lock 대기 시간을 포함하므로, 여러 Connection이 동시에 full batch를 10건 이상 보내면 마지막 요청이 timeout으로 500을 받을 수 있다(추정). Connection별 rate limit으로는 막을 수 없다. HQ-112에서 "동시 full batch N건"을 측정 항목에 넣는다.
 - Related Tasks: HQ-104, HQ-105, HQ-112
-- Created / Updated: 2026-11-23
+- Created / Updated: 2026-11-23 / 2026-11-24

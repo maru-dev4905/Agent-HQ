@@ -10,3 +10,11 @@ export type {
   RegisterConnectionRequest,
   RegisterConnectionResponse,
 } from './connections/index.js';
+export {
+  INGEST_LIMITS,
+  INGEST_PATH,
+  ingestRequestSchema,
+  ingestResponseSchema,
+  ingestResultSchema,
+} from './ingestion/index.js';
+export type { IngestRequest, IngestResponse, IngestResult } from './ingestion/index.js';

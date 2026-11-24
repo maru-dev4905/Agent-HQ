@@ -48,3 +48,28 @@ describe('isLoopbackHost', () => {
     expect(['0.0.0.0', '::', '192.168.0.10'].some(isLoopbackHost)).toBe(false);
   });
 });
+
+describe('loadConfig — http and ingestion', () => {
+  it('allows only loopback host names and no browser origin by default', () => {
+    expect(loadConfig(base).http).toEqual({
+      allowedHosts: ['127.0.0.1', '::1', 'localhost'],
+      allowedOrigins: [],
+    });
+  });
+
+  it('adds configured hosts (lower-cased) and origins', () => {
+    const { http } = loadConfig({
+      ...base,
+      API_ALLOWED_HOSTS: ' HQ.local:4000 , ',
+      API_ALLOWED_ORIGINS: 'http://127.0.0.1:3000',
+    });
+    expect(http.allowedHosts).toContain('hq.local');
+    expect(http.allowedOrigins).toEqual(['http://127.0.0.1:3000']);
+  });
+
+  it('uses documented rate defaults and rejects a burst smaller than one batch', () => {
+    expect(loadConfig(base).ingestion).toEqual({ eventsPerSecond: 500, burstEvents: 2000 });
+    expect(() => loadConfig({ ...base, INGEST_RATE_BURST_EVENTS: '499' })).toThrow(/batch/);
+    expect(() => loadConfig({ ...base, INGEST_RATE_EVENTS_PER_SECOND: '0' })).toThrow(/positive/);
+  });
+});
