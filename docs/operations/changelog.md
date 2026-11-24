@@ -8,7 +8,7 @@
 - [Added] Read Model `agent_current_state`, `task_current_state` (migration 2개), 순수 Projector(전순서 비교, 필드별 순서 키), `applyProjections`·`replayProjections`, 관리 CLI `replay`
 - [Changed] `EVENT_STORE`를 전역 Infrastructure 모듈과 `apps/api/src/tokens.ts`로 이동
 - [Added] event-schema N8(Projection 순서 규칙), domain-model N4(이벤트→상태 매핑), TD-005(Replay가 append를 막음)
-- **운영 메모**: `20261124010000_projections`만 적용된 DB에 Read Model 행이 있다면, `20261124020000_projections_scoping` 적용 후 `pnpm --filter @agent-hq/api admin replay`로 다시 만든다 (이전 행은 orderKeys 형식이 다르고 `last_received_at`이 소스 시각으로 채워짐)
+- **운영 메모**: `20261124010000_projections`만 적용된 DB에 Read Model 행이 있다면, `20261124020000_projections_scoping` 적용 후 **Read Model 행이 있는 Workspace마다** `pnpm --filter @agent-hq/api admin replay <workspaceId>`로 다시 만든다 (인수를 생략하면 `local`만 처리한다) (이전 행은 orderKeys 형식이 다르고 `last_received_at`이 소스 시각으로 채워짐)
 
 ## 2026-11-23 — HQ-004 CI·CodeRabbit (Done)
 - [Added] GitHub Actions CI(verify, integration), `.coderabbit.yaml`, `ready-to-merge` 알림 워크플로 (PR #1)

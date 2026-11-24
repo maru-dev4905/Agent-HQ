@@ -53,6 +53,17 @@ describe('projector — scenarios', () => {
     expect(agents.get('agent:agent_main')?.observedStatus).toBe('working');
   });
 
+  it('counts task events of the owning agent as activity without changing its status', () => {
+    const stream = storeStream(generate({ scenario: 'single-agent', seed: 1 }));
+    const lastTaskEvent = stream.filter((e) => e.type.startsWith('task.')).at(-1)!;
+    const beforeTask = foldAll(stream.slice(0, stream.indexOf(lastTaskEvent)));
+    const agent = beforeTask.agents.get('agent:agent_main')!;
+    const next = projectAgent(agent, lastTaskEvent)!;
+    expect(next.observedStatus).toBe(agent.observedStatus);
+    expect(next.lastEventAt >= lastTaskEvent.occurredAt).toBe(true);
+    expect(next.lastEventType).toBe(lastTaskEvent.type);
+  });
+
   it('marks an agent first seen through a tool call as unknown, not idle or connected', () => {
     const [toolEvent] = storeStream(generate({ scenario: 'single-agent', seed: 1 })).filter(
       (e) => e.type === 'tool.call.started',

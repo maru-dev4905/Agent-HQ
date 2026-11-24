@@ -23,7 +23,7 @@ export interface AgentStateRow {
   parentExternalAgentId: string | null;
   executionLocation: string | null;
   lastEventType: string;
-  /** Latest source time (occurredAt) seen for this agent. */
+  /** Latest source time (occurredAt) of the agent's own events and of task events it owns. */
   lastEventAt: string;
   /** Latest server receive time; stale detection (HQ-108) uses this, not source clocks. */
   lastReceivedAt: string;

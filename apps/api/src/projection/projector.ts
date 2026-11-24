@@ -90,7 +90,10 @@ type AgentField = 'agentName' | 'roleHint' | 'parentExternalAgentId' | 'executio
 
 /** Next agent row for an event, or null when the event does not concern an agent. */
 export function projectAgent(prev: AgentStateRow | null, event: StoredEvent): AgentStateRow | null {
-  if (!AGENT_EVENT_TYPES.has(event.type) || event.agentInstanceId === undefined) return null;
+  if (event.agentInstanceId === undefined) return null;
+  // Task events carry the owning agent: they count as its activity (timestamps only).
+  const activityOnly = !AGENT_EVENT_TYPES.has(event.type);
+  if (activityOnly && !event.type.startsWith('task.')) return null;
   const key = orderKeyOf(event);
   const base: AgentStateRow = prev ?? {
     agentInstanceId: event.agentInstanceId,
@@ -111,6 +114,18 @@ export function projectAgent(prev: AgentStateRow | null, event: StoredEvent): Ag
   };
   const orderKeys = { ...base.orderKeys };
   const row: AgentStateRow = { ...base, orderKeys };
+
+  if (activityOnly) {
+    // lastEventType means "kind of the latest activity" and must stay order-independent.
+    if (isNewer(key, orderKeys['last'])) {
+      row.lastEventType = event.type;
+      orderKeys['last'] = key;
+    }
+    row.lastEventAt = maxIso(row.lastEventAt, key.occurredAt);
+    row.lastReceivedAt = maxIso(row.lastReceivedAt, new Date(event.receivedAt).toISOString());
+    row.lastStoreSequence = maxBig(row.lastStoreSequence, event.storeSequence);
+    return row;
+  }
 
   const status = agentStatusFor(event);
   if (status !== null && isNewer(key, orderKeys['status'])) {

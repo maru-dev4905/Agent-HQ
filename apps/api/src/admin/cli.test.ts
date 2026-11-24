@@ -9,15 +9,37 @@ const thresholds = { degradedAfterMs: 30_000, disconnectedAfterMs: 90_000 };
 function adminIo(store: AdminIo['store']) {
   const out: string[] = [];
   const transactions: string[] = [];
+  const calls: string[] = [];
+  // Runs the callback against a recording transaction, so tests see what the command did.
+  const tx = {
+    projections: {
+      clear: () => {
+        calls.push('clear');
+        return Promise.resolve();
+      },
+    },
+    readFrom: () => {
+      calls.push('readFrom');
+      return Promise.resolve([]);
+    },
+    setConnectionStatus: () => {
+      calls.push('setConnectionStatus');
+      return Promise.resolve(true);
+    },
+    append: () => {
+      calls.push('append');
+      return Promise.resolve({ status: 'stored', storeSequence: 1n });
+    },
+  };
   const events = {
-    transaction: (workspaceId: string) => {
+    transaction: (workspaceId: string, work: (t: typeof tx) => Promise<unknown>) => {
       transactions.push(workspaceId);
-      return Promise.resolve({ status: 'disconnected', changed: true });
+      return work(tx);
     },
     readFrom: () => Promise.resolve([]),
   } as unknown as AdminIo['events'];
   const io: AdminIo = { store, events, thresholds, stdout: (t) => out.push(t), now: () => now };
-  return { io, out, transactions };
+  return { io, out, transactions, calls };
 }
 
 describe('runAdmin', () => {
@@ -42,10 +64,11 @@ describe('runAdmin', () => {
         lastHeartbeatAt: now,
       },
     ]);
-    const { io, out, transactions } = adminIo(fake.store);
+    const { io, out, transactions, calls } = adminIo(fake.store);
     await runAdmin(['revoke', 'conn_1'], io);
     expect(out.join('')).toBe('revoked conn_1\n');
     expect(transactions).toEqual(['local']);
+    expect(calls).toEqual(['setConnectionStatus', 'append']);
   });
 
   it('reports an unknown or already revoked connection without recording anything', async () => {
@@ -56,11 +79,14 @@ describe('runAdmin', () => {
   });
 
   it('replays the local workspace by default and a named one on request', async () => {
-    const { io, out, transactions } = adminIo(fakeConnectionStore().store);
+    const { io, out, transactions, calls } = adminIo(fakeConnectionStore().store);
     await runAdmin(['replay'], io);
     await runAdmin(['replay', 'ws_other'], io);
     expect(transactions).toEqual(['local', 'ws_other']);
-    expect(out.join('')).toContain('read models of local');
+    expect(calls).toEqual(['clear', 'readFrom', 'clear', 'readFrom']);
+    expect(out.join('')).toBe(
+      'replayed 0 events into read models of local\nreplayed 0 events into read models of ws_other\n',
+    );
   });
 
   it('rejects unknown commands', async () => {
