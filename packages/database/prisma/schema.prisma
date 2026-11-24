@@ -60,10 +60,13 @@ model AgentInstance {
   externalAgentId String   @map("external_agent_id")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  workspace  Workspace  @relation(fields: [workspaceId], references: [id])
-  connection Connection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId])
+  workspace  Workspace          @relation(fields: [workspaceId], references: [id])
+  connection Connection         @relation(fields: [connectionId, workspaceId], references: [id, workspaceId])
+  state      AgentCurrentState?
 
   @@unique([workspaceId, connectionId, externalAgentId])
+  /// Lets read models reference (id, workspaceId) so a row can never belong to another workspace.
+  @@unique([id, workspaceId])
   @@map("agent_instances")
 }
 
@@ -75,10 +78,13 @@ model Task {
   externalTaskId String   @map("external_task_id")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  workspace  Workspace  @relation(fields: [workspaceId], references: [id])
-  connection Connection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId])
+  workspace  Workspace         @relation(fields: [workspaceId], references: [id])
+  connection Connection        @relation(fields: [connectionId, workspaceId], references: [id, workspaceId])
+  state      TaskCurrentState?
 
   @@unique([workspaceId, connectionId, externalTaskId])
+  /// Lets read models reference (id, workspaceId) so a row can never belong to another workspace.
+  @@unique([id, workspaceId])
   @@map("tasks")
 }
 
@@ -148,4 +154,53 @@ model RegistrationCode {
 
   @@index([workspaceId])
   @@map("registration_codes")
+}
+
+/// Read model: current state per agent, derived only from events (ADR-0002). Rebuildable.
+/// `orderKeys` records which event set each field group, so arrival order does not matter.
+model AgentCurrentState {
+  agentInstanceId       String   @id @map("agent_instance_id")
+  workspaceId           String   @map("workspace_id")
+  connectionId          String   @map("connection_id")
+  observedStatus        String   @map("observed_status")
+  rawStatus             String?  @map("raw_status")
+  agentName             String?  @map("agent_name")
+  roleHint              String?  @map("role_hint")
+  parentExternalAgentId String?  @map("parent_external_agent_id")
+  executionLocation     String?  @map("execution_location")
+  lastEventType         String   @map("last_event_type")
+  lastEventAt           DateTime @map("last_event_at") @db.Timestamptz(3)
+  /// Server receive time of the latest event (HQ-108 stale detection must not trust source clocks).
+  lastReceivedAt        DateTime @map("last_received_at") @db.Timestamptz(3)
+  lastStoreSequence     BigInt   @map("last_store_sequence")
+  orderKeys             Json     @map("order_keys")
+
+  agentInstance AgentInstance @relation(fields: [agentInstanceId, workspaceId], references: [id, workspaceId])
+
+  @@unique([agentInstanceId, workspaceId])
+  @@index([workspaceId])
+  @@map("agent_current_state")
+}
+
+/// Read model: current state per task, derived only from events (ADR-0002). Rebuildable.
+model TaskCurrentState {
+  taskId               String   @id @map("task_id")
+  workspaceId          String   @map("workspace_id")
+  connectionId         String   @map("connection_id")
+  agentInstanceId      String?  @map("agent_instance_id")
+  status               String
+  title                String?
+  parentExternalTaskId String?  @map("parent_external_task_id")
+  lastEventType        String   @map("last_event_type")
+  lastEventAt          DateTime @map("last_event_at") @db.Timestamptz(3)
+  /// Server receive time of the latest event (HQ-108 stale detection must not trust source clocks).
+  lastReceivedAt       DateTime @map("last_received_at") @db.Timestamptz(3)
+  lastStoreSequence    BigInt   @map("last_store_sequence")
+  orderKeys            Json     @map("order_keys")
+
+  task Task @relation(fields: [taskId, workspaceId], references: [id, workspaceId])
+
+  @@unique([taskId, workspaceId])
+  @@index([workspaceId])
+  @@map("task_current_state")
 }

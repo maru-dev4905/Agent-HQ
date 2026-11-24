@@ -2,6 +2,7 @@ import type { AgentEvent } from '@agent-hq/events';
 import type { Prisma } from './generated/prisma/client.js';
 import type { DatabaseClient } from './index.js';
 import { canonicalJson, sha256 } from './canonical-json.js';
+import { projectionTransaction, type ProjectionTransaction } from './projection-store.js';
 
 /** An event as read back from the log, with its replay cursor. */
 export type StoredEvent = AgentEvent & { storeSequence: bigint };
@@ -15,6 +16,10 @@ export type AppendOutcome =
 
 /** Operations available inside one append transaction. */
 export interface EventStoreTransaction {
+  /** Read models, written in the same commit as the events that produced them. */
+  projections: ProjectionTransaction;
+  /** Events of the locked workspace after `after`, oldest first (used by replay). */
+  readFrom(after: bigint, limit: number): Promise<StoredEvent[]>;
   append(event: AgentEvent): Promise<AppendOutcome>;
   /** Returns the HQ ID for an external agent, creating the mapping with `newId` if absent. */
   resolveAgentInstance(ref: ExternalRef, newId: () => string): Promise<string>;
@@ -48,7 +53,11 @@ export interface EventStore {
    * workspace commit in `storeSequence` order and a cursor reader never skips a row that
    * commits late (ADR-0002, M1 milestone notes).
    */
-  transaction<T>(workspaceId: string, work: (tx: EventStoreTransaction) => Promise<T>): Promise<T>;
+  transaction<T>(
+    workspaceId: string,
+    work: (tx: EventStoreTransaction) => Promise<T>,
+    options?: TransactionOptions,
+  ): Promise<T>;
   /** Events of a workspace with `storeSequence > after`, oldest first. */
   readFrom(workspaceId: string, after: bigint, limit: number): Promise<StoredEvent[]>;
 }
@@ -64,6 +73,11 @@ export const MAX_READ_LIMIT = 1000;
  * indefinitely (RSK-019).
  */
 const TRANSACTION_OPTIONS = { maxWait: 5_000, timeout: 10_000 } as const;
+
+export interface TransactionOptions {
+  /** Overrides the default 10s limit, e.g. for a full projection replay. */
+  timeoutMs?: number;
+}
 
 /** Thrown when a transaction touches a workspace other than the one it locked. */
 export class WorkspaceMismatchError extends Error {
@@ -149,6 +163,13 @@ async function append(tx: Tx, input: AgentEvent): Promise<AppendOutcome> {
     storeSequence: existing.storeSequence,
     conflict: existing.contentHash !== hash,
   };
+}
+
+function assertReadRange(after: bigint, limit: number): void {
+  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_READ_LIMIT) {
+    throw new RangeError(`limit must be an integer between 1 and ${MAX_READ_LIMIT}`);
+  }
+  if (after < 0n) throw new RangeError('after must not be negative');
 }
 
 function toStoredEvent(row: {
@@ -246,45 +267,58 @@ async function resolveIdentity(
 
 export function createEventStore(db: DatabaseClient): EventStore {
   return {
-    transaction(workspaceId, work) {
+    transaction(workspaceId, work, options) {
       if (workspaceId.trim() === '') throw new Error('workspaceId is required');
-      return db.$transaction(async (tx) => {
-        await lockWorkspace(tx, workspaceId);
-        return work({
-          append: (event) => {
-            assertWorkspace(workspaceId, event.workspaceId);
-            return append(tx, event);
-          },
-          resolveAgentInstance: (ref, newId) => {
-            assertWorkspace(workspaceId, ref.workspaceId);
-            return resolveIdentity(tx, 'agent', ref, newId);
-          },
-          setConnectionStatus: async (expected, to) => {
-            const { count } = await tx.connection.updateMany({
-              where: {
-                id: expected.id,
-                workspaceId,
-                status: expected.status,
-                lastHeartbeatAt: expected.lastHeartbeatAt,
-                revokedAt: expected.revokedAt,
-              },
-              data: { status: to },
-            });
-            return count === 1;
-          },
-          resolveTask: (ref, newId) => {
-            assertWorkspace(workspaceId, ref.workspaceId);
-            return resolveIdentity(tx, 'task', ref, newId);
-          },
-        });
-      }, TRANSACTION_OPTIONS);
+      return db.$transaction(
+        async (tx) => {
+          await lockWorkspace(tx, workspaceId);
+          return work({
+            projections: projectionTransaction(tx, workspaceId),
+            readFrom: async (after, limit) => {
+              assertReadRange(after, limit);
+              const rows = await tx.event.findMany({
+                where: { workspaceId, storeSequence: { gt: after } },
+                orderBy: { storeSequence: 'asc' },
+                take: limit,
+              });
+              return rows.map(toStoredEvent);
+            },
+            append: (event) => {
+              assertWorkspace(workspaceId, event.workspaceId);
+              return append(tx, event);
+            },
+            resolveAgentInstance: (ref, newId) => {
+              assertWorkspace(workspaceId, ref.workspaceId);
+              return resolveIdentity(tx, 'agent', ref, newId);
+            },
+            setConnectionStatus: async (expected, to) => {
+              const { count } = await tx.connection.updateMany({
+                where: {
+                  id: expected.id,
+                  workspaceId,
+                  status: expected.status,
+                  lastHeartbeatAt: expected.lastHeartbeatAt,
+                  revokedAt: expected.revokedAt,
+                },
+                data: { status: to },
+              });
+              return count === 1;
+            },
+            resolveTask: (ref, newId) => {
+              assertWorkspace(workspaceId, ref.workspaceId);
+              return resolveIdentity(tx, 'task', ref, newId);
+            },
+          });
+        },
+        {
+          ...TRANSACTION_OPTIONS,
+          ...(options?.timeoutMs === undefined ? {} : { timeout: options.timeoutMs }),
+        },
+      );
     },
 
     async readFrom(workspaceId, after, limit) {
-      if (!Number.isInteger(limit) || limit < 1 || limit > MAX_READ_LIMIT) {
-        throw new RangeError(`limit must be an integer between 1 and ${MAX_READ_LIMIT}`);
-      }
-      if (after < 0n) throw new RangeError('after must not be negative');
+      assertReadRange(after, limit);
       const rows = await db.event.findMany({
         where: { workspaceId, storeSequence: { gt: after } },
         orderBy: { storeSequence: 'asc' },

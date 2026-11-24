@@ -55,6 +55,14 @@ describe('runAdmin', () => {
     expect(transactions).toEqual([]);
   });
 
+  it('replays the local workspace by default and a named one on request', async () => {
+    const { io, out, transactions } = adminIo(fakeConnectionStore().store);
+    await runAdmin(['replay'], io);
+    await runAdmin(['replay', 'ws_other'], io);
+    expect(transactions).toEqual(['local', 'ws_other']);
+    expect(out.join('')).toContain('read models of local');
+  });
+
   it('rejects unknown commands', async () => {
     await expect(runAdmin(['nope'], adminIo(fakeConnectionStore().store).io)).rejects.toThrow(
       /Usage/,

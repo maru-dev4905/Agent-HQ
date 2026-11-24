@@ -238,3 +238,10 @@ Access Token - 비밀번호 및 인증 헤더 - 전체 파일 내용 - 개인 �
 - **미정의 필드**: 거부하지 않고 버리며(strip), 버린 필드의 이름만 `ignoredFields`로 돌려준다. 서버 소유 필드(`receivedAt`, `storeSequence`, `agentInstanceId`, `taskId`)는 거부한다. **파싱 결과만 저장하고 로그에 남긴다. 원본 입력은 절대 저장·로그하지 않는다.**
 - 추가 검증: ID는 공백만이거나 제어 문자(NUL 포함)를 담을 수 없다. 요약은 500자 이하이고 NUL을 담을 수 없다. `sequence`가 있으면 `source.externalSessionId`가 필수다. `event.gap.detected`는 `fromSequence ≤ toSequence`여야 한다.
 - 본문 §5 예시와의 차이: `agentInstanceId`·`taskId`를 Source가 보내지 않는다 (위 외부 ID 규칙).
+
+### N8. Projection 순서 규칙 (HQ-106, 2026-11-24, Proposed)
+- Read Model은 이벤트를 `(occurredAt, source.externalSessionId, sequence, idempotencyKey)` 사전식 순서로 비교한다. 어떤 두 이벤트든 순서가 하나로 정해지는 **전순서**다. 그래서 같은 이벤트 집합이면 도착 순서·중복·동률과 관계없이 같은 상태가 된다.
+- `sequence`는 **같은 시각을 가진 같은 세션의 이벤트**를 정렬한다. 한 세션 안에서 시계가 거꾸로 가면 `sequence`보다 시각이 우선한다. 세션 우선 규칙(같은 세션은 sequence, 세션 사이는 시각)은 A<B<C<A 같은 순환을 만들 수 있어서 쓰지 않는다 (HQ-106 리뷰).
+- 최종 동률은 Source가 재전송해도 바뀌지 않는 `idempotencyKey`로 깬다. 도착 순서인 `storeSequence`로 깨지 않는다.
+- 각 필드는 그 필드를 실제로 담은 이벤트만 바꾼다. 필드가 없는 이벤트가 기존 값을 지우지 않는다.
+- 도착 순서에 따라 달라지는 것이 정상인 값: `lastStoreSequence`(로그 위치), `lastReceivedAt`(서버 수신 시각). Stale 판정(HQ-108)은 소스 시계가 아니라 `lastReceivedAt`을 쓴다.

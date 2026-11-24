@@ -57,3 +57,13 @@
 - Verification Method: schemaVersion 2 도입 Task의 AC에 포함.
 - Related Tasks: HQ-104
 - Created / Updated: 2026-11-23
+
+### TD-005 — Projection Replay가 Workspace의 append를 막는다
+- Status / Priority: Open / Medium
+- Description: `replay`(관리 CLI `agent-hq-admin replay`)는 Read Model을 비우고 다시 쓰는 작업을, Workspace lock을 잡은 한 트랜잭션에서 수행한다(최대 10분). 그동안 같은 Workspace의 append는 lock을 기다리다 10초 timeout으로 실패한다.
+- Impact: Source가 이벤트를 보내는 중에 replay하면 Ingestion이 오류를 돌려준다. Adapter는 재시도한다.
+- Root Cause: Replay의 원자성(중간 상태가 보이지 않음)을 처리량보다 우선했다.
+- Proposed Solution: 지금은 **오프라인 작업으로 운영**한다(관리 CLI 도움말에 명시). 로그가 커지면 Read Model을 새 테이블에 만든 뒤 교체하는 방식이나 스냅샷을 검토한다.
+- Verification Method: 큰 로그에서 replay 소요 시간 측정 (HQ-112).
+- Related Tasks: HQ-106, HQ-112
+- Created / Updated: 2026-11-24

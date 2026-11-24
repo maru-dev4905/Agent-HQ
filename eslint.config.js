@@ -85,4 +85,25 @@ export default tseslint.config(
     ];
     return { files: [files], rules: { 'no-restricted-imports': rule } };
   }),
+  // Tests may use the simulator as a fixture source (testing-strategy §1); production code may
+  // not. Derived from the apps/api entry so other restrictions keep applying to tests.
+  {
+    files: ['apps/api/**/*.test.ts', 'apps/api/test/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: (
+                forbiddenImports.find(([files]) => files === 'apps/api/**')?.[1] ?? []
+              ).filter((name) => name !== '@agent-hq/simulator'),
+              message:
+                'Violates the dependency direction (docs/engineering/coding-standards.md §4).',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

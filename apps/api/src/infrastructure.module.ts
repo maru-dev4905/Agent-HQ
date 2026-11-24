@@ -1,9 +1,9 @@
 import { Global, Inject, Logger, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { createDatabaseClient, type DatabaseClient } from '@agent-hq/database';
+import { createDatabaseClient, createEventStore, type DatabaseClient } from '@agent-hq/database';
 import { Redis } from 'ioredis';
 import type { ApiConfig } from './config.js';
-import { API_CONFIG, DATABASE_CLIENT, REDIS_CLIENT } from './tokens.js';
+import { API_CONFIG, DATABASE_CLIENT, EVENT_STORE, REDIS_CLIENT } from './tokens.js';
 
 function createRedisClient(url: string): Redis {
   const logger = new Logger('Redis');
@@ -23,8 +23,9 @@ function createRedisClient(url: string): Redis {
 }
 
 /**
- * Shared clients for PostgreSQL (durable events) and Redis (BullMQ jobs only, ADR-0005).
- * Clients are created by factories so they exist only once Nest instantiates the module.
+ * Shared clients for PostgreSQL (durable events) and Redis (BullMQ jobs only, ADR-0005), and
+ * the single EventStore every module appends through. Clients are created by factories so
+ * they exist only once Nest instantiates the module.
  */
 @Global()
 @Module({})
@@ -50,8 +51,13 @@ export class InfrastructureModule implements OnApplicationShutdown {
           useFactory: (cfg: ApiConfig) => createRedisClient(cfg.redisUrl),
           inject: [API_CONFIG],
         },
+        {
+          provide: EVENT_STORE,
+          useFactory: (db: DatabaseClient) => createEventStore(db),
+          inject: [DATABASE_CLIENT],
+        },
       ],
-      exports: [API_CONFIG, DATABASE_CLIENT, REDIS_CLIENT, BullModule],
+      exports: [API_CONFIG, DATABASE_CLIENT, REDIS_CLIENT, EVENT_STORE, BullModule],
     };
   }
 
