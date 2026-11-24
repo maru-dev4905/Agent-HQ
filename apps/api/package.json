@@ -23,6 +23,7 @@
     "rxjs": "7.8.2"
   },
   "devDependencies": {
-    "@nestjs/testing": "12.6.0"
+    "@nestjs/testing": "12.6.0",
+    "@agent-hq/simulator": "workspace:*"
   }
 }

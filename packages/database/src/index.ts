@@ -47,7 +47,15 @@ export type {
   ExpectedConnectionState,
   ExternalRef,
   StoredEvent,
+  TransactionOptions,
 } from './event-store.js';
+export { readProjections } from './projection-store.js';
+export type {
+  AgentStateRow,
+  OrderKey,
+  ProjectionTransaction,
+  TaskStateRow,
+} from './projection-store.js';
 
 export { createConnectionStore } from './connection-store.js';
 export type { ConnectionRecord, ConnectionStore, NewConnection } from './connection-store.js';

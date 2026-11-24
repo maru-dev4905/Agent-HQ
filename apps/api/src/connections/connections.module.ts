@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Module, type DynamicModule } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { createConnectionStore, createEventStore, type DatabaseClient } from '@agent-hq/database';
+import { createConnectionStore, type DatabaseClient } from '@agent-hq/database';
 import { DATABASE_CLIENT } from '../tokens.js';
 import {
   ConnectionHealthProcessor,
@@ -15,12 +15,14 @@ import {
   CLOCK,
   CONNECTION_SETTINGS,
   CONNECTION_STORE,
-  EVENT_STORE,
   ID_GENERATOR,
   type ConnectionSettings,
 } from './tokens.js';
 
-/** Connection registration, token authentication and health tracking (HQ-103). */
+/**
+ * Connection registration, token authentication and health tracking (HQ-103). The EventStore
+ * comes from the global InfrastructureModule.
+ */
 @Module({})
 export class ConnectionsModule {
   static forSettings(settings: ConnectionSettings): DynamicModule {
@@ -37,18 +39,13 @@ export class ConnectionsModule {
           useFactory: (db: DatabaseClient) => createConnectionStore(db),
           inject: [DATABASE_CLIENT],
         },
-        {
-          provide: EVENT_STORE,
-          useFactory: (db: DatabaseClient) => createEventStore(db),
-          inject: [DATABASE_CLIENT],
-        },
         ConnectionsService,
         ConnectionHealthService,
         ConnectionHealthProcessor,
         ConnectionTokenGuard,
       ],
       // HQ-105 (ingestion) reuses the guard and its dependencies.
-      exports: [ConnectionTokenGuard, CONNECTION_STORE, EVENT_STORE, CLOCK, ID_GENERATOR],
+      exports: [ConnectionTokenGuard, CONNECTION_STORE, CLOCK, ID_GENERATOR],
     };
   }
 }

@@ -1,7 +1,6 @@
 import type { HeartbeatThresholds } from '@agent-hq/domain';
 
 export const CONNECTION_STORE = Symbol('CONNECTION_STORE');
-export const EVENT_STORE = Symbol('EVENT_STORE');
 export const CLOCK = Symbol('CLOCK');
 export const ID_GENERATOR = Symbol('ID_GENERATOR');
 export const CONNECTION_SETTINGS = Symbol('CONNECTION_SETTINGS');

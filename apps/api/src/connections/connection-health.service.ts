@@ -1,11 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConnectionRecord, ConnectionStore, EventStore } from '@agent-hq/database';
 import { applyConnectionStatus, type ApplyStatusResult } from './apply-status.js';
+import { EVENT_STORE } from '../tokens.js';
 import {
   CLOCK,
   CONNECTION_SETTINGS,
   CONNECTION_STORE,
-  EVENT_STORE,
   ID_GENERATOR,
   type Clock,
   type ConnectionSettings,

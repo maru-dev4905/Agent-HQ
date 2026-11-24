@@ -9,6 +9,7 @@ import {
 } from '@agent-hq/database';
 import { DEFAULT_HEARTBEAT_THRESHOLDS, type HeartbeatThresholds } from '@agent-hq/domain';
 import { applyConnectionStatus } from '../connections/apply-status.js';
+import { replayProjections } from '../projection/projection.service.js';
 import { generateSecret, hashSecret, REGISTRATION_CODE_PREFIX } from '../connections/secrets.js';
 
 /** Phase 1 runs a single local workspace (security §5). */
@@ -17,7 +18,9 @@ export const REGISTRATION_CODE_TTL_MS = 10 * 60_000;
 
 const USAGE = `Usage: agent-hq-admin <command>
   registration-code     Create a one-time code (valid 10 minutes) to register a connection
-  revoke <connectionId> Revoke a connection's token`;
+  revoke <connectionId> Revoke a connection's token
+  replay [workspaceId]  Rebuild read models from the event log (default: local).
+                        Offline operation: appends to the workspace wait (and may time out) while it runs`;
 
 export interface AdminIo {
   store: ConnectionStore;
@@ -73,6 +76,13 @@ export async function runAdmin(argv: string[], io: AdminIo): Promise<void> {
       return;
     }
     io.stdout(`revoked ${target}\n`);
+    return;
+  }
+
+  if (command === 'replay' && rest.length <= 1) {
+    const workspaceId = rest[0] ?? LOCAL_WORKSPACE.id;
+    const applied = await replayProjections(io.events, workspaceId);
+    io.stdout(`replayed ${applied} events into read models of ${workspaceId}\n`);
     return;
   }
 

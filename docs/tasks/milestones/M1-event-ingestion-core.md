@@ -177,10 +177,10 @@
 - Risks: 동기 Projection 갱신이 처리량을 낮출 수 있다 → HQ-112에서 측정
 
 ### HQ-106 — Projector + Projections + Replay
-- Status: Backlog · Risk: High · Role: Worker → Reviewer
+- Status: In Review (2026-11-24) · Risk: High · Role: Worker → Reviewer
 - Objective: Event로 `agent_current_state`, `task_current_state`, `connection_health`, Timeline용 Read Model을 만들고, 전체 재생성을 지원한다.
 - Background: event-schema §6, domain-model 통합 노트 N1, FR-005, NFR-004, RSK-006
-- Scope: 순수 함수 `apply(state, event)`, `sequence`가 있으면 그 순서로 적용, `observedStatus`와 `rawStatus` 보존, `lastSeenAt`, Replay 명령, 적용 인터페이스(**먼저 커밋**)
+- Scope: 순수 함수 `apply(state, event)`, 이벤트 순서는 전순서 규칙(event-schema 통합 노트 N8: 발생 시각 → 세션 → `sequence` → idempotencyKey)으로 판정, `observedStatus`와 `rawStatus` 보존, `lastSeenAt`, Replay 명령, 적용 인터페이스(**먼저 커밋**)
 - Out of Scope: 스냅샷, Gap 판정(HQ-108)
 - Interfaces: Consumes EventStore / Produces Projector 인터페이스, Read Model 테이블
 - Dependencies: HQ-104
@@ -190,6 +190,16 @@
   - [ ] 같은 세션의 Event가 순서를 바꿔 도착해도 최종 상태가 같다 (`sequence`가 있을 때)
   - [ ] 이벤트가 없다는 이유로 `idle`이 되지 않는다
 - Verification: High 기준 Gate
+- 범위 정리 (2026-11-24): `connection_health`는 HQ-103이 만든 `connections.status`와 `connection.health.changed` 이벤트가 맡으므로 별도 테이블을 두지 않는다. Timeline은 이벤트 로그 자체를 조회하므로 HQ-107(Query API)에서 다룬다. `apply` 인터페이스(`applyProjections(tx, event)`)는 이 Task와 함께 커밋된다(HQ-105가 같은 트랜잭션에서 호출)
+- Execution Log:
+  #### Run 2026-11-24-1
+  - agent_id: claude-code:main (Worker), claude-code:subagent:general-purpose (로컬 Reviewer) · status: In Review
+  - result: `agent_current_state`·`task_current_state` Read Model과 migration 2개, `ProjectionTransaction`(이벤트 트랜잭션 안에서 조회·저장), 순수 Projector(`projectAgent`, `projectTask`, `isNewer`), `applyProjections`·`replayProjections`, 관리 CLI `replay`, `EVENT_STORE`를 전역 Infrastructure 모듈로 이동. 테스트에서만 시뮬레이터를 쓰도록 `@agent-hq/simulator` devDependency와 lint 예외 추가
+  - 로컬 리뷰 1회차: Request Changes (Major 3: 동률을 도착 순서로 처리, 비교 규칙의 순환, 식별 필드가 늦게 온 이벤트로 지워짐. Minor 6, Nit 1) → 반영: 전순서 비교(event-schema N8), 필드별 순서 키, `lastReceivedAt` 추가, Read Model 복합 FK, 상태 매핑 문서화(domain-model N4), Replay 오프라인 운영 명시(TD-005), 직접 만든 반례 테스트(동률·부분 식별·시계 역행·순환), lint 예외를 원래 목록에서 생성
+  - mutation 확인: 비교 함수를 "항상 새로움"으로 망가뜨리면 순서 무관성 테스트 3개가 실패, 동률을 저장 순서로 처리하면 반례 테스트가 실패
+  - 로컬 리뷰 2회차: Approve. 남은 지적: Task 범위 문구가 N8과 어긋남 → 수정. 첫 migration으로 만들어진 Read Model 행은 이전 orderKeys 형식 → migration 후 `replay` 필요(changelog 기록, dev DB에는 해당 행 없음 확인). `agent.completed → idle`은 사용자 결정 대기
+  - Coordinator 통합 변경: `connections/connection-health.service.ts`는 `EVENT_STORE` import 경로만 바뀜(HQ-103 모듈)
+  - verification: `pnpm verify` exit 0 (단위 131개), `pnpm test:integration` 41개 통과
 
 ### HQ-107 — Query API + Realtime(SSE, Cursor Replay)
 - Status: Backlog · Risk: Medium · Role: Worker → Reviewer

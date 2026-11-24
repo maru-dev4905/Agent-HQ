@@ -230,3 +230,21 @@ Workspace(로컬 단일), Project(선택), AgentConnection, AgentInstance, Task(
 
 ### N3. 이전 초안과의 관계
 초안 v0(Workspace/Agent/Session/Task/Delegation, snake_case Envelope)은 Deprecated다. 이전 내용은 커밋 `1234b4b`에 있다. Session은 `source.externalSessionId`와 AgentInstance로, Delegation은 `parentAgentInstanceId`와 Task의 `parentTaskId`로 표현한다.
+
+### N4. 이벤트 → 상태 매핑 (HQ-106, 2026-11-24, Proposed)
+| 이벤트 | Agent `observedStatus` | 비고 |
+|---|---|---|
+| `agent.connected`, `agent.started` | `connected` | 세션 시작 확인, 활동 신호 전 (N1) |
+| `agent.status.changed` | payload의 `status` | Runtime이 직접 보고 |
+| `agent.completed` | `idle` (`rawStatus = completed`) | **사용자 확인 필요**: "완료"를 대기(`idle`)로 볼지, 별도 상태가 필요한지 |
+| `agent.failed` | `failed` | |
+| `agent.disconnected` | `disconnected` | 명시적 해제 신호만 (N1) |
+| `tool.call.*` | 바꾸지 않음 | 도구 이벤트로 먼저 보인 Agent는 `unknown`으로 시작 |
+| (신호 없음, 연결 끊김) | — | `unknown` 판정은 HQ-108 |
+
+| 이벤트 | Task `status` |
+|---|---|
+| `task.created` | `queued` |
+| `task.started` | `running` |
+| `task.completed` | `succeeded` |
+| `task.failed` | `failed` |
