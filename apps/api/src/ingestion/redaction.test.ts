@@ -46,6 +46,12 @@ describe('redactText', () => {
     expect(redactText(fake('postgres://user:', 's3cretpw', '@db:5432/x'))).toBe(
       'postgres://user:[REDACTED:url-credentials]@db:5432/x',
     );
+    // Diff lines put `+`, `-` or `.` right before the scheme.
+    for (const lead of ['+', '-', '.', ' ']) {
+      expect(redactText(fake(lead, 'https://reader:', 'S3cretPw', '@db'))).toBe(
+        `${lead}https://reader:[REDACTED:url-credentials]@db`,
+      );
+    }
   });
 
   it('masks credential assignments in env, JSON and Python forms (review #2)', () => {
@@ -119,7 +125,7 @@ describe('redactSecrets', () => {
 describe('redactText performance', () => {
   it('stays linear on long adversarial input (ReDoS, PR #5 review)', () => {
     // 65,000 characters is about the largest string one 64 KiB event can carry.
-    const shapes = ['a_', 'a-', 'a', 'token', 'x:/', 'Bearer ', 'aa://b'];
+    const shapes = ['a_', 'a-', 'a', 'token', 'x:/', 'Bearer ', 'aa://b', '://a:', '+a://b:c'];
     for (const shape of shapes) {
       const input = shape.repeat(Math.ceil(65_000 / shape.length));
       const started = performance.now();

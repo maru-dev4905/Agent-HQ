@@ -73,8 +73,9 @@ const SECRET_PATTERNS: readonly SecretPattern[] = [
   },
   {
     kind: 'url-credentials',
-    // The lookbehind makes the scheme start only once per word (linear scan, not quadratic).
-    pattern: /((?<![a-z0-9+.-])[a-z][a-z0-9+.-]*:\/\/[^\s/:@]+:)[^\s/@]+(?=@)/gi,
+    // Anchored on the literal `://`, not the scheme: any scheme and any preceding character
+    // (`+https://` in a diff) match, and the scan stays linear (PR #5 review).
+    pattern: /(:\/\/[^\s/:@]+:)[^\s/@]+(?=@)/g,
     keepGroup: 1,
   },
 ];
