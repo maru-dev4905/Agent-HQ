@@ -220,16 +220,22 @@ describe('ingestion (HTTP + PostgreSQL)', () => {
         externalToolCallId: 'call-1',
         inputSummary: `git push https://x:${SECRET}@github.com/o/r`,
         command: 'unknown field with marker-text-123',
+        ['k'.repeat(200)]: 'over-long unknown key',
       },
     };
     const response = await post(token, { events: [toolCall] });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
-      results: [{ ignoredFields: ['payload.command'], redactedFields: ['payload.inputSummary'] }],
+      results: [
+        {
+          ignoredFields: ['payload.command', '[field name too long]'],
+          redactedFields: ['payload.inputSummary'],
+        },
+      ],
     });
 
-    const raw = await db.$queryRawUnsafe<{ payload: unknown }[]>('SELECT payload FROM events');
-    const all = JSON.stringify(raw);
+    // Every event of this test is in workspace `local`, which storedEvents() reads.
+    const all = JSON.stringify((await storedEvents()).map((event) => event.payload));
     expect(all).not.toContain(SECRET);
     expect(all).not.toContain('marker-text-123');
     expect(all).toContain('[REDACTED:');

@@ -9,6 +9,7 @@
 - [Security] 2차 Secret 마스킹, 전역 Host/Origin Guard(T3), body 4 MiB·이벤트 64 KiB·배치 500개 상한과 Connection별 rate limit(T8), 짝 없는 서로게이트 거부
 - [Added] 환경 변수 `API_ALLOWED_HOSTS`, `API_ALLOWED_ORIGINS`, `INGEST_RATE_EVENTS_PER_SECOND`, `INGEST_RATE_BURST_EVENTS` (모두 선택)
 - [Added] TD-006, ISS-002. [Changed] RSK-019 측정값, HQ-112 측정 항목
+- [Security] 마스킹 정규식을 선형 시간으로 수정(ReDoS, PR #5 리뷰). 마스킹 결과가 이전 커밋과 같아 저장된 이벤트의 내용 해시에는 영향이 없다(아직 머지 전)
 - **운영 메모**: Host/Origin 검사는 모든 경로에 적용된다. 브라우저에서 API를 직접 부르려면 그 Origin을 `API_ALLOWED_ORIGINS`에 넣어야 한다
 
 ## 2026-11-24 — HQ-106 Projector + Replay (Done, PR #4)

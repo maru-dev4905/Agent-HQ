@@ -22,9 +22,14 @@ interface SecretPattern {
 const secretValue = (chars: string, marks: string, min: number) =>
   `(?!\\[REDACTED)(?:(?=${chars}*${marks})${chars}{${min},}|${chars}{16,})`;
 
-/** Credential-like key names, also inside longer names such as `GITHUB_TOKEN` or `"api_key"`. */
+/**
+ * Credential-like key names, also as the last part of longer names such as `GITHUB_TOKEN`
+ * or `"api_key"`: `_` and `-` are not letters or digits, so the lookbehind lets a keyword
+ * start right after them. Matching starts only at the keyword itself, which keeps the scan
+ * linear in the input length (a free-form prefix group made it quadratic: PR #5 review).
+ */
 const CREDENTIAL_KEY =
-  '(?<![A-Za-z0-9])(?:[A-Za-z0-9]+[_-])*(?:password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret)';
+  '(?<![A-Za-z0-9])(?:password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret)';
 
 const SECRET_PATTERNS: readonly SecretPattern[] = [
   {
@@ -68,7 +73,8 @@ const SECRET_PATTERNS: readonly SecretPattern[] = [
   },
   {
     kind: 'url-credentials',
-    pattern: /(\b[a-z][a-z0-9+.-]*:\/\/[^\s/:@]+:)[^\s/@]+(?=@)/gi,
+    // The lookbehind makes the scheme start only once per word (linear scan, not quadratic).
+    pattern: /((?<![a-z0-9+.-])[a-z][a-z0-9+.-]*:\/\/[^\s/:@]+:)[^\s/@]+(?=@)/gi,
     keepGroup: 1,
   },
 ];

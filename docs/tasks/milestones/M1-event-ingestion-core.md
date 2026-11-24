@@ -183,6 +183,7 @@
   - 로컬 리뷰 1회차: Request Changes (Major 2: 짝 없는 서로게이트가 500을 냄, 흔한 Secret 형태(`GITHUB_TOKEN=`, JSON `"password"`) 미마스킹. Minor 4, Nit 5) → 전부 반영: Unicode 검사(400, ISS-002), 패턴 보강·오탐 축소와 테스트, 처리 순서 문서 정정, RSK-019 측정 기록, 로그용 필드 이름의 제어 문자 치환, Host 설정의 포트 무시, 마스킹 범위·rate 차감 시점 문서화
   - 로컬 리뷰 2회차: Approve (Minor 2, Nit 3) → 반영: 값 뒤 기호로 인한 오탐 수정(패턴별 기호 집합), 알려진 누락을 테스트와 RSK-002에 고정, 오류 표에 Unicode 추가. 남긴 것: `max_token=4096` 같은 숫자 설정값 오탐, URL 안 assignment가 호스트까지 가리는 것(원문 유출 없음)
   - verification: `pnpm verify` 통과(단위 156개), `pnpm test:integration` 통과(51개, Ingestion 10개). 변이 검사: 마스킹 제거·충돌 무시·소유권 검사 제거 각각 해당 테스트가 실패함. 시뮬레이터 HTTP 전송 모드를 실제 서버에 보내 검증함(HQ-102의 남은 검증)
+  - PR #5 CodeRabbit 1차: CHANGES_REQUESTED (Major 1: 긴 필드 이름·문자열에서 마스킹 정규식이 이차 시간(ReDoS, 32,000자 키 약 2초). Minor 1: 검증 조회에 raw SQL 사용. 제목 형식 경고) → 반영: 키워드와 URL scheme에서만 매칭을 시작하게 해 선형 시간으로 바꿈(Node 26, 64,000자 입력 1ms 미만), 128자 초과 필드 이름은 마스킹 전에 고정값으로 대체, 성능 회귀 테스트, 저장소 API로 조회, 제목 `HQ-105: …`
   - AC: 무효 거부(필드별)·중복 미저장·시각 분리 ✅ · 토큰과 다른 workspace/connection 거부, 저장본 connectionId ✅ · Secret redaction test ✅ · Host/Origin·크기·빈도 초과 거부 ✅ · 로그에 payload 원문 없음 ✅ · Connection별 외부 ID 분리 ✅
 
 ### HQ-106 — Projector + Projections + Replay

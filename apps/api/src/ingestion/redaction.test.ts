@@ -115,3 +115,17 @@ describe('redactSecrets', () => {
     expect(result.redactedFields).toEqual(['payload.inputSummary', 'payload.nested.list.1']);
   });
 });
+
+describe('redactText performance', () => {
+  it('stays linear on long adversarial input (ReDoS, PR #5 review)', () => {
+    // 65,000 characters is about the largest string one 64 KiB event can carry.
+    const shapes = ['a_', 'a-', 'a', 'token', 'x:/', 'Bearer ', 'aa://b'];
+    for (const shape of shapes) {
+      const input = shape.repeat(Math.ceil(65_000 / shape.length));
+      const started = performance.now();
+      redactText(input);
+      // Quadratic behaviour took seconds here; linear takes a few milliseconds.
+      expect(performance.now() - started).toBeLessThan(250);
+    }
+  });
+});

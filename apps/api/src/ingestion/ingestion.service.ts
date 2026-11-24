@@ -45,6 +45,7 @@ export class RateLimitedException extends HttpException {
 }
 
 const MAX_FIELD_NAME_LENGTH = 128;
+const LONG_FIELD_NAME = '[field name too long]';
 // eslint-disable-next-line no-control-regex -- matching control characters is the point
 const CONTROL_CHARS = /[\u0000-\u001F\u007F]/g;
 
@@ -214,8 +215,11 @@ export class IngestionService {
     } as AgentEvent;
     // Field names come from the source too: mask and bound them before echoing or logging.
     // Control characters are replaced so a key name cannot forge log lines.
+    // An over-long name is replaced, not cut: a cut could split a secret past its pattern.
     const names = ignoredFields.map((name) =>
-      redactText(name).replace(CONTROL_CHARS, '?').slice(0, MAX_FIELD_NAME_LENGTH),
+      name.length > MAX_FIELD_NAME_LENGTH
+        ? LONG_FIELD_NAME
+        : redactText(name).replace(CONTROL_CHARS, '?'),
     );
     return { event, ignoredFields: names, redactedFields };
   }
