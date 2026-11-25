@@ -95,13 +95,15 @@ scratch 프로젝트(저장소 밖)의 `.claude/settings.local.json`에만 `asyn
   1. 그 호출에 `PreToolUse`가 없었다(실행 전 거부, 실험 3~5).
   2. 같은 도구에 대한 `PermissionRequest`가 있었고, 그 뒤 같은 세션의 **다음 진행 신호**(다음 `PreToolUse`·`UserPromptSubmit`·`Stop`·`SessionEnd`) 또는 유예 시간(예: 5초)까지 Post가 오지 않았다.
   3. 그 외에는 유예 시간이 지나도 Post가 없을 때.
-  확정 전에 Post가 오면 `completed`/`failed`로 보낸다. Event 로그는 append-only라 이미 보낸 기록을 고칠 수 없으므로, **정정 대신 확정을 늦춘다.** 유예 시간을 넘겨 도착한 Post는 별도 이벤트로 그대로 보내고(같은 `tool_use_id`의 다른 단계라 멱등 키가 다름), 도구 Read Model(M3)은 두 기록이 있음을 그대로 보여 준다(추정해서 하나를 지우지 않음).
-- **순서를 보존하는 쪽이 낫다.** 도구 hook(`PreToolUse`·`PostToolUse`·`PostToolUseFailure`·`PostToolBatch`)은 `async` 대신 **빠르게 끝나는 동기 hook**(outbox에 한 줄 쓰고 종료)으로 두면 Claude Code의 실행 순서대로 Bridge에 도착한다. 실패해도 차단하지 않는 성질(0·1 종료 코드, `onFailure` 없음)은 동기 hook도 같다. M2에서 동기 hook의 지연을 측정해 정한다.
+  확정 전에 Post가 오면 `completed`/`failed`로 보낸다. Event 로그는 append-only라 이미 보낸 기록을 고칠 수 없으므로, **정정 대신 확정을 늦춘다.** 유예 시간을 넘겨 도착한 Post는 별도 이벤트로 그대로 보낸다. 이를 위해 `not_executed`는 **멱등 키의 단계 값을 `not_executed`로** 따로 둔다(`failed`와 같은 키를 쓰면 뒤늦은 `PostToolUseFailure`가 중복으로 버려진다, 5.5). 도구 Read Model(M3)은 두 기록이 있음을 그대로 보여 준다(추정해서 하나를 지우지 않음).
+- **순서를 보존하는 쪽이 낫다.** 도구 hook(`PreToolUse`·`PostToolUse`·`PostToolUseFailure`·`PostToolBatch`)과 subagent hook(`SubagentStart`·`SubagentStop`)은 `async` 대신 **빠르게 끝나는 동기 hook**(outbox에 한 줄 쓰고 종료)으로 두면 Claude Code의 실행 순서대로 Bridge에 도착한다. 실패해도 차단하지 않는 성질(0·1 종료 코드, `onFailure` 없음)은 동기 hook도 같다.
+- **동기 hook에는 짧은 `timeout`을 반드시 준다**(예: 2초). 기본값은 600초라, outbox 쓰기가 멈추면 도구 실행이 그만큼 지연될 수 있다. 문서상 timeout은 `onFailure: "block"`이 없으면 차단하지 않는 오류로 처리되고 출력은 버려진다(§2.1, 5.1) — 그 경우 해당 이벤트가 유실되며, 그 유실은 Bridge 순번에 구멍을 만들지 않으므로 Gap으로도 잡히지 않는다(한계로 기록). 값은 M2에서 지연을 측정해 정한다.
 - **끝나지 않은 Tool**: SIGTERM으로 끝난 세션은 실행 중이던 도구의 종료 이벤트를 남기지 않는다(실험 6). `SessionEnd` 시점에 열린 호출을 "실패"로 만들면 추정이 되므로, Bridge는 **열린 호출을 그대로 두고** 세션 종료만 보낸다. Dashboard는 Agent가 `disconnected`이고 도구가 끝나지 않았음을 그대로 보여 준다. 열린 호출을 별도로 표시할지는 M2 UI에서 정한다.
 
 ### 5.5 멱등 키
 - 도구: `<session_id>:<tool_use_id>:<started|completed|failed>`. 세션·상태 이벤트: `<session_id>:<hook_event_name>:<Bridge 순번>`(hook 입력에 이벤트 고유 ID가 없음).
-- subagent: `<session_id>:<agent_id>:<실행 순번>:<started|completed>`. **재개된 subagent는 같은 `session_id`와 `agent_id`로 다시 `SubagentStart`를 보내므로**(문서: "subagent 시작·재개"), 실행을 구분하는 값이 없으면 재개 실행이 중복으로 버려진다. Bridge가 `agent_id`별로 `SubagentStart`마다 실행 순번을 올리고, 그 실행의 `SubagentStop`과 도구 이벤트에 같은 순번을 붙인다(PR #9 리뷰).
+- subagent: `<session_id>:<agent_id>:<실행 순번>:<started|completed>`. **재개된 subagent는 같은 `session_id`와 `agent_id`로 다시 `SubagentStart`를 보내므로**(문서: "subagent 시작·재개"), 실행을 구분하는 값이 없으면 재개 실행이 중복으로 버려진다. Bridge가 `agent_id`별로 `SubagentStart`마다 실행 순번을 올린다. `SubagentStop`은 **그 `agent_id`의 열린 실행 중 가장 먼저 시작한 것**에 붙인다(FIFO). 재개는 이전 실행이 끝난 뒤에만 시작되므로, 지연된 이전 실행의 Stop이 재개 실행의 Start보다 늦게 도착해도 올바른 실행에 연결된다. subagent hook을 동기로 두면(5.4) 이 역전 자체가 줄어든다.
+- 도구 단계 값: `started`, `completed`, `failed`, `not_executed`(5.4) — 단계마다 키가 다르므로 뒤늦은 실제 종료 신호가 보존된다.
 
 ## 6. Event 계약 대조 결과 (HQ-101, M1 종료 조건 9)
 - **결론: 계약을 깨는 변경은 필요 없다. ADR 없이 schemaVersion 1을 유지한다.** 위 매핑은 현재 Envelope(`source.externalSessionId`·`externalAgentId`, `sequence`, `timestampQuality: "collected"`)와 MVP Type, 기존 payload 필드(`toolName`, `externalToolCallId`, `serverName`, `durationMs`, `errorCode`, `roleHint`, `parentExternalAgentId`, `reason`, `rawStatus`)로 모두 표현된다.
