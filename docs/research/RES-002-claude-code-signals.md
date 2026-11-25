@@ -71,7 +71,7 @@ scratch 프로젝트(저장소 밖)의 `.claude/settings.local.json`에만 `asyn
 | | `StopFailure` | `agent.failed`(`errorCode` = matcher 값, 예: `rate_limit`) | [문서] |
 | Subagent 시작/종료 | `SubagentStart` / `SubagentStop` | `agent.started`(`externalAgentId = agent_id`, `roleHint = agent_type`, `parentExternalAgentId` = 메인 Agent) / `agent.completed` | [문서]+[실험] |
 | Tool 시작/완료/실패 | `PreToolUse` / `PostToolUse` / `PostToolUseFailure` | `tool.call.started` / `completed`(`durationMs = duration_ms`) / `failed`(`is_interrupt` → `errorCode: "interrupted"`). `externalToolCallId = tool_use_id`, `serverName = mcp_server.name`, Agent는 `agent_id`(없으면 메인) | [문서]+[실험] |
-| 실행되지 않은 Tool | `PostToolBatch`에 있는데 Post 이벤트가 없는 `tool_use_id` | `tool.call.failed`(`errorCode: "not_executed"` — 권한 거부·실행 전 거부). Pre 없이 Batch에만 있는 호출도 같은 규칙(그 경우 `started` 없이 `failed`만) | [실험] |
+| 실행되지 않은 Tool | `PostToolBatch`에 있는데 Post 이벤트가 없는 `tool_use_id` | `tool.call.failed`(`errorCode: "not_executed"` — 권한 거부·실행 전 거부). **Post 부재가 확정된 뒤에만** 보낸다(5.4) | [실험] |
 | 부모-자식 관계 | 공통 `agent_id` | subagent의 부모는 메인 Agent로 둔다. subagent 안에서 다시 subagent를 만드는 경우의 부모는 **[미확인]** — 확인 전까지 `parentExternalAgentId`를 비워 두고 추정하지 않는다 | [실험] 일부 |
 | 연결 상태·Gap | (해당 hook 없음) | Bridge heartbeat → `connection.health.changed`. Bridge가 세션별 `sequence`를 매겨 전송 중 유실을 `event.gap.detected`로 드러낸다 | [문서]: heartbeat·sequence 없음 |
 
@@ -82,22 +82,31 @@ scratch 프로젝트(저장소 밖)의 `.claude/settings.local.json`에만 `asyn
 - 프로젝트·로컬 설정의 hook은 전역 hook과 합쳐져 함께 실행되므로, 설치할 때 사용자 전역 설정을 수정할 필요가 없다(RSK-009). 설치 위치(사용자 설정 vs 프로젝트 설정)는 M2에서 사용자 동의 흐름과 함께 정한다.
 
 ### 5.2 콘텐츠(D2/D3)
-- `tool_input`, `tool_response`, `prompt`, `last_assistant_message`, `error`, `Notification.message`는 D2이고 Secret이 섞일 수 있다. 기본 수집은 **길이와 keyed 해시만** 보내고 원문은 보내지 않는다(data-governance N1·N2). 계약의 `inputSummary`·`outputSummary`·`message`는 Workspace opt-in 전까지 비워 둔다. 실험의 기록 스크립트가 이 방식이 가능함을 보였다.
+- `tool_input`, `tool_response`, `prompt`, `last_assistant_message`, `error`, `Notification.message`는 D2이고 Secret이 섞일 수 있다. **기본 수집은 원문을 보내지 않는다.** 계약의 `inputSummary`·`outputSummary`·`message`는 Workspace opt-in 전까지 비워 둔다.
+- data-governance N1은 D2를 "길이와 keyed 해시만 저장"으로 정하지만, **현재 Event 계약에는 길이·해시를 받을 필드가 없다**(정의되지 않은 payload 키는 버려지고 이름만 보고됨, ADR-0006). 그래서 MVP 매핑에서는 길이·해시도 보내지 않는다. 필요하면 M2에서 선택 필드(예: `inputLength`, `inputHash`)를 계약에 추가하는 것을 결정한다 — schemaVersion 1 안의 선택 필드 추가이므로 event-schema 통합 노트와 계약 테스트 갱신으로 처리한다(PR #9 리뷰).
 
 ### 5.3 순서·시각
 - hook 입력에 발생 시각이 없으므로 hook이 실행된 시각(Bridge가 outbox에 적는 시각)을 `occurredAt`으로, `timestampQuality: "collected"`로 보낸다.
 - `sequence`는 Bridge가 세션별로 hook 도착 순서대로 매긴다. 병렬 도구의 Post는 완료 순서로 도착하므로(실험 2) `sequence`는 "도착 순서"이지 "시작 순서"가 아니다. Projection은 도구 상태를 `tool_use_id`로 묶으므로 문제없다. Gap 감지(HQ-108)는 Bridge→HQ 전송 유실만 잡는다(hook 자체가 실행되지 않은 경우는 잡지 못함).
 - heartbeat가 없으므로 Agent 생존은 알 수 없다. Agent 침묵은 Stale 표시로만 보여 주고 `idle`로 추론하지 않는다.
 
-### 5.4 끝나지 않은 Tool
-- SIGTERM으로 끝난 세션은 실행 중이던 도구의 종료 이벤트를 남기지 않는다(실험 6). `SessionEnd` 시점에 열린 호출을 "실패"로 만들면 추정이 되므로, Bridge는 **열린 호출을 그대로 두고** 세션 종료만 보낸다. Dashboard는 Agent가 `disconnected`이고 도구가 끝나지 않았음을 그대로 보여 준다. 열린 호출을 별도로 표시할지는 M2 UI에서 정한다.
+### 5.4 실행되지 않은 Tool과 끝나지 않은 Tool
+- **`not_executed`는 확정된 뒤에만 보낸다.** `async` hook끼리는 도착 순서가 보장되지 않으므로(§2.1), `PostToolBatch`가 같은 호출의 `PostToolUse`보다 먼저 Bridge에 올 수 있다. Bridge는 다음 중 하나일 때만 `not_executed`로 확정한다.
+  1. 그 호출에 `PreToolUse`가 없었다(실행 전 거부, 실험 3~5).
+  2. 같은 도구에 대한 `PermissionRequest`가 있었고, 그 뒤 같은 세션의 **다음 진행 신호**(다음 `PreToolUse`·`UserPromptSubmit`·`Stop`·`SessionEnd`) 또는 유예 시간(예: 5초)까지 Post가 오지 않았다.
+  3. 그 외에는 유예 시간이 지나도 Post가 없을 때.
+  확정 전에 Post가 오면 `completed`/`failed`로 보낸다. Event 로그는 append-only라 이미 보낸 기록을 고칠 수 없으므로, **정정 대신 확정을 늦춘다.** 유예 시간을 넘겨 도착한 Post는 별도 이벤트로 그대로 보내고(같은 `tool_use_id`의 다른 단계라 멱등 키가 다름), 도구 Read Model(M3)은 두 기록이 있음을 그대로 보여 준다(추정해서 하나를 지우지 않음).
+- **순서를 보존하는 쪽이 낫다.** 도구 hook(`PreToolUse`·`PostToolUse`·`PostToolUseFailure`·`PostToolBatch`)은 `async` 대신 **빠르게 끝나는 동기 hook**(outbox에 한 줄 쓰고 종료)으로 두면 Claude Code의 실행 순서대로 Bridge에 도착한다. 실패해도 차단하지 않는 성질(0·1 종료 코드, `onFailure` 없음)은 동기 hook도 같다. M2에서 동기 hook의 지연을 측정해 정한다.
+- **끝나지 않은 Tool**: SIGTERM으로 끝난 세션은 실행 중이던 도구의 종료 이벤트를 남기지 않는다(실험 6). `SessionEnd` 시점에 열린 호출을 "실패"로 만들면 추정이 되므로, Bridge는 **열린 호출을 그대로 두고** 세션 종료만 보낸다. Dashboard는 Agent가 `disconnected`이고 도구가 끝나지 않았음을 그대로 보여 준다. 열린 호출을 별도로 표시할지는 M2 UI에서 정한다.
 
 ### 5.5 멱등 키
-- 도구: `<session_id>:<tool_use_id>:<started|completed|failed>`. 세션·상태 이벤트: `<session_id>:<hook_event_name>:<Bridge 순번>`(hook 입력에 이벤트 고유 ID가 없음). subagent: `<session_id>:<agent_id>:<started|completed>`.
+- 도구: `<session_id>:<tool_use_id>:<started|completed|failed>`. 세션·상태 이벤트: `<session_id>:<hook_event_name>:<Bridge 순번>`(hook 입력에 이벤트 고유 ID가 없음).
+- subagent: `<session_id>:<agent_id>:<실행 순번>:<started|completed>`. **재개된 subagent는 같은 `session_id`와 `agent_id`로 다시 `SubagentStart`를 보내므로**(문서: "subagent 시작·재개"), 실행을 구분하는 값이 없으면 재개 실행이 중복으로 버려진다. Bridge가 `agent_id`별로 `SubagentStart`마다 실행 순번을 올리고, 그 실행의 `SubagentStop`과 도구 이벤트에 같은 순번을 붙인다(PR #9 리뷰).
 
 ## 6. Event 계약 대조 결과 (HQ-101, M1 종료 조건 9)
 - **결론: 계약을 깨는 변경은 필요 없다. ADR 없이 schemaVersion 1을 유지한다.** 위 매핑은 현재 Envelope(`source.externalSessionId`·`externalAgentId`, `sequence`, `timestampQuality: "collected"`)와 MVP Type, 기존 payload 필드(`toolName`, `externalToolCallId`, `serverName`, `durationMs`, `errorCode`, `roleHint`, `parentExternalAgentId`, `reason`, `rawStatus`)로 모두 표현된다.
-- 표현 규약으로 정할 것(M2 Adapter 계약 테스트에 넣는다): `errorCode` 값 `interrupted`, `not_executed`; 메인 Agent 외부 ID 규칙; `Stop` → 상태 매핑.
+- 표현 규약으로 정할 것(M2 Adapter 계약 테스트에 넣는다): `errorCode` 값 `interrupted`, `not_executed`(확정 조건 5.4); 메인 Agent 외부 ID 규칙; subagent 실행 순번을 넣은 멱등 키(5.5); `Stop` → 상태 매핑.
+- M2에서 결정할 선택 필드 추가 후보: D2 콘텐츠의 길이·keyed 해시(5.2). 지금 매핑에는 필요하지 않다.
 - **사용자 결정 필요**: `Stop`(응답을 마치고 사용자 입력을 기다림)을 `waiting`으로 볼지 `idle`로 볼지. domain-model N1은 `idle`을 "Runtime이 명시적인 신호로 대기 상태를 보고했을 때"로 정의한다. 이 문서는 사람의 다음 입력을 기다리는 상태라 `waiting`을 제안한다(`agent.completed` → `idle` 매핑과 구분).
 - Task: hook에 Agent HQ Task에 해당하는 신호가 확인되지 않았다(`TaskCreated`/`TaskCompleted` 미관찰). adapter-spec 비목표에 따라 Claude Code Adapter는 `task.*`를 만들지 않는다.
 - HQ-108의 Open 항목(연결 끊김 해제 기준): Claude Code에는 heartbeat가 없고 `occurredAt`은 Bridge가 hook 실행 시각으로 찍는다. Bridge outbox가 재연결 후 끊기기 전 이벤트를 flush하면 현재 규칙(끊긴 뒤 무엇이든 받으면 해제)에 따라 `unknown`이 풀린다. 이를 막으려면 해제 기준을 "끊긴 시각 이후의 `occurredAt`"으로 바꿔야 하는데, Bridge 시계와 서버 시계가 같은 기계라는 MVP 전제에서만 안전하다. **M2 Bridge 설계 때 결정**하도록 넘긴다.
