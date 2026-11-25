@@ -307,3 +307,26 @@ agent-hq/
 ### N5. Open Questions
 - Web(Next.js)을 Compose에 넣을지, 개발 서버로만 실행할지 (HQ-003)
 - §9 API path와 error envelope는 HQ-105·HQ-107에서 계약으로 확정한다
+
+### N6. API 계약 — Ingestion (HQ-105, 2026-11-24)
+§9의 `POST /events:ingest` 후보를 다음으로 확정한다. 스키마의 단일 원천은 `packages/contracts/src/ingestion/`이다.
+- **경로**: `POST /events`. 단건도 배치로 보낸다. body는 `{ "events": [ ... ] }`이고 이벤트는 1~500개(`INGEST_LIMITS.maxBatchEvents`)다. 인증은 `Authorization: Bearer <connection token>`이다.
+- **배치는 원자적**이다. 전부 저장(또는 중복 인식)되거나 아무것도 저장되지 않는다. Source는 거부된 배치를 고쳐서 다시 보내거나, 응답의 `issues[].path`(`events.<index>.…`)가 가리키는 이벤트를 빼고 보낸다. 같은 배치를 다시 보내도 안전하다(멱등).
+- **처리 순서**: Fastify 라우팅과 body 파싱(없는 경로 404, JSON 아님 415, 깨진 JSON 400, 4 MiB 초과 413) → Host/Origin 검사(전역 Guard) → 토큰 인증 → body 형태 → 이벤트 수 상한 → Connection별 rate limit → 이벤트별 크기·Unicode·계약 검증 → `workspaceId`·`connectionId` 대조 → 2차 마스킹 → 한 트랜잭션에서 외부 ID 매핑·append(Outbox 포함)·Projection 적용. 파싱 단계의 오류는 Guard보다 먼저 나지만 고정 메시지만 돌려주고 아무것도 저장하지 않는다.
+- **rate limit은 검증보다 먼저 차감한다.** 거부된 배치(400·403·409)도 예산을 쓴다. 폭주하는 Source는 내용과 상관없이 막아야 하기 때문이다 (T8).
+- **2차 마스킹 범위**는 payload 안의 문자열이다(data-governance N2). `correlationId`·`idempotencyKey`·`source.*` 같은 ID는 그대로 저장한다(길이 256 이하, 제어 문자 금지). 마스킹한 문자열은 `[REDACTED:<종류>]`로 바뀌므로 원래 길이 상한(500자)을 넘을 수 있다. 저장본을 다시 검증하는 경로가 생기면 이를 고려한다(TD-004). 패턴은 완전하지 않다(RSK-002).
+- **마스킹 패턴을 바꾸면** 바꾸기 전에 저장된 이벤트를 Source가 다시 보낼 때 내용 해시가 달라져 409가 날 수 있다. 패턴 변경은 changelog에 기록한다.
+- **응답 200**: `{ results: [{ idempotencyKey, status: "stored" | "duplicate", storeSequence, ignoredFields, redactedFields }] }`. 요청 순서대로이고, `storeSequence`는 10진 문자열이다. `ignoredFields`·`redactedFields`에는 필드 이름만 들어간다.
+- **오류** (envelope `{ error: { code, message, issues? } }`):
+
+| HTTP | code | 언제 |
+|---|---|---|
+| 400 | `VALIDATION_FAILED` | body 형태 오류, 이벤트 계약 위반, 이벤트 하나가 64 KiB 초과, 짝 없는 서로게이트 같은 잘못된 Unicode |
+| 401 | `AUTHENTICATION_FAILED` | 토큰 없음·무효·폐기·만료 (구분하지 않음) |
+| 403 | `FORBIDDEN` | 허용되지 않은 Host·Origin, body의 `workspaceId`·`connectionId`가 토큰과 다름 |
+| 409 | `CONFLICT` | 같은 idempotencyKey로 내용이 다른 이벤트가 이미 저장됨, 또는 `id` 중복 |
+| 413 | `PAYLOAD_TOO_LARGE` | 이벤트 500개 초과, 요청 body 4 MiB 초과 |
+| 429 | `RATE_LIMITED` | Connection별 이벤트 수 한도 초과. `Retry-After`(초) 헤더를 준다 |
+
+- **Host/Origin** (security T3): Host는 loopback 이름(`127.0.0.1`, `localhost`, `::1`)과 `API_ALLOWED_HOSTS`만 허용한다. `Origin` 헤더가 있으면 `API_ALLOWED_ORIGINS`에 정확히 있어야 한다. 기본값은 빈 목록이라 브라우저 요청은 모두 거부된다. 모든 경로에 적용되므로, Web UI가 브라우저에서 API를 직접 부르게 되면(HQ-109) 그 Origin을 설정에 추가해야 한다.
+- **Rate limit** (security T8): Connection마다 token bucket을 두고 이벤트 수로 센다. 기본값은 초당 500개, 최대 burst 2000개다(`INGEST_RATE_*`). API 프로세스 메모리에 있으므로 프로세스가 하나일 때만 정확하다 (TD-006).

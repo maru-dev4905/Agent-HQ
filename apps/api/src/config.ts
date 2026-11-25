@@ -1,5 +1,7 @@
 import { DEFAULT_HEARTBEAT_THRESHOLDS } from '@agent-hq/domain';
+import { INGEST_LIMITS } from '@agent-hq/contracts';
 import type { ConnectionSettings } from './connections/tokens.js';
+import type { RateLimitSettings } from './ingestion/rate-limiter.js';
 
 export interface ApiConfig {
   host: string;
@@ -7,6 +9,15 @@ export interface ApiConfig {
   databaseUrl: string;
   redisUrl: string;
   connections: ConnectionSettings;
+  http: HttpSettings;
+  ingestion: RateLimitSettings;
+}
+
+export interface HttpSettings {
+  /** Host header names (without port) the API answers to (security T3, DNS rebinding). */
+  allowedHosts: string[];
+  /** Exact `Origin` values allowed. Requests with any other Origin are rejected. */
+  allowedOrigins: string[];
 }
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
@@ -50,6 +61,26 @@ function tokenTtlDays(env: NodeJS.ProcessEnv): number {
   return days;
 }
 
+function list(env: NodeJS.ProcessEnv, key: string): string[] {
+  return (optional(env, key) ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item !== '');
+}
+
+/** Host header or configured host without its port, lower-cased; `[::1]:4000` → `::1`. */
+export function hostName(header: string): string {
+  const value = header.trim().toLowerCase();
+  if (value.startsWith('[')) {
+    const end = value.indexOf(']');
+    return end === -1 ? value : value.slice(1, end);
+  }
+  // A bare IPv6 address has several colons and no port.
+  if (value.indexOf(':') !== value.lastIndexOf(':')) return value;
+  const colon = value.indexOf(':');
+  return colon === -1 ? value : value.slice(0, colon);
+}
+
 export function isLoopbackHost(host: string): boolean {
   return LOOPBACK_HOSTS.has(host);
 }
@@ -82,7 +113,22 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       },
       healthCheckIntervalMs: positiveInt(env, 'HEALTH_CHECK_INTERVAL_MS', 10_000, true),
     },
+    http: {
+      // Ports are ignored on both sides: `hq.local:4000` in the setting still matches.
+      allowedHosts: [...LOOPBACK_HOSTS, ...list(env, 'API_ALLOWED_HOSTS')].map(hostName),
+      allowedOrigins: list(env, 'API_ALLOWED_ORIGINS'),
+    },
+    ingestion: {
+      eventsPerSecond: positiveInt(env, 'INGEST_RATE_EVENTS_PER_SECOND', 500),
+      burstEvents: positiveInt(env, 'INGEST_RATE_BURST_EVENTS', 2000),
+    },
   };
+  if (config.ingestion.burstEvents < INGEST_LIMITS.maxBatchEvents) {
+    // Otherwise a full batch could never pass the limiter.
+    throw new Error(
+      `INGEST_RATE_BURST_EVENTS must be at least ${INGEST_LIMITS.maxBatchEvents} (the batch limit)`,
+    );
+  }
   const { degradedAfterMs, disconnectedAfterMs } = config.connections.thresholds;
   if (degradedAfterMs >= disconnectedAfterMs) {
     throw new Error('HEARTBEAT_DEGRADED_MS must be smaller than HEARTBEAT_DISCONNECTED_MS');

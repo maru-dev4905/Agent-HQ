@@ -1,15 +1,16 @@
 import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
 import { isLoopbackHost, loadConfig } from './config.js';
+import { createHttpAdapter } from './http/fastify.js';
 
 async function bootstrap(): Promise<void> {
   const config = loadConfig();
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule.forConfig(config),
-    new FastifyAdapter(),
+    createHttpAdapter(),
   );
   app.enableShutdownHooks();
   if (!isLoopbackHost(config.host)) {

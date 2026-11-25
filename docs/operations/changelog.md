@@ -4,7 +4,15 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-24 — HQ-106 Projector + Replay (PR)
+## 2026-11-24 (2) — HQ-105 Ingestion API (PR)
+- [Added] `POST /events` 배치 Ingestion(원자적, 멱등), 계약 `packages/contracts/src/ingestion/`, architecture N6(API 계약·오류 표)
+- [Security] 2차 Secret 마스킹, 전역 Host/Origin Guard(T3), body 4 MiB·이벤트 64 KiB·배치 500개 상한과 Connection별 rate limit(T8), 짝 없는 서로게이트 거부
+- [Added] 환경 변수 `API_ALLOWED_HOSTS`, `API_ALLOWED_ORIGINS`, `INGEST_RATE_EVENTS_PER_SECOND`, `INGEST_RATE_BURST_EVENTS` (모두 선택)
+- [Added] TD-006, ISS-002. [Changed] RSK-019 측정값, HQ-112 측정 항목
+- [Security] 마스킹 정규식을 선형 시간으로 수정(ReDoS, PR #5 리뷰). 마스킹 결과가 이전 커밋과 같아 저장된 이벤트의 내용 해시에는 영향이 없다(아직 머지 전)
+- **운영 메모**: Host/Origin 검사는 모든 경로에 적용된다. 브라우저에서 API를 직접 부르려면 그 Origin을 `API_ALLOWED_ORIGINS`에 넣어야 한다
+
+## 2026-11-24 — HQ-106 Projector + Replay (Done, PR #4)
 - [Added] Read Model `agent_current_state`, `task_current_state` (migration 2개), 순수 Projector(전순서 비교, 필드별 순서 키), `applyProjections`·`replayProjections`, 관리 CLI `replay`
 - [Changed] `EVENT_STORE`를 전역 Infrastructure 모듈과 `apps/api/src/tokens.ts`로 이동
 - [Added] event-schema N8(Projection 순서 규칙), domain-model N4(이벤트→상태 매핑), TD-005(Replay가 append를 막음)
