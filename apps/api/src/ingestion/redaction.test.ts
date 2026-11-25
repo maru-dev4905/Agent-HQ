@@ -128,10 +128,15 @@ describe('redactText performance', () => {
     const shapes = ['a_', 'a-', 'a', 'token', 'x:/', 'Bearer ', 'aa://b', '://a:', '+a://b:c'];
     for (const shape of shapes) {
       const input = shape.repeat(Math.ceil(65_000 / shape.length));
-      const started = performance.now();
-      redactText(input);
-      // Quadratic behaviour took seconds here; linear takes a few milliseconds.
-      expect(performance.now() - started).toBeLessThan(250);
+      redactText(input); // warm up the regex engine
+      // Best of three: parallel test workers add noise; quadratic behaviour took seconds
+      // here, linear takes a few milliseconds, so the bound still tells them apart.
+      const runs = [0, 1, 2].map(() => {
+        const started = performance.now();
+        redactText(input);
+        return performance.now() - started;
+      });
+      expect(Math.min(...runs)).toBeLessThan(250);
     }
   });
 });

@@ -97,3 +97,22 @@
 - Verification Method: HQ-112 부하 측정에서 Gap 감지 한 주기의 실행 시간 측정.
 - Related Tasks: HQ-108, HQ-112
 - Created / Updated: 2026-11-25
+
+### TD-009 — Dashboard CSP가 inline script를 허용한다
+- Status / Priority: Open / Low
+- Description: `apps/web/next.config.ts`의 CSP는 `script-src 'self' 'unsafe-inline'`이다(dev 서버는 `'unsafe-eval'`도). Next.js가 bootstrap script를 inline으로 넣기 때문이다.
+- Impact: XSS가 생기면 CSP가 inline script를 막지 못한다. 1차 방어는 Agent 콘텐츠를 React 텍스트로만 렌더링하는 것이며(테스트 있음), `dangerouslySetInnerHTML`은 쓰지 않는다.
+- Root Cause: nonce 기반 CSP는 요청마다 nonce를 만드는 동적 렌더링(Next.js proxy/middleware)이 필요하다. v0는 정적 페이지다.
+- Proposed Solution: 원격 접근이나 Cloud 배포 전에 nonce 기반 CSP로 바꾼다(Next.js 공식 방식 확인 후).
+- Verification Method: 응답 CSP에 `'unsafe-inline'`이 없고, 페이지가 정상 동작한다.
+- Related Tasks: HQ-109
+- Created / Updated: 2026-11-25
+
+### TD-010 — Dashboard Timeline이 매 연결마다 로그 전체를 replay한다
+- Status / Priority: Open / Low
+- Description: Dashboard는 SSE를 `?after=0`으로 열어 전체 로그를 받고, 화면에는 최근 200건만 남긴다. "최근 N건부터" 읽는 API가 없기 때문이다.
+- Impact: 로그가 커지면 페이지를 열 때 전송량과 시간이 늘어난다. 개발용 v0에서는 문제없다.
+- Proposed Solution: Query API에 "head 기준 최근 N건" 조회(예: `before` cursor)를 추가하고, 스트림은 그 cursor부터 연다 (M3 Operations Dashboard).
+- Verification Method: 이벤트 10만 건 로그에서 Dashboard 첫 표시 시간 측정.
+- Related Tasks: HQ-109, HQ-112
+- Created / Updated: 2026-11-25

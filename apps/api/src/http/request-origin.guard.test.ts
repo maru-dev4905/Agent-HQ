@@ -44,6 +44,19 @@ describe('RequestOriginGuard', () => {
     expect(check({})).toMatchObject({ error: { code: 'FORBIDDEN' } });
   });
 
+  it('also checks the browser Host a proxy forwards (DNS rebinding through the web server)', () => {
+    // What the dashboard's Next.js rewrite sends: Host is the API, X-Forwarded-Host the original.
+    expect(check({ host: '127.0.0.1:4000', 'x-forwarded-host': 'localhost:3000' })).toBe('allowed');
+    for (const forwarded of ['rebind.example:3000', '', 'localhost, rebind.example']) {
+      expect(check({ host: '127.0.0.1:4000', 'x-forwarded-host': forwarded })).toMatchObject({
+        error: { message: 'Host is not allowed' },
+      });
+    }
+    expect(check({ host: '127.0.0.1:4000', 'x-forwarded-host': ['a', 'b'] })).toMatchObject({
+      error: { code: 'FORBIDDEN' },
+    });
+  });
+
   it('rejects an Origin that is not an exact allowlist match, including "null"', () => {
     expect(check({ host: 'localhost', origin: 'http://127.0.0.1:3000' })).toBe('allowed');
     for (const origin of ['https://evil.example', 'null', 'http://127.0.0.1:3001']) {

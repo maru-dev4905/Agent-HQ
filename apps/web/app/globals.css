@@ -1,0 +1,144 @@
+:root {
+  color-scheme: light dark;
+  --fg: #1d1d1f;
+  --muted: #6e6e73;
+  --line: #d2d2d7;
+  --bg: #ffffff;
+  --ok: #1a7f37;
+  --busy: #0a58ca;
+  --wait: #9a6700;
+  --bad: #cf222e;
+  --off: #57606a;
+  --unknown: #8250df;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #f5f5f7;
+    --muted: #a1a1a6;
+    --line: #3a3a3c;
+    --bg: #111113;
+    --ok: #3fb950;
+    --busy: #58a6ff;
+    --wait: #d29922;
+    --bad: #f85149;
+    --off: #8b949e;
+    --unknown: #bc8cff;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
+}
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+h2 {
+  font-size: 16px;
+  margin: 24px 0 8px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.name {
+  font-weight: 600;
+}
+.sub,
+.empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+.badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.tone-ok {
+  color: var(--ok);
+}
+.tone-busy {
+  color: var(--busy);
+}
+.tone-wait {
+  color: var(--wait);
+}
+.tone-bad {
+  color: var(--bad);
+}
+.tone-off,
+.tone-neutral {
+  color: var(--off);
+}
+.tone-unknown {
+  color: var(--unknown);
+}
+.plain {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.plain li {
+  padding: 4px 0;
+}
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+.timeline li {
+  display: grid;
+  grid-template-columns: 90px 190px 140px 1fr;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.timeline li.gap {
+  color: var(--unknown);
+  font-weight: 600;
+}
+.stream {
+  margin: 0;
+  font-size: 13px;
+}
+.stream-live {
+  color: var(--ok);
+}
+.stream-reconnecting,
+.stream-connecting {
+  color: var(--wait);
+}
+.stream-closed,
+.error {
+  color: var(--bad);
+}
+.stream button {
+  margin-left: 8px;
+}
+@media (max-width: 700px) {
+  .timeline li {
+    grid-template-columns: 1fr;
+  }
+}

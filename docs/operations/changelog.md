@@ -4,7 +4,13 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-25 (2) — HQ-108 Gap·Unknown·Stale (PR)
+## 2026-11-25 (3) — HQ-109 Dashboard v0 (PR)
+- [Added] `apps/web` Dashboard: Agent Roster, Connection, Event Timeline, SSE 상태·재연결, 상태는 아이콘+텍스트
+- [Security] CSP·`X-Content-Type-Options`·`Referrer-Policy`·`X-Frame-Options`, Agent 콘텐츠는 텍스트로만 렌더링(XSS 테스트)
+- [Added] `/hq-api/*` → API rewrite 프록시(`AGENT_HQ_API_URL`), TD-009, TD-010
+- **실행**: `pnpm infra:up` → `pnpm db:migrate` → API(`pnpm --filter @agent-hq/api dev`)와 Web(`pnpm --filter @agent-hq/web dev`) → http://127.0.0.1:3000
+
+## 2026-11-25 (2) — HQ-108 Gap·Unknown·Stale (Done, PR #7)
 - [Added] Gap 감지 주기 작업과 HQ 기록 `event.gap.detected`, 연결 끊김 → Agent `unknown`(조회 시 계산), `AgentView.reportedStatus`·`connectionLostAt`·`stale`·`staleThresholdMs`
 - [Added] migration `20261125010000_agent_connection_loss` (`agent_current_state.connection_lost_at` nullable 추가)
 - [Security] `source.adapterId = "hq"`는 HQ 전용 (Ingestion 403)

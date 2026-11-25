@@ -18,7 +18,10 @@
         "name": "next"
       }
     ],
-    "allowJs": true
+    "allowJs": true,
+    "paths": {
+      "@agent-hq/contracts": ["../../packages/contracts/src/index.ts"]
+    }
   },
   "include": [
     "next-env.d.ts",
