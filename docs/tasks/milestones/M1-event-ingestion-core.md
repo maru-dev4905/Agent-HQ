@@ -260,6 +260,7 @@
   - verification(반영 후): `pnpm verify` 통과(단위 169), `pnpm test:integration` 통과(66, Gap·Stale 7)
   - 로컬 리뷰 2회차: Approve (Minor 1: Source gap payload의 큰 수가 `::int` 캐스트로 감지 작업 전체를 멈출 수 있음 → CASE로 HQ 기록에만 bigint 캐스트, 회귀 테스트. Nit 3: 문서 정정, 끊김 해제 기준은 HQ-110 이후 결정으로 Open)
   - PR #7 CodeRabbit 1차: APPROVED (Minor 5) → 반영: Gap 이벤트 ID 생성기 주입, lock 안에서 구멍 재확인(`EventStoreTransaction.hasSequenceIn`), 보고 상태와 무관하게 끊김 시각 기록(commit 순서 경합), Gap 대상 판정을 구멍 이전 이벤트로 한정, current-status 중복 행 제거
+  - PR #7 CodeRabbit 2차: CHANGES_REQUESTED (Major 1: 첫 이벤트가 lock을 기다리는 동안 끊김이 먼저 commit되면 새 Agent 행에 끊김이 반영되지 않음. Minor 1: Gap 대상 Agent를 lock 밖에서 계산) → 새 행은 `storeSequence`가 앞선 마지막 끊김을 이어받음(Replay 동일), 대상 Agent를 lock 안에서 계산(`EventStoreTransaction.agentsAffectedByGap`), 회귀 테스트. 검증: verify(단위 170), integration 68
   - AC: 시뮬레이터 Gap 시나리오에서 `event.gap.detected` 기록 ✅ · 명시적 종료 신호 없이 끊긴 Agent는 `unknown`(그 전 `idle`이어도), `agent.disconnected`를 받은 Agent만 `disconnected` ✅
 
 ### HQ-109 — 개발용 Dashboard v0 (Next.js)

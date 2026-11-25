@@ -12,8 +12,19 @@ export async function applyProjections(
   event: StoredEvent,
 ): Promise<void> {
   if (event.agentInstanceId !== undefined) {
-    const next = projectAgent(await tx.projections.getAgent(event.agentInstanceId), event);
-    if (next !== null) await tx.projections.putAgent(next);
+    const prev = await tx.projections.getAgent(event.agentInstanceId);
+    const next = projectAgent(prev, event);
+    if (next !== null) {
+      if (prev === null) {
+        // A loss that committed before this first event (e.g. while it waited for the lock)
+        // still applies to the new row (HQ-108, PR #7 review).
+        next.connectionLostAt = await tx.projections.lastConnectionLossBefore(
+          event.connectionId,
+          event.storeSequence,
+        );
+      }
+      await tx.projections.putAgent(next);
+    }
   }
   if (event.taskId !== undefined) {
     const next = projectTask(await tx.projections.getTask(event.taskId), event);

@@ -89,7 +89,13 @@ export class GapDetectionService implements OnApplicationBootstrap, OnApplicatio
             gap.toSequence,
           );
           if (filled) return 0;
-          const agents = gap.agentInstanceIds.length > 0 ? gap.agentInstanceIds : [undefined];
+          // Computed under the lock too: an agent may have disconnected since the scan.
+          const affected = await tx.agentsAffectedByGap(
+            gap.connectionId,
+            gap.externalSessionId,
+            gap.fromSequence,
+          );
+          const agents = affected.length > 0 ? affected : [undefined];
           let appended = 0;
           for (const agentInstanceId of agents) {
             const event = gapEvent(gap, agentInstanceId, now, this.newId);

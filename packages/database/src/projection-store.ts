@@ -54,6 +54,13 @@ export interface TaskStateRow {
 /** Read-model access inside an EventStore transaction (same commit as the event). */
 export interface ProjectionTransaction {
   getAgent(agentInstanceId: string): Promise<AgentStateRow | null>;
+  /**
+   * Server time of the latest loss of a connection (`connection.health.changed` →
+   * disconnected) stored before `storeSequence`, or null. A new agent row takes it over,
+   * since the loss may have committed while that agent's first event waited for the lock.
+   * Bounded by `storeSequence` so replay sees exactly what the live write saw.
+   */
+  lastConnectionLossBefore(connectionId: string, storeSequence: bigint): Promise<string | null>;
   /** Agents first seen on a connection, ordered by ID (connection loss, HQ-108). */
   listAgentsOfConnection(connectionId: string): Promise<AgentStateRow[]>;
   putAgent(row: AgentStateRow): Promise<void>;
@@ -113,6 +120,16 @@ export function projectionTransaction(tx: Tx, workspaceId: string): ProjectionTr
     async getAgent(agentInstanceId) {
       const row = await tx.agentCurrentState.findFirst({ where: { agentInstanceId, workspaceId } });
       return row === null ? null : fromDb<AgentStateRow>(row);
+    },
+    async lastConnectionLossBefore(connectionId, storeSequence) {
+      const rows = await tx.$queryRaw<{ lost_at: Date | null }[]>`
+        SELECT max(received_at) AS lost_at FROM events
+        WHERE workspace_id = ${workspaceId}
+          AND connection_id = ${connectionId}
+          AND type = 'connection.health.changed'
+          AND payload->>'status' = 'disconnected'
+          AND store_sequence < ${storeSequence}`;
+      return rows[0]?.lost_at?.toISOString() ?? null;
     },
     async listAgentsOfConnection(connectionId) {
       const rows = await tx.agentCurrentState.findMany({

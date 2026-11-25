@@ -285,7 +285,6 @@ describe('gap detection — race with ingestion (HQ-108)', () => {
             fromSequence: 1,
             toSequence: 1,
             nextOccurredAt: new Date('2026-11-25T08:00:02.000Z'),
-            agentInstanceIds: [],
           },
         ]),
     };
@@ -326,6 +325,32 @@ describe('connection loss and stale display (HQ-108)', () => {
     advance(60_000);
     await health.evaluateAll();
     expect(await agentStatuses()).toEqual({ main: 'unknown', helper: 'disconnected' });
+
+    const live = await readProjections(db, 'local');
+    await replayProjections(eventStore, 'local');
+    expect(await readProjections(db, 'local')).toEqual(live);
+  });
+
+  it('applies a loss that committed before an agent first event waiting for the lock', async () => {
+    const { connectionId, token } = await connect();
+    await app.inject({
+      method: 'POST',
+      url: `/connections/${connectionId}/heartbeat`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const health = app.get(ConnectionHealthService);
+    const received = now; // the batch's receivedAt is taken before it waits for the lock
+    advance(31_000);
+    await health.evaluateAll();
+    advance(60_000);
+    await health.evaluateAll(); // loss commits first
+    const lossAt = now;
+    now = received;
+    await ingest(token, [sessionEvent(0, 'agent.started', { agentName: 'early' }, 'early')]);
+    now = new Date(lossAt.getTime() + 1000);
+    await ingest(token, [sessionEvent(1, 'agent.started', { agentName: 'later' }, 'later')]);
+    // Received before the loss: unknown. Received after it: what it reported.
+    expect(await agentStatuses()).toEqual({ early: 'unknown', later: 'connected' });
 
     const live = await readProjections(db, 'local');
     await replayProjections(eventStore, 'local');

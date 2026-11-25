@@ -247,7 +247,7 @@ Access Token - 비밀번호 및 인증 헤더 - 전체 파일 내용 - 개인 �
 - 도착 순서에 따라 달라지는 것이 정상인 값: `lastStoreSequence`(로그 위치), `lastReceivedAt`(서버 수신 시각). Stale 판정(HQ-108)은 소스 시계가 아니라 `lastReceivedAt`을 쓴다.
 
 ### N9. Gap 감지 (HQ-108, 2026-11-25, Proposed)
-- 주기 작업(`GAP_CHECK_INTERVAL_MS`, 기본 10초)이 (Workspace, Connection, `source.externalSessionId`)별로 `sequence`를 정렬해 연속하지 않는 곳을 찾는다. 구멍 양쪽 이벤트를 모두 받은 지 `GAP_GRACE_MS`(기본 30초)가 지나도 메워지지 않으면 기록한다. 순서가 섞여 늦게 오는 이벤트에 시간을 주기 위해서다. 구멍은 lock 밖에서 찾으므로, 기록하기 직전에 Workspace lock 안에서 그 범위가 아직 비어 있는지 다시 확인한다.
+- 주기 작업(`GAP_CHECK_INTERVAL_MS`, 기본 10초)이 (Workspace, Connection, `source.externalSessionId`)별로 `sequence`를 정렬해 연속하지 않는 곳을 찾는다. 구멍 양쪽 이벤트를 모두 받은 지 `GAP_GRACE_MS`(기본 30초)가 지나도 메워지지 않으면 기록한다. 순서가 섞여 늦게 오는 이벤트에 시간을 주기 위해서다. 구멍은 lock 밖에서 찾으므로, 기록하기 직전에 Workspace lock 안에서 그 범위가 아직 비어 있는지 다시 확인하고, 영향받는 Agent도 lock 안에서 다시 계산한다.
 - 기록은 HQ가 만든 `event.gap.detected`다: `source = { adapterId: "hq", runtime: "hq", externalSessionId }`, `sequence = toSequence`, `timestampQuality = "collected"`, `occurredAt` = 구멍 바로 뒤 이벤트의 시각, payload `{ reason, fromSequence, toSequence }`, idempotencyKey `hq:gap:<session>:<from>-<to>:<agentInstanceId>`. 영향을 받는 Agent마다 하나씩 기록한다(domain-model N5).
 - 이미 기록한 범위 안의 구멍은 다시 기록하지 않는다. 기록 뒤에 빠졌던 이벤트 일부가 도착해 구멍이 나뉘어도 마찬가지다. 기록 자체도 지우지 않는다(로그는 append-only). 여러 프로세스가 같은 구멍을 동시에 찾아도 idempotencyKey가 같아 한 번만 저장된다(대상 Agent 집합은 트랜잭션 밖에서 계산하므로, 그 사이에 세션에 새 Agent가 생기면 그 Agent 몫의 기록이 하나 더 생길 수 있다).
 - `sequence`를 셀 때 HQ가 만든 Gap 기록은 빼고, Source가 직접 보낸 `event.gap.detected`는 Source 번호 체계의 일부로 센다. `adapterId = "hq"`는 HQ 전용이라 Source가 쓸 수 없다.
