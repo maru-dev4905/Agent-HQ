@@ -93,7 +93,7 @@
 - Description: `createGapStore().findGaps`는 `sequence`가 있는 모든 이벤트에 window 함수를 돌린다(기본 10초마다).
 - Impact: 로그가 작은 Phase 1에서는 문제없다. 이벤트가 수백만 건이 되면 DB 부하가 커진다.
 - Root Cause: 정확성(늦게 온 이벤트 포함)을 단순한 구현으로 먼저 확보했다.
-- Proposed Solution: 마지막으로 확인한 `storeSequence` 이후에 이벤트가 온 세션만 다시 검사하거나, 세션별 최대 `sequence`·개수를 요약 테이블로 유지한다. 같은 이유로, 연결 끊김 이벤트는 그 Connection의 Agent 행 전체(직접 `disconnected`를 보고한 Agent 제외)를 Workspace lock 안에서 갱신한다. Agent가 많아지면 행 수 상한이나 Connection 단위 기록으로 바꾼다.
+- Proposed Solution: 마지막으로 확인한 `storeSequence` 이후에 이벤트가 온 세션만 다시 검사하거나, 세션별 최대 `sequence`·개수를 요약 테이블로 유지한다. 같은 이유로, 연결 끊김 이벤트는 그 Connection의 Agent 행 전체를 Workspace lock 안에서 갱신한다. Agent가 많아지면 행 수 상한이나 Connection 단위 기록으로 바꾼다.
 - Verification Method: HQ-112 부하 측정에서 Gap 감지 한 주기의 실행 시간 측정.
 - Related Tasks: HQ-108, HQ-112
 - Created / Updated: 2026-11-25

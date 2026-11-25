@@ -101,6 +101,7 @@ export function createGapStore(db: DatabaseClient): GapStore {
                 AND e.external_session_id = ${row.external_session_id}
                 AND e.agent_instance_id = a.agent_instance_id
                 AND e.sequence IS NOT NULL
+                AND e.sequence < ${row.from_sequence}
               ORDER BY e.sequence DESC, e.store_sequence DESC
               LIMIT 1
             ) last

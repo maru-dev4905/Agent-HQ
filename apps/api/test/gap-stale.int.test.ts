@@ -5,6 +5,7 @@ import {
   createDatabaseClient,
   createEventStore,
   readProjections,
+  type GapStore,
 } from '@agent-hq/database';
 import { generate } from '@agent-hq/simulator';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -262,6 +263,43 @@ describe('gap detection — several agents and partial fills (HQ-108)', () => {
     expect(await app.get(GapDetectionService).detectOnce(now)).toBe(1);
     const hq = (await gapEvents()).filter((e) => e.source.adapterId === 'hq');
     expect(hq.map((e) => e.payload)).toMatchObject([{ fromSequence: 1, toSequence: 1 }]);
+  });
+});
+
+describe('gap detection — race with ingestion (HQ-108)', () => {
+  it('does not record a gap that was filled between finding it and taking the lock', async () => {
+    const { connectionId, token } = await connect();
+    await ingest(token, [
+      sessionEvent(0, 'agent.started', { agentName: 'main' }),
+      sessionEvent(1, 'agent.status.changed', { status: 'working' }),
+      sessionEvent(2, 'agent.status.changed', { status: 'waiting' }),
+    ]);
+    // A stale scan result: it still reports 1-1 missing although 1 is stored.
+    const staleScan = {
+      findGaps: () =>
+        Promise.resolve([
+          {
+            workspaceId: 'local',
+            connectionId,
+            externalSessionId: 'sess_1',
+            fromSequence: 1,
+            toSequence: 1,
+            nextOccurredAt: new Date('2026-11-25T08:00:02.000Z'),
+            agentInstanceIds: [],
+          },
+        ]),
+    };
+    let n = 0;
+    const detector = new GapDetectionService(
+      {
+        findGaps: () => (n++ === 0 ? staleScan.findGaps() : Promise.resolve([])),
+      } satisfies GapStore,
+      eventStore,
+      { checkIntervalMs: 0, graceMs: GRACE_MS },
+      () => 'fixed-id',
+    );
+    expect(await detector.detectOnce(now)).toBe(0);
+    expect(await gapEvents()).toHaveLength(0);
   });
 });
 

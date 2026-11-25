@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   Inject,
   Injectable,
@@ -10,7 +9,7 @@ import type { EventStore, GapStore, SequenceGap } from '@agent-hq/database';
 import type { AgentEvent } from '@agent-hq/events';
 import { applyProjections } from '../projection/projection.service.js';
 import { EVENT_STORE } from '../tokens.js';
-import { GAP_SETTINGS, GAP_STORE, type GapSettings } from './tokens.js';
+import { GAP_ID_GENERATOR, GAP_SETTINGS, GAP_STORE, type GapSettings } from './tokens.js';
 
 const BATCH = 100;
 
@@ -19,10 +18,11 @@ export function gapEvent(
   gap: SequenceGap,
   agentInstanceId: string | undefined,
   now: Date,
+  newId: () => string,
 ): AgentEvent {
   const range = `${gap.fromSequence}-${gap.toSequence}`;
   return {
-    id: randomUUID(),
+    id: newId(),
     schemaVersion: 1,
     type: 'event.gap.detected',
     // Positioned at the hole: same session, the last missing sequence, the time of the next
@@ -61,6 +61,7 @@ export class GapDetectionService implements OnApplicationBootstrap, OnApplicatio
     @Inject(GAP_STORE) private readonly gaps: GapStore,
     @Inject(EVENT_STORE) private readonly events: EventStore,
     @Inject(GAP_SETTINGS) private readonly settings: GapSettings,
+    @Inject(GAP_ID_GENERATOR) private readonly newId: () => string,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -80,10 +81,18 @@ export class GapDetectionService implements OnApplicationBootstrap, OnApplicatio
       const found = await this.gaps.findGaps(settledBefore, BATCH);
       for (const gap of found) {
         const stored = await this.events.transaction(gap.workspaceId, async (tx) => {
+          // Found outside the lock: an ingestion may have filled the hole since.
+          const filled = await tx.hasSequenceIn(
+            gap.connectionId,
+            gap.externalSessionId,
+            gap.fromSequence,
+            gap.toSequence,
+          );
+          if (filled) return 0;
           const agents = gap.agentInstanceIds.length > 0 ? gap.agentInstanceIds : [undefined];
           let appended = 0;
           for (const agentInstanceId of agents) {
-            const event = gapEvent(gap, agentInstanceId, now);
+            const event = gapEvent(gap, agentInstanceId, now, this.newId);
             const outcome = await tx.append(event);
             if (outcome.status === 'stored') {
               await applyProjections(tx, { ...event, storeSequence: outcome.storeSequence });

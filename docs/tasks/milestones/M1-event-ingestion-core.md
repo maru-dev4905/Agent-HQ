@@ -259,6 +259,7 @@
   - 로컬 리뷰 1회차: Request Changes (Major 1: 연결 끊김(서버 시각)을 보고 상태(소스 시각)와 경쟁시켜 도착 순서·시계 차이에 따라 결과가 달라짐, 늦게 온 `agent.disconnected`가 `unknown`으로 남음. Minor 6, Nit 2) → 반영: 보고 상태와 끊김을 분리(`connection_lost_at` 열, migration `20261125010000_agent_connection_loss` nullable 추가), 보여 줄 상태는 서버 시각끼리 비교해 조회 시 계산, HQ 기록은 활동 시각을 바꾸지 않음, 구멍 이전에 떠난 Agent는 Gap 대상에서 제외, Source의 gap 이벤트는 번호에 포함·HQ 기록과 구분, 유예를 구멍 양쪽에 적용, 기록 범위 안의 구멍은 재기록하지 않음, 저장된 경우만 집계, 반례 순열 테스트. 수정 중 추가 발견: Source가 `adapterId: "hq"`로 HQ 기록을 흉내 낼 수 있음 → Ingestion에서 거부
   - verification(반영 후): `pnpm verify` 통과(단위 169), `pnpm test:integration` 통과(66, Gap·Stale 7)
   - 로컬 리뷰 2회차: Approve (Minor 1: Source gap payload의 큰 수가 `::int` 캐스트로 감지 작업 전체를 멈출 수 있음 → CASE로 HQ 기록에만 bigint 캐스트, 회귀 테스트. Nit 3: 문서 정정, 끊김 해제 기준은 HQ-110 이후 결정으로 Open)
+  - PR #7 CodeRabbit 1차: APPROVED (Minor 5) → 반영: Gap 이벤트 ID 생성기 주입, lock 안에서 구멍 재확인(`EventStoreTransaction.hasSequenceIn`), 보고 상태와 무관하게 끊김 시각 기록(commit 순서 경합), Gap 대상 판정을 구멍 이전 이벤트로 한정, current-status 중복 행 제거
   - AC: 시뮬레이터 Gap 시나리오에서 `event.gap.detected` 기록 ✅ · 명시적 종료 신호 없이 끊긴 Agent는 `unknown`(그 전 `idle`이어도), `agent.disconnected`를 받은 Agent만 `disconnected` ✅
 
 ### HQ-109 — 개발용 Dashboard v0 (Next.js)

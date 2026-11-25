@@ -182,13 +182,15 @@ export const HQ_ADAPTER_ID = 'hq';
 
 /**
  * Records that the agent's connection was lost (`connection.health.changed` → disconnected),
- * in server time. Agents that reported `disconnected` themselves are left alone.
+ * in server time — for every agent of the connection, whatever it reported: transactions do
+ * not commit in receive-time order, so skipping agents that look `disconnected` right now
+ * could let an earlier-received event commit later and hide the loss. The exception for an
+ * explicit `disconnected` lives in `shownAgentStatus` alone.
  */
 export function projectConnectionLoss(
   prev: AgentStateRow,
   event: StoredEvent,
 ): AgentStateRow | null {
-  if (prev.observedStatus === 'disconnected') return null;
   const lostAt = new Date(event.receivedAt).toISOString();
   if (prev.connectionLostAt !== null && prev.connectionLostAt >= lostAt) return null;
   return { ...prev, connectionLostAt: lostAt };

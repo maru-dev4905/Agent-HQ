@@ -359,6 +359,22 @@ describe('projector — gaps and connection loss (HQ-108)', () => {
     expect([idle.observedStatus, shownAgentStatus(idle)]).toEqual(['idle', 'unknown']);
   });
 
+  it('keeps the loss for an agent that looked disconnected, so a late commit cannot hide it', () => {
+    // An event received before the loss (R1 < R2) commits after it (lock order differs).
+    const reported = deliver([started, disconnected]);
+    const afterLoss = projectConnectionLoss(reported, {
+      ...lost,
+      receivedAt: '2026-11-25T01:00:10.000Z',
+    })!;
+    expect(afterLoss.connectionLostAt).toBe('2026-11-25T01:00:10.000Z');
+    const late = projectAgent(afterLoss, {
+      ...working,
+      occurredAt: '2026-11-25T00:06:00.000Z',
+      receivedAt: '2026-11-25T01:00:05.000Z',
+    })!;
+    expect([late.observedStatus, shownAgentStatus(late)]).toEqual(['working', 'unknown']);
+  });
+
   it('is not fooled by a source clock that runs ahead of the server (review M1)', () => {
     const future = event(5, {
       type: 'agent.status.changed',

@@ -32,6 +32,11 @@ export interface EventStoreTransaction {
    * revocation won the race).
    */
   setConnectionStatus(expected: ExpectedConnectionState, to: string): Promise<boolean>;
+  /**
+   * Whether any source event of the session has a `sequence` in [from, to], read under the
+   * workspace lock: a gap found outside the lock may have been filled since (HQ-108).
+   */
+  hasSequenceIn(connectionId: string, session: string, from: number, to: number): Promise<boolean>;
 }
 
 export interface ExpectedConnectionState {
@@ -290,6 +295,18 @@ export function createEventStore(db: DatabaseClient): EventStore {
             resolveAgentInstance: (ref, newId) => {
               assertWorkspace(workspaceId, ref.workspaceId);
               return resolveIdentity(tx, 'agent', ref, newId);
+            },
+            hasSequenceIn: async (connectionId, session, from, to) => {
+              const rows = await tx.$queryRaw<{ found: boolean }[]>`
+                SELECT EXISTS (
+                  SELECT 1 FROM events
+                  WHERE workspace_id = ${workspaceId}
+                    AND connection_id = ${connectionId}
+                    AND external_session_id = ${session}
+                    AND sequence BETWEEN ${from} AND ${to}
+                    AND NOT (type = 'event.gap.detected' AND source->>'adapterId' = 'hq')
+                ) AS found`;
+              return rows[0]?.found === true;
             },
             setConnectionStatus: async (expected, to) => {
               const { count } = await tx.connection.updateMany({

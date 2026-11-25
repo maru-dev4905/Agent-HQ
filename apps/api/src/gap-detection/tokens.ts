@@ -7,3 +7,4 @@ export interface GapSettings {
 
 export const GAP_SETTINGS = Symbol('GAP_SETTINGS');
 export const GAP_STORE = Symbol('GAP_STORE');
+export const GAP_ID_GENERATOR = Symbol('GAP_ID_GENERATOR');
