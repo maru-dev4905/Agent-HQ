@@ -24,7 +24,7 @@
 | ID | 주제 | 필요 시점 | 우선순위 | 상태 |
 |---|---|---|---|---|
 | RES-001 | 기술 스택 검증 (ADR-0003 근거) | M0 | High | Concluded |
-| RES-002 | Claude Code 이벤트 수집 방식 | M1 중 (M2 전) | High | Open |
+| RES-002 | Claude Code 이벤트 수집 방식 | M1 중 (M2 전) | High | Concluded → [상세](RES-002-claude-code-signals.md) |
 | RES-003 | MCP 도구 흐름 관찰 방식 | M2 | Medium | Open |
 | RES-004 | 3D Office 기술과 목표 수준 | M3 | Medium | Open |
 | RES-005 | 저장소·실시간 처리 부하 | M1 | Medium | Open |
@@ -64,7 +64,8 @@
 - Proposed Solution: 설치된 버전(2.1.330)의 공식 문서 확인 → scratch 프로젝트에서 로깅 hook 스파이크 (전역 설정 수정 금지) → 신호 매핑표 작성.
 - Verification Method: FR-021 필요 신호 ↔ 수집 방식 매핑표, 세션당 Event 발생량 측정값.
 - Related Tasks: HQ-110 (M1과 병행하는 스파이크), M2
-- Created / Updated: 2026-11-22
+- Created / Updated: 2026-11-22 / 2026-11-25
+- Result (2026-11-25, HQ-110): 공식 hook 문서 + scratch 실험(세션 6개). (a) hooks만으로 Session·Subagent·Tool 시작/완료/실패를 얻을 수 있다. 타임스탬프·sequence·heartbeat는 없다 → Bridge가 부여. Event 계약 변경 불필요. 상세와 매핑표: [RES-002](RES-002-claude-code-signals.md). (b)~(d)는 조사하지 않았다(필요 시 M2).
 
 ### RES-003 — MCP 도구 흐름 관찰 방식
 - Status / Priority: Open / Medium

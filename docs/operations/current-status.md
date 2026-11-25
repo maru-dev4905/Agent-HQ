@@ -2,25 +2,26 @@
 
 > 목적: 프로젝트의 현재 상태와 세션 간 인계. **모든 세션이 시작할 때 읽고, 끝날 때 갱신한다.**
 > 관리 책임: Coordinator (매 세션)
-> 최종 갱신: 2026-11-25 — Claude Code (HQ-109 Dashboard v0)
+> 최종 갱신: 2026-11-25 — Claude Code (HQ-109 Done, HQ-110 시작)
 
 ## 1. 요약
 - 단계: **M1 / Phase 1 Event Ingestion Core — In Progress**. M0 완료(HQ-005는 Backlog)
-- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6), HQ-108 Gap·Unknown·Stale(PR #7). 진행 중: HQ-109 Dashboard v0(PR)
+- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6), HQ-108 Gap·Unknown·Stale(PR #7), HQ-109 Dashboard v0(PR #8). 진행 중: HQ-110 Claude Code 신호 조사
 - Gate: CI가 PR마다 `verify`·`integration` 실행. main은 보호됨 (필수 check 3개 + CodeRabbit 승인 1건)
 - Git: Task마다 브랜치 → PR → CodeRabbit → 사용자 머지 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004))
 
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-109 Dashboard v0 | In Review | 브랜치 `hq-109-dashboard`, PR → CodeRabbit. 수동 확인(dev DB migration·서버 실행·스크린샷) 승인 대기 |
-| HQ-110 Claude Code 신호 조사 | Ready | 다음 후보. N5 끊김 해제 기준 결정에도 필요 |
+| HQ-110 Claude Code 신호 조사 | In Review | 브랜치 `hq-110-claude-code-signals`, RES-002 Concluded |
+| HQ-111 E2E / HQ-112 부하 측정 | Backlog | HQ-111은 E2E 도구 승인 필요 |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 
 ## 3. 사용자 결정 대기
 1. 남은 Open Questions: OQ-5(Orca 등 기존 도구와의 관계), OQ-6(MVP 3D 최소 범위), 명세서 Open Decisions
 2. HQ-005(프로젝트 `.claude/settings.json`, subagent 정의) 도입 여부
-3. PR #4에서 물은 결정: `agent.completed → idle` 매핑(domain-model N4), 세션 내 시계 역행 시 시각 우선(event-schema N8), `apps/api`의 `@agent-hq/simulator` devDependency — 머지로 현재 방식 수용으로 간주, 이의가 있으면 새 Task
+3. RES-002: Claude Code `Stop`(응답을 마치고 사용자 입력 대기)을 `waiting`으로 볼지 `idle`로 볼지 (제안: `waiting`)
+4. PR #4에서 물은 결정: `agent.completed → idle` 매핑(domain-model N4), 세션 내 시계 역행 시 시각 우선(event-schema N8), `apps/api`의 `@agent-hq/simulator` devDependency — 머지로 현재 방식 수용으로 간주, 이의가 있으면 새 Task
 
 ## 4. 인계 사항 (직전 세션 → 다음 세션)
 - main은 보호되어 직접 push할 수 없다. 모든 변경은 Task 브랜치와 PR로 들어간다. 머지는 사용자만 한다.

@@ -52,7 +52,8 @@
 - Proposed Solution: M1 진행과 병행해 RES-002 스파이크 수행. Event 스키마 v0에 `source`별 확장 여지를 두고, M1 종료 전 실제 신호로 스키마를 점검.
 - Verification Method: RES-002 결과에서 FR-020에 필요한 신호(세션 시작/종료, 도구 호출, subagent) 매핑표 완성.
 - Related Tasks: HQ-101, HQ-110
-- Created / Updated: 2026-11-22 / 2026-11-22 (명세서 decisions.md 위험 1 "Adapter별 이벤트 정보량 차이"와 같은 위험)
+- 진행 (2026-11-25, HQ-110): RES-002에서 hook만으로 Session·Subagent·Tool 신호를 얻을 수 있고 Event 계약 변경이 필요 없음을 확인했다. 남은 불확실성: 중첩 subagent의 부모, 미관찰 hook(Notification, StopFailure 등), 버전별 차이 → M2 Adapter 계약 테스트로 관리. 위험 수준은 유지하되 근거가 생겼다.
+- Created / Updated: 2026-11-22 / 2026-11-25 (명세서 decisions.md 위험 1 "Adapter별 이벤트 정보량 차이"와 같은 위험)
 
 ### RSK-002 — 패턴 기반 마스킹의 누락
 - Status / Priority / 범위: Open / H×M / Security, Data
@@ -122,7 +123,8 @@
 - Proposed Solution: 수집 hook은 프로젝트/사용자 선택 범위에 설치하고 전역 설정을 자동 수정하지 않는다. 짧은 timeout, 실패 무시. 설치 방식은 RES-002에서 결정.
 - Verification Method: 기존 hook과 함께 실행 시 Orca 상태 표시가 정상인지 수동 확인.
 - Related Tasks: RES-002, M2
-- Created / Updated: 2026-11-22
+- 진행 (2026-11-25, HQ-110): 공식 문서와 실험에서 프로젝트·로컬 설정의 hook이 전역 hook과 합쳐져 함께(병렬로) 실행됨을 확인했다. 전역 설정을 수정하지 않고 공존할 수 있다. 남은 위험: 전역 hook이 느리거나 실패할 때 서로의 영향, 설치 위치 결정 → M2
+- Created / Updated: 2026-11-22 / 2026-11-25
 
 ### RSK-010 — 기존 도구 대비 차별성 불명확
 - Status / Priority / 범위: Open / H×M / Product
