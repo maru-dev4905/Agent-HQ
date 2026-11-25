@@ -3,6 +3,7 @@ import type { ServerResponse } from 'node:http';
 import type { EventStore, OutboxEntry, OutboxStore, StoredEvent } from '@agent-hq/database';
 import { describe, expect, it } from 'vitest';
 import { OutboxRelay } from './outbox-relay.js';
+import { StreamService } from './stream.service.js';
 import { StreamSession } from './stream-session.js';
 import { WorkspaceSignals } from './workspace-signals.js';
 
@@ -161,5 +162,27 @@ describe('OutboxRelay', () => {
     expect(woken).toEqual(['a', 'b']);
     expect(acknowledged).toEqual([1n, 2n, 3n]);
     expect(await relay.relayOnce()).toBe(0);
+  });
+});
+
+describe('StreamService — shutdown', () => {
+  it('does not start a stream whose open() finished after shutdown began', async () => {
+    const query = { assertWorkspace: () => Promise.resolve() };
+    const store = { headSequence: () => Promise.resolve(0n) };
+    const service = new StreamService(
+      query as never,
+      store as never,
+      controllableLog().store,
+      new WorkspaceSignals(),
+      settings,
+    );
+    const cursor = await service.open('w', {}, undefined);
+    expect(service.activeStreams).toBe(1);
+    service.beforeApplicationShutdown();
+    const response = new FakeResponse();
+    service.start('w', cursor, response as unknown as ServerResponse);
+    expect(response.writableEnded).toBe(true);
+    expect(response.chunks).toEqual([]);
+    expect(service.activeStreams).toBe(0);
   });
 });

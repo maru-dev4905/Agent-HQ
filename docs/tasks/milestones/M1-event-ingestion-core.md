@@ -235,6 +235,7 @@
   - 로컬 리뷰 1회차: Request Changes (Major 1: 시작 전에 끊긴 클라이언트의 session이 영구히 남아 스트림 상한을 소진. Minor 6, Nit 5) → 반영: 시작 시 끊긴 응답 감지, backpressure listener 해제, int64 상한 검사(400), head보다 앞선 cursor 409, 상한 슬롯 동기 예약, 페이지 100건·조회 limit 500, 10진 limit만 허용, drain 종료 후 늦은 wake 재확인, 타이머 간격 상한 1일, 회귀 테스트. 수정 중 추가 발견: Zod가 regex 실패 후에도 refine을 실행해 `after=abc`가 500이 되던 문제 수정
   - verification(반영 후): `pnpm verify` 통과(단위 162), `pnpm test:integration` 통과(59, Query·SSE 8)
   - 로컬 리뷰 2회차: Approve (Nit 1: hijack 실패 시 예약 슬롯 반환 → 반영)
+  - PR #6 CodeRabbit 1차: APPROVED (Minor 1: 종료 중 끝난 `open()`이 스트림을 시작해 `app.close()`를 막을 수 있음) → 종료 플래그를 두고 `start()`에서 확인, 단위 테스트
 
 ### HQ-108 — Gap 감지와 Unknown/Stale 표시
 - Status: Backlog · Risk: Medium · Role: Worker → Reviewer

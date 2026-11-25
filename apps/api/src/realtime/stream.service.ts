@@ -24,6 +24,7 @@ export class StreamService implements BeforeApplicationShutdown {
   private readonly sessions = new Set<StreamSession>();
   /** Slots taken by requests between validation and `start`, so the cap cannot be overrun. */
   private reserved = 0;
+  private shuttingDown = false;
 
   constructor(
     @Inject(QueryService) private readonly query: QueryService,
@@ -93,6 +94,12 @@ export class StreamService implements BeforeApplicationShutdown {
 
   /** Starts a stream for a request that `open` accepted (consumes its reservation). */
   start(workspaceId: string, cursor: bigint, response: ServerResponse): void {
+    this.reserved -= 1;
+    if (this.shuttingDown) {
+      // `open` finished after shutdown began: starting now would keep the server from closing.
+      response.end();
+      return;
+    }
     const session = new StreamSession(
       workspaceId,
       cursor,
@@ -108,13 +115,13 @@ export class StreamService implements BeforeApplicationShutdown {
       },
       (closed) => this.sessions.delete(closed),
     );
-    this.reserved -= 1;
     this.sessions.add(session);
     session.start();
   }
 
   /** Open streams would otherwise keep the HTTP server from closing. */
   beforeApplicationShutdown(): void {
+    this.shuttingDown = true;
     for (const session of [...this.sessions]) session.close();
   }
 }
