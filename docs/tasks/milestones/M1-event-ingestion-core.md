@@ -285,6 +285,7 @@
   - 로컬 리뷰 1회차: Request Changes (Major 2: 프록시가 API 다운을 500으로 바꿔 EventSource가 영구 종료됨, 연속 Event 중 debounce로 Roster가 갱신되지 않음. Minor 6, Nit 5) → 반영: `lib/stream.ts`(`WorkspaceStream` — 닫히면 409인지 확인 후 backoff로 `?after=<마지막>` 재연결, 409면 초기화 안내), throttle 500ms와 최신 요청만 반영, 재연결 시 Read Model 다시 조회, 실시간이 아닐 때 안내 문구, 조회 실패 문구, Unknown 사유 판정 순서, 계약 Event 이름 고정 테스트, 문서(rewrite는 빌드 시점, keep-alive < 30초, 브라우저 POST의 Origin). 덧붙여 ReDoS 성능 테스트를 병렬 부하에서 흔들리지 않게 워밍업 후 3회 중 최솟값으로 측정(상한 250ms 유지)
   - 로컬 리뷰 2회차: Approve (Minor 1: 범위 밖 수정 파일 목록 누락 → 추가. Nit: throttle 취소, DB 초기화 후 로그가 이전 cursor를 넘은 경우의 한계 명시)
   - PR #8 CodeRabbit 1차: APPROVED (Minor 8) → 반영 6: 승인·외부 대기 Task도 현재 Task로 표시, Read Model 응답 형태 검사, 조회 요청은 한 번에 하나(진행 중 요청이 끝나면 한 번 더), 같은 배치 안 중복 제거, SSE 메시지 검증(잘못된 메시지는 건너뛰고 cursor 유지·알림), probe 5초 제한. 추가로 프록시 경로를 읽기 5개로 좁힘(보안 요약). 미반영 2: Web 상대 import `.js`(Next 번들러 해석, coding-standards에 예외 명시), 운영 CSP `'unsafe-inline'`(nonce 필요, TD-009)
+  - PR #8 CodeRabbit 2차: CHANGES_REQUESTED (Major 1: 프록시가 Host를 loopback으로 바꿔 Web 서버 대상 DNS rebinding이 API Host 검사를 우회) → API `RequestOriginGuard`가 `X-Forwarded-Host`도 검사(Next 16.4.6 `proxy-request.js`가 원래 Host를 이 헤더로 넘기는 것을 소스로 확인), 단위·통합 테스트. 범위 밖 수정: `apps/api/src/http/request-origin.guard.ts`
   - verification: `pnpm verify` 통과(단위 185, Web 15 포함, Next build 성공). XSS 문자열 4종 렌더링 테스트, 스트림 재연결·409·backoff·throttle 단위 테스트. 수동 확인(API·Web 실행 + 시뮬레이터 + 스크린샷)은 **미실행** — dev DB migration 적용과 서버 실행이 사용자 승인 사항
 
 ### HQ-110 — 스파이크: Claude Code 신호 조사 (RES-002)

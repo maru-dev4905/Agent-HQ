@@ -253,6 +253,13 @@ describe('query API', () => {
         headers: { host: 'evil.example' },
       });
       expect(badHost.statusCode).toBe(403);
+      // Through the dashboard proxy: Host is the API, the browser's Host is forwarded.
+      const rebound = await app.inject({
+        method: 'GET',
+        url: path,
+        headers: { host: '127.0.0.1:4000', 'x-forwarded-host': 'evil.example:3000' },
+      });
+      expect(rebound.statusCode).toBe(403);
       const badOrigin = await app.inject({
         method: 'GET',
         url: path,
