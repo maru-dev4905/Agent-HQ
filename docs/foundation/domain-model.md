@@ -237,6 +237,7 @@ Workspace(로컬 단일), Project(선택), AgentConnection, AgentInstance, Task(
 | `agent.connected`, `agent.started` | `connected` | 세션 시작 확인, 활동 신호 전 (N1) |
 | `agent.status.changed` | payload의 `status` | Runtime이 직접 보고 |
 | `agent.completed` | `idle` (`rawStatus = completed`) | **사용자 확인 필요**: "완료"를 대기(`idle`)로 볼지, 별도 상태가 필요한지 |
+| (Claude Code `Stop` hook, M2 Adapter) | `waiting` (`rawStatus = stop`) | 응답을 마치고 사용자 입력을 기다림 — `idle`과 구분 (2026-11-25 사용자 결정, RES-002) |
 | `agent.failed` | `failed` | |
 | `agent.disconnected` | `disconnected` | 명시적 해제 신호만 (N1) |
 | `tool.call.*` | 바꾸지 않음 | 도구 이벤트로 먼저 보인 Agent는 `unknown`으로 시작 |

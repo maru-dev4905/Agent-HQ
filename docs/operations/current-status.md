@@ -20,8 +20,7 @@
 ## 3. 사용자 결정 대기
 1. 남은 Open Questions: OQ-5(Orca 등 기존 도구와의 관계), OQ-6(MVP 3D 최소 범위), 명세서 Open Decisions
 2. HQ-005(프로젝트 `.claude/settings.json`, subagent 정의) 도입 여부
-3. RES-002: Claude Code `Stop`(응답을 마치고 사용자 입력 대기)을 `waiting`으로 볼지 `idle`로 볼지 (제안: `waiting`)
-4. PR #4에서 물은 결정: `agent.completed → idle` 매핑(domain-model N4), 세션 내 시계 역행 시 시각 우선(event-schema N8), `apps/api`의 `@agent-hq/simulator` devDependency — 머지로 현재 방식 수용으로 간주, 이의가 있으면 새 Task
+3. PR #4에서 물은 결정: `agent.completed → idle` 매핑(domain-model N4), 세션 내 시계 역행 시 시각 우선(event-schema N8), `apps/api`의 `@agent-hq/simulator` devDependency — 머지로 현재 방식 수용으로 간주, 이의가 있으면 새 Task
 
 ## 4. 인계 사항 (직전 세션 → 다음 세션)
 - main은 보호되어 직접 push할 수 없다. 모든 변경은 Task 브랜치와 PR로 들어간다. 머지는 사용자만 한다.

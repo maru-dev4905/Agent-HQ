@@ -310,7 +310,7 @@
   - result: 공식 hook 레퍼런스 조사(web-fetch) + scratch 실험(사용자 승인, 세션 6개, 저장소 밖 `.claude/settings.local.json`에만 async 기록 hook, 전역 설정 미수정). `docs/research/RES-002-claude-code-signals.md` 작성, research README·RSK-001·RSK-009 갱신
   - 주요 발견: 메인 세션 hook에는 `agent_id` 없음, subagent 도구 hook에는 `agent_id`·`agent_type` 있음, 권한 거부·실행 전 거부된 도구는 Post 이벤트 없이 `PostToolBatch`에만 나타남, SIGTERM 시 `SessionEnd`는 오지만 실행 중 도구의 종료 이벤트와 `Stop`은 없음, 타임스탬프·sequence·heartbeat 없음, 세션당 4~18건(작은 작업)
   - AC: §6 초기 범위 ↔ hook 매핑표(각 항목에 근거) ✅ · Event 계약 변경 필요 여부 결론(불필요, ADR 없음, 표현 규약은 M2 계약 테스트) ✅ · 수집 파일 삭제 기록(2026-11-25T10:23:33Z) ✅
-  - verification: G9 문서 점검(링크·상태 라벨), 제품 코드 변경 없음. 사용자 결정 필요: `Stop` → `waiting`/`idle`
+  - verification: G9 문서 점검(링크·상태 라벨), 제품 코드 변경 없음. 사용자 결정: `Stop` → `waiting`(2026-11-25)
   - PR #9: CodeRabbit 자동 리뷰 중단(star 10개 미만 정책) → 사용자 상시 승인으로 `@coderabbitai review` 요청(CLAUDE.md §6 예외, review-protocol §6). 1차 CHANGES_REQUESTED (Major 2: `not_executed` 확정 전 발행 위험, subagent 재개 시 멱등 키 충돌. Minor 2: 길이·해시 저장 필드 없음, 상시 승인을 CLAUDE.md §6에 반영) → RES-002 5.2·5.4·5.5·6 보완, CLAUDE.md §6 예외 추가. 함께: backlog HQ-103 Done, roadmap M0·M1 상태 정정
 
 ### HQ-111 — E2E: 시뮬레이터 → Ingestion → Dashboard

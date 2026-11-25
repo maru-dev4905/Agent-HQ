@@ -66,7 +66,7 @@ scratch 프로젝트(저장소 밖)의 `.claude/settings.local.json`에만 `asyn
 | Session 연결 | `SessionStart` | `agent.connected` — 메인 Agent. `externalSessionId = session_id`, 메인 Agent의 외부 ID는 `session_id`에서 만든다(메인에는 `agent_id`가 없음) | [문서]+[실험] |
 | Session 종료 | `SessionEnd` | `agent.disconnected`(명시적, `reason` → payload `reason`). SIGTERM에서도 발생. SIGKILL·정전 등은 신호 없음 → Connection 끊김 → `unknown`(HQ-108) | [문서]+[실험] |
 | 활동 상태 | `UserPromptSubmit` | `agent.status.changed` → `working` | [문서]+[실험] |
-| | `Stop` | `agent.status.changed` → `waiting`(사용자 입력 대기, `rawStatus: "stop"`) 제안 — **결정 필요**(아래 6) | [문서]+[실험] |
+| | `Stop` | `agent.status.changed` → `waiting`(사용자 입력 대기, `rawStatus: "stop"`) — **사용자 결정 2026-11-25** | [문서]+[실험] |
 | | `Notification`(`permission_prompt`, `agent_needs_input`) / `PermissionRequest` | `agent.status.changed` → `waiting`(`rawStatus` = 알림 유형) | [문서], `PermissionRequest`는 [실험] |
 | | `StopFailure` | `agent.failed`(`errorCode` = matcher 값, 예: `rate_limit`) | [문서] |
 | Subagent 시작/종료 | `SubagentStart` / `SubagentStop` | `agent.started`(`externalAgentId = agent_id`, `roleHint = agent_type`, `parentExternalAgentId` = 메인 Agent) / `agent.completed` | [문서]+[실험] |
@@ -107,7 +107,7 @@ scratch 프로젝트(저장소 밖)의 `.claude/settings.local.json`에만 `asyn
 - **결론: 계약을 깨는 변경은 필요 없다. ADR 없이 schemaVersion 1을 유지한다.** 위 매핑은 현재 Envelope(`source.externalSessionId`·`externalAgentId`, `sequence`, `timestampQuality: "collected"`)와 MVP Type, 기존 payload 필드(`toolName`, `externalToolCallId`, `serverName`, `durationMs`, `errorCode`, `roleHint`, `parentExternalAgentId`, `reason`, `rawStatus`)로 모두 표현된다.
 - 표현 규약으로 정할 것(M2 Adapter 계약 테스트에 넣는다): `errorCode` 값 `interrupted`, `not_executed`(확정 조건 5.4); 메인 Agent 외부 ID 규칙; subagent 실행 순번을 넣은 멱등 키(5.5); `Stop` → 상태 매핑.
 - M2에서 결정할 선택 필드 추가 후보: D2 콘텐츠의 길이·keyed 해시(5.2). 지금 매핑에는 필요하지 않다.
-- **사용자 결정 필요**: `Stop`(응답을 마치고 사용자 입력을 기다림)을 `waiting`으로 볼지 `idle`로 볼지. domain-model N1은 `idle`을 "Runtime이 명시적인 신호로 대기 상태를 보고했을 때"로 정의한다. 이 문서는 사람의 다음 입력을 기다리는 상태라 `waiting`을 제안한다(`agent.completed` → `idle` 매핑과 구분).
+- **결정 (2026-11-25, 사용자)**: `Stop`(응답을 마치고 사용자 입력을 기다림)은 `waiting`(`rawStatus: "stop"`)으로 매핑한다. 사람의 다음 입력을 기다리는 상태이며, `agent.completed` → `idle`(domain-model N4)과 구분한다.
 - Task: hook에 Agent HQ Task에 해당하는 신호가 확인되지 않았다(`TaskCreated`/`TaskCompleted` 미관찰). adapter-spec 비목표에 따라 Claude Code Adapter는 `task.*`를 만들지 않는다.
 - HQ-108의 Open 항목(연결 끊김 해제 기준): Claude Code에는 heartbeat가 없고 `occurredAt`은 Bridge가 hook 실행 시각으로 찍는다. Bridge outbox가 재연결 후 끊기기 전 이벤트를 flush하면 현재 규칙(끊긴 뒤 무엇이든 받으면 해제)에 따라 `unknown`이 풀린다. 이를 막으려면 해제 기준을 "끊긴 시각 이후의 `occurredAt`"으로 바꿔야 하는데, Bridge 시계와 서버 시계가 같은 기계라는 MVP 전제에서만 안전하다. **M2 Bridge 설계 때 결정**하도록 넘긴다.
 
