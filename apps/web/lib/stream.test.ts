@@ -16,7 +16,16 @@ class FakeSource {
     this.closed = true;
   }
   emit(sequence: number) {
-    const data = JSON.stringify({ storeSequence: String(sequence), type: 't', payload: {} });
+    this.raw(
+      JSON.stringify({
+        storeSequence: String(sequence),
+        type: 't',
+        occurredAt: '2026-11-25T00:00:00.000Z',
+        payload: {},
+      }),
+    );
+  }
+  raw(data: string) {
     for (const l of this.listeners) l({ data } as MessageEvent<string>);
   }
   fail(readyState: number) {
@@ -30,6 +39,7 @@ function harness(probeStatus: number | Error = 200) {
   const timers: { run: () => void; ms: number }[] = [];
   const states: StreamState[] = [];
   const received: string[] = [];
+  const invalid: string[] = [];
   let opens = 0;
   const stream = new WorkspaceStream(
     '/hq-api/workspaces/local',
@@ -53,9 +63,10 @@ function harness(probeStatus: number | Error = 200) {
       onOpen: () => {
         opens += 1;
       },
+      onInvalid: (reason) => invalid.push(reason),
     },
   );
-  return { stream, sources, timers, states, received, opens: () => opens };
+  return { stream, sources, timers, states, received, invalid, opens: () => opens };
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -121,6 +132,26 @@ describe('WorkspaceStream', () => {
     h.stream.stop();
     h.timers[0]!.run();
     expect(h.sources).toHaveLength(1);
+  });
+});
+
+describe('WorkspaceStream — message validation', () => {
+  it('skips malformed messages, keeps the cursor and reports them', () => {
+    const h = harness();
+    h.stream.start(0n);
+    const source = h.sources[0]!;
+    source.emit(1);
+    for (const bad of [
+      'not json',
+      'null',
+      '{"storeSequence":"bad","type":"t","occurredAt":"x","payload":{}}',
+      '{"storeSequence":"2"}',
+    ]) {
+      source.raw(bad);
+    }
+    source.emit(2);
+    expect(h.received).toEqual(['1', '2']);
+    expect(h.invalid).toHaveLength(4);
   });
 });
 

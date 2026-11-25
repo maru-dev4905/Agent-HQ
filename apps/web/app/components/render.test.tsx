@@ -67,6 +67,26 @@ describe('rendering agent content', () => {
     }
   });
 
+  it('shows a task waiting for approval as the current task', () => {
+    const task = {
+      taskId: 't1',
+      connectionId: 'c1',
+      agentInstanceId: 'a1',
+      status: 'waiting_approval' as const,
+      title: 'Deploy',
+      parentExternalTaskId: null,
+      lastEventType: 'task.started',
+      lastEventAt: '2026-11-25T00:00:00.000Z',
+      lastReceivedAt: '2026-11-25T00:00:00.000Z',
+      lastStoreSequence: '2',
+    };
+    const html = renderToStaticMarkup(
+      <AgentRoster agents={[agent('main')]} tasks={[task]} staleThresholdMs={60_000} now={0} />,
+    );
+    expect(html).toContain('승인 대기');
+    expect(html).toContain('Deploy');
+  });
+
   it('shows status with icon and text, and explains unknown', () => {
     const html = renderToStaticMarkup(
       <AgentRoster agents={[agent('main')]} tasks={[]} staleThresholdMs={60_000} now={0} />,

@@ -45,5 +45,7 @@ describe('mergeEvents', () => {
       '10',
       '9',
     ]);
+    // Repeats inside one incoming batch are dropped too.
+    expect(mergeEvents([], [event(2), event(2)], 5).map((e) => e.storeSequence)).toEqual(['2']);
   });
 });

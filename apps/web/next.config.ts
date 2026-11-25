@@ -29,7 +29,14 @@ const nextConfig: NextConfig = {
   // SSE must stream through the proxy unbuffered; gzip would buffer it.
   compress: false,
   rewrites() {
-    return Promise.resolve([{ source: '/hq-api/:path*', destination: `${API_URL}/:path*` }]);
+    // Only the read endpoints the dashboard uses: registration, heartbeats and ingestion
+    // stay unreachable through the web server (the API has no user login yet, security §5).
+    return Promise.resolve([
+      {
+        source: '/hq-api/workspaces/:workspaceId/:view(agents|tasks|connections|events|stream)',
+        destination: `${API_URL}/workspaces/:workspaceId/:view`,
+      },
+    ]);
   },
   headers() {
     return Promise.resolve([

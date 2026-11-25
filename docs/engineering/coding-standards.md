@@ -20,7 +20,7 @@
 - 외부 입력은 스키마 검증 후 타입을 얻는다 (스키마 → 타입 추론, 타입을 손으로 중복 정의하지 않음).
 - `enum` 대신 문자열 리터럴 유니온.
 - 모듈 경계는 패키지 `index.ts`의 public export로만 접근 (깊은 import 금지).
-- 모든 패키지는 ESM이다 (`"type": "module"`, `nodenext`). 상대 import에는 `.js` 확장자를 붙인다. NestJS 12가 ESM 패키지이기 때문이다 (2026-11-22 확인).
+- 모든 패키지는 ESM이다 (`"type": "module"`, `nodenext`). 상대 import에는 `.js` 확장자를 붙인다. NestJS 12가 ESM 패키지이기 때문이다 (2026-11-22 확인). 예외: `apps/web`은 Next.js 번들러가 모듈을 찾으므로(`moduleResolution: bundler`) 확장자 없이 import한다 (HQ-109, PR #8 리뷰).
 - 비동기 함수의 Promise를 버리지 않는다 (floating promise lint 규칙).
 - NestJS: 생성자 주입에는 **항상 `@Inject(토큰 또는 클래스)`를 명시한다.** `emitDecoratorMetadata`의 타입 추론에 의존하지 않아야 Vitest 변환기에서도 DI가 동작한다 (HQ-003에서 확인). 기능 단위 모듈 하나가 디렉터리 하나다. 다른 모듈의 provider는 그 모듈이 export한 것만 주입한다. 컨트롤러에 도메인 로직을 넣지 않는다.
 - Prisma: 버전은 ADR-0003의 고정 범위를 지킨다. Prisma Client는 `packages/database`의 저장소 계층 밖에서 직접 쓰지 않는다. raw SQL도 저장소 계층 안에서만 쓴다. 예외: 통합 테스트의 **픽스처 준비와 초기화**(TRUNCATE, 시드 행 생성)는 테스트 코드에서 Prisma Client를 직접 써도 된다. 검증 대상 동작은 반드시 운영 코드 경로(저장소 계층, API)를 거친다 (PR #4 CodeRabbit 지적에 대한 규칙 명확화).

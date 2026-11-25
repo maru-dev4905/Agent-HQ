@@ -2,6 +2,8 @@ import type { AgentView, TaskView } from '@agent-hq/contracts';
 import { agentLook, isStale, STALE_LOOK, taskLook, unknownReason } from '../../lib/status';
 import { StatusBadge } from './status-badge';
 
+const CURRENT_TASK = new Set(['running', 'waiting_approval', 'waiting_external']);
+
 const time = (iso: string) => new Date(iso).toLocaleTimeString('ko-KR');
 
 export function AgentRoster(props: {
@@ -27,8 +29,9 @@ export function AgentRoster(props: {
         {props.agents.map((agent) => {
           const reason = unknownReason(agent);
           const stale = isStale(agent.lastReceivedAt, props.staleThresholdMs, props.now);
+          // Waiting for an approval or an external answer is still the agent's current task.
           const task = props.tasks.find(
-            (t) => t.agentInstanceId === agent.agentInstanceId && t.status === 'running',
+            (t) => t.agentInstanceId === agent.agentInstanceId && CURRENT_TASK.has(t.status),
           );
           return (
             <tr key={agent.agentInstanceId}>

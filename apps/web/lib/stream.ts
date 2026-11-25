@@ -29,6 +29,8 @@ export interface StreamCallbacks {
   onState: (state: StreamState) => void;
   /** Called when the stream (re)opens: read models may have changed while it was down. */
   onOpen: () => void;
+  /** A message that is not a valid event; it is skipped and the cursor is kept. */
+  onInvalid: (reason: string) => void;
 }
 
 const CLOSED = 2;
@@ -94,7 +96,11 @@ export class WorkspaceStream {
       else this.callbacks.onState('reconnecting');
     };
     source.addEventListener(STREAM_EVENT, (message) => {
-      const event = JSON.parse(message.data) as EventView;
+      const event = parseEvent(message.data);
+      if (event === null) {
+        this.callbacks.onInvalid('형식이 잘못된 Event 메시지를 받아 건너뛰었습니다');
+        return;
+      }
       const sequence = BigInt(event.storeSequence);
       if (sequence <= this.last) return;
       this.last = sequence;
@@ -126,6 +132,35 @@ export class WorkspaceStream {
   }
 }
 
+const CURSOR = /^(0|[1-9][0-9]{0,18})$/;
+
+/**
+ * Minimal runtime check of a stream message (boundary validation). The full contract schema
+ * would pull zod into the bundle; these are the fields the dashboard relies on.
+ */
+export function parseEvent(data: string): EventView | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  if (typeof value !== 'object' || value === null) return null;
+  const event = value as Record<string, unknown>;
+  const ok =
+    typeof event['storeSequence'] === 'string' &&
+    CURSOR.test(event['storeSequence']) &&
+    typeof event['type'] === 'string' &&
+    typeof event['occurredAt'] === 'string' &&
+    typeof event['payload'] === 'object' &&
+    event['payload'] !== null;
+  // Safe: the fields the dashboard reads were checked above.
+  return ok ? (value as EventView) : null;
+}
+
+/** Longest wait for the probe's answer; the proxy's own 30 s idle limit is not relied on. */
+const PROBE_TIMEOUT_MS = 5000;
+
 /** Browser implementations of the stream dependencies. */
 export function browserStreamDeps(): StreamDeps {
   return {
@@ -133,9 +168,15 @@ export function browserStreamDeps(): StreamDeps {
     open: (url) => new EventSource(url),
     probe: async (url) => {
       const controller = new AbortController();
-      const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-      controller.abort(); // only the status matters; do not keep a second stream open
-      return response.status;
+      // A timeout rejects, which recover() treats like an unreachable API (retry).
+      const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+      try {
+        const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+        return response.status;
+      } finally {
+        clearTimeout(timer);
+        controller.abort(); // only the status matters; do not keep a second stream open
+      }
     },
     setTimer: (run, ms) => setTimeout(run, ms),
     clearTimer: (timer) => clearTimeout(timer as number | undefined),

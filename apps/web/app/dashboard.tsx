@@ -26,10 +26,20 @@ interface ReadModels {
   connections: ConnectionList;
 }
 
-async function getJson<T>(path: string): Promise<T> {
+async function getJson(path: string): Promise<unknown> {
   const response = await fetch(`${API}${path}`, { cache: 'no-store' });
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
-  return (await response.json()) as T;
+  return response.json();
+}
+
+/**
+ * Boundary check of the read-model responses: the lists the view iterates must be arrays.
+ * A malformed answer is reported like a failed request and the last good view is kept.
+ */
+function listOf<T>(body: unknown, key: string): T {
+  const value = (body as Record<string, unknown> | null)?.[key];
+  if (!Array.isArray(value)) throw new Error(`unexpected response: ${key} is not a list`);
+  return body as T;
 }
 
 export function Dashboard() {
@@ -39,25 +49,36 @@ export function Dashboard() {
   const [stream, setStream] = useState<StreamState>('connecting');
   const [now, setNow] = useState(() => Date.now());
   const streamRef = useRef<WorkspaceStream | undefined>(undefined);
-  const requestId = useRef(0);
 
+  const inFlight = useRef(false);
+  const again = useRef(false);
+
+  // One read at a time: a refresh asked for meanwhile runs once when it ends. Slow answers
+  // are therefore always applied, and an older answer can never overwrite a newer one.
   const refresh = useCallback(() => {
-    // Only the newest request may update the view: an older, slower answer must not
-    // overwrite fresher read models.
-    const id = ++requestId.current;
-    Promise.all([
-      getJson<AgentList>('/agents'),
-      getJson<TaskList>('/tasks'),
-      getJson<ConnectionList>('/connections'),
-    ])
+    if (inFlight.current) {
+      again.current = true;
+      return;
+    }
+    inFlight.current = true;
+    Promise.all([getJson('/agents'), getJson('/tasks'), getJson('/connections')])
       .then(([agents, tasks, connections]) => {
-        if (id !== requestId.current) return;
-        setModels({ agents, tasks, connections });
+        setModels({
+          agents: listOf<AgentList>(agents, 'agents'),
+          tasks: listOf<TaskList>(tasks, 'tasks'),
+          connections: listOf<ConnectionList>(connections, 'connections'),
+        });
         setLoadError(null);
       })
-      .catch((error: unknown) => {
-        if (id !== requestId.current) return;
-        setLoadError(error instanceof Error ? error.message : String(error));
+      .catch((error: unknown) =>
+        setLoadError(error instanceof Error ? error.message : String(error)),
+      )
+      .finally(() => {
+        inFlight.current = false;
+        if (again.current) {
+          again.current = false;
+          refresh();
+        }
       });
   }, []);
 
@@ -74,6 +95,7 @@ export function Dashboard() {
       },
       onState: setStream,
       onOpen: refresh,
+      onInvalid: setLoadError,
     });
     streamRef.current = workspaceStream;
     refresh();

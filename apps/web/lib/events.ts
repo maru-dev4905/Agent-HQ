@@ -32,7 +32,11 @@ export function mergeEvents(
   limit: number,
 ): EventView[] {
   const seen = new Set(current.map((e) => e.storeSequence));
-  const added = incoming.filter((e) => !seen.has(e.storeSequence));
+  const added = incoming.filter((e) => {
+    if (seen.has(e.storeSequence)) return false;
+    seen.add(e.storeSequence); // also drops repeats within `incoming`
+    return true;
+  });
   if (added.length === 0) return current;
   return [...added.reverse(), ...current]
     .sort((a, b) => (BigInt(b.storeSequence) > BigInt(a.storeSequence) ? 1 : -1))
