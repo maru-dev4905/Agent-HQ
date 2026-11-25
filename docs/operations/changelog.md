@@ -7,6 +7,7 @@
 ## 2026-11-25 (4) — HQ-110 Claude Code 신호 조사 (PR)
 - [Added] `docs/research/RES-002-claude-code-signals.md`: 공식 hook 문서 정리, scratch 실험 결과, adapter-spec §6 ↔ hook 매핑, Event 계약 대조(변경 불필요), M2 Bridge 설계 입력
 - [Changed] RES-002 Concluded, RSK-001·RSK-009 진행 기록, HQ-109 수동 확인 결과 기록
+- [Changed] review-protocol §6: CodeRabbit 자동 리뷰 중단(star 10개 미만 정책) → PR마다 `@coderabbitai review` 댓글로 요청 (사용자 상시 승인)
 
 ## 2026-11-25 (3) — HQ-109 Dashboard v0 (Done, PR #8)
 - [Added] `apps/web` Dashboard: Agent Roster, Connection, Event Timeline, SSE 상태·재연결, 상태는 아이콘+텍스트

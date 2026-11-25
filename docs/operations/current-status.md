@@ -25,6 +25,7 @@
 
 ## 4. 인계 사항 (직전 세션 → 다음 세션)
 - main은 보호되어 직접 push할 수 없다. 모든 변경은 Task 브랜치와 PR로 들어간다. 머지는 사용자만 한다.
+- CodeRabbit은 자동 리뷰를 하지 않는다(star 10개 미만 정책). PR을 만들면 `@coderabbitai review` 댓글로 요청한다(상시 승인).
 - 이제부터 작업 흐름은 [review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)을 따른다 (Task 브랜치 → 로컬 리뷰 → PR → CodeRabbit → 사용자 머지).
 - dev DB를 초기화(`prisma migrate reset`)해야 하는 상황이 오면 사용자 승인을 받는다. Prisma도 Agent 실행 시 이를 거부한다.
 - **Node 26 필요**: 저장소에서 `nvm use`. Agent 셸은 nvm 기본값(24)이 잡히므로 `PATH="$HOME/.nvm/versions/node/v26.13.1/bin:$PATH"`를 앞에 붙인다.

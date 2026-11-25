@@ -71,10 +71,13 @@ Task 브랜치에서 작업
  → 로컬 Gate: pnpm verify (+ 해당 시 pnpm test:integration)
  → 로컬 독립 리뷰 (Claude Code subagent, 이 문서 §2~§4) ─ Blocker/Major 있으면 수정 → 재리뷰
  → PR 생성 (Task ID, AC 충족 여부, 실행한 Gate와 결과, 로컬 리뷰 요약)
+ → PR 댓글로 `@coderabbitai review` 요청 (자동 리뷰가 꺼져 있음, 아래)
  → CI(verify, integration) + CodeRabbit 리뷰 ─ 지적 있으면 판단 → 수정 push 또는 근거 답글
  → CI 통과 + CodeRabbit이 최신 커밋 승인 → `ready-to-merge` 라벨 + 소유자 멘션 (GitHub 알림)
  → 사용자가 머지 → Task Done, 문서 갱신
 ```
+
+**CodeRabbit 수동 요청 (2026-11-25부터)**: CodeRabbit이 "star 10개 미만 저장소는 자동 리뷰를 하지 않는다"는 정책으로 PR #9부터 자동 리뷰를 건너뛴다(check 상태 `skipping`). main 보호 규칙이 CodeRabbit 승인을 요구하므로, PR을 만들면 Agent가 곧바로 `@coderabbitai review` 댓글을 단다. 새 push에 리뷰가 오지 않으면 같은 댓글로 다시 요청한다. 이 댓글은 사용자 상시 승인 사항이다(2026-11-25). 그 밖의 외부 쓰기(스레드 resolve, 답글)는 CLAUDE.md §6대로 건별로 판단한다.
 
 **역할 분담** (같은 것을 두 번 보지 않는다)
 - 로컬 리뷰: Task AC 충족, 설계·계약 정합성(ADR, event-schema), 보안 규칙 등 프로젝트 맥락이 필요한 판단
