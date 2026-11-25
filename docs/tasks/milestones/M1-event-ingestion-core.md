@@ -238,7 +238,7 @@
   - PR #6 CodeRabbit 1차: APPROVED (Minor 1: 종료 중 끝난 `open()`이 스트림을 시작해 `app.close()`를 막을 수 있음) → 종료 플래그를 두고 `start()`에서 확인, 단위 테스트
 
 ### HQ-108 — Gap 감지와 Unknown/Stale 표시
-- Status: In Review (2026-11-25) · Risk: Medium · Role: Worker → Reviewer
+- Status: Done (2026-11-25, PR #7 머지 `49f026a`) · Risk: Medium · Role: Worker → Reviewer
 - Objective: 누락이 의심되는 구간을 기록하고, 해당 Agent 상태를 Unknown이나 Stale로 표시한다. 누락을 추정으로 채우지 않는다.
 - Background: event-schema §8, FR-008, domain-model 통합 노트 N1
 - Scope: `sequence` 불연속 감지 → `event.gap.detected` 기록, 명시적 종료 신호 없이 Connection이 끊긴 Agent를 `unknown`으로([domain-model 통합 노트 N1](../../foundation/domain-model.md#n1-agent-상태-정규화-proposed--res-007-s1-해결안-hq-101에서-확정)의 규칙), `staleThreshold` 기반 Stale 표시 속성

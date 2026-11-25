@@ -6,16 +6,15 @@
 
 ## 1. 요약
 - 단계: **M1 / Phase 1 Event Ingestion Core — In Progress**. M0 완료(HQ-005는 Backlog)
-- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6). 진행 중: HQ-108 Gap·Unknown·Stale(PR)
+- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6), HQ-108 Gap·Unknown·Stale(PR #7). 진행 중: HQ-109 Dashboard v0(PR)
 - Gate: CI가 PR마다 `verify`·`integration` 실행. main은 보호됨 (필수 check 3개 + CodeRabbit 승인 1건)
 - Git: Task마다 브랜치 → PR → CodeRabbit → 사용자 머지 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004))
 
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-108 Gap·Unknown·Stale | In Review | 브랜치 `hq-108-gap-stale`, PR → CodeRabbit |
-| HQ-109 Dashboard v0 | In Review | 브랜치 `hq-109-dashboard`(HQ-108 위). 수동 확인(서버 실행·스크린샷) 승인 대기 |
-| HQ-110 Claude Code 신호 조사 | Backlog | 언제든 병행 가능 (scratch hook 설정은 승인 후) |
+| HQ-109 Dashboard v0 | In Review | 브랜치 `hq-109-dashboard`, PR → CodeRabbit. 수동 확인(dev DB migration·서버 실행·스크린샷) 승인 대기 |
+| HQ-110 Claude Code 신호 조사 | Ready | 다음 후보. N5 끊김 해제 기준 결정에도 필요 |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 
 ## 3. 사용자 결정 대기

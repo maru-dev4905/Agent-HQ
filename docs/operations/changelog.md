@@ -10,7 +10,7 @@
 - [Added] `/hq-api/*` → API rewrite 프록시(`AGENT_HQ_API_URL`), TD-009, TD-010
 - **실행**: `pnpm infra:up` → `pnpm db:migrate` → API(`pnpm --filter @agent-hq/api dev`)와 Web(`pnpm --filter @agent-hq/web dev`) → http://127.0.0.1:3000
 
-## 2026-11-25 (2) — HQ-108 Gap·Unknown·Stale (PR)
+## 2026-11-25 (2) — HQ-108 Gap·Unknown·Stale (Done, PR #7)
 - [Added] Gap 감지 주기 작업과 HQ 기록 `event.gap.detected`, 연결 끊김 → Agent `unknown`(조회 시 계산), `AgentView.reportedStatus`·`connectionLostAt`·`stale`·`staleThresholdMs`
 - [Added] migration `20261125010000_agent_connection_loss` (`agent_current_state.connection_lost_at` nullable 추가)
 - [Security] `source.adapterId = "hq"`는 HQ 전용 (Ingestion 403)
