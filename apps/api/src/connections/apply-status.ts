@@ -5,6 +5,7 @@ import {
 } from '@agent-hq/domain';
 import type { ConnectionRecord, EventStore } from '@agent-hq/database';
 import type { AgentEvent } from '@agent-hq/events';
+import { applyProjections } from '../projection/projection.service.js';
 
 const REASONS: Record<ConnectionStatus, string> = {
   pending: 'registered, no heartbeat yet',
@@ -61,7 +62,12 @@ export async function applyConnectionStatus(
       idempotencyKey: `hq:connection-health:${connection.id}:${occurredAt}:${next}`,
       payload: { status: next, reason: REASONS[next] },
     } satisfies AgentEvent;
-    await tx.append(event);
+    const outcome = await tx.append(event);
+    // Read models change in the same commit (agents of a lost connection become unknown,
+    // HQ-108), exactly as replay will apply this event.
+    if (outcome.status === 'stored') {
+      await applyProjections(tx, { ...event, storeSequence: outcome.storeSequence });
+    }
     return { status: next, changed: true };
   });
 }

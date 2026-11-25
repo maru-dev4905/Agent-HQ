@@ -29,6 +29,7 @@ import {
   type ConnectionPrincipal,
 } from '../connections/tokens.js';
 import { applyProjections } from '../projection/projection.service.js';
+import { HQ_ADAPTER_ID } from '../projection/projector.js';
 import { EVENT_STORE } from '../tokens.js';
 import type { EventRateLimiter } from './rate-limiter.js';
 import { redactSecrets, redactText } from './redaction.js';
@@ -191,6 +192,11 @@ export class IngestionService {
     }
     if (event.connectionId !== undefined && event.connectionId !== principal.connectionId) {
       issues.push({ path: 'connectionId', message: 'Does not match the authenticated connection' });
+    }
+    // `hq` marks events HQ writes itself (gap records, connection health): a source must not
+    // be able to pass its events off as HQ's (HQ-108).
+    if (event.source.adapterId === HQ_ADAPTER_ID) {
+      issues.push({ path: 'source.adapterId', message: 'Reserved for events written by HQ' });
     }
     return issues;
   }

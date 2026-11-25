@@ -2,6 +2,7 @@ import { DEFAULT_HEARTBEAT_THRESHOLDS } from '@agent-hq/domain';
 import { INGEST_LIMITS } from '@agent-hq/contracts';
 import type { ConnectionSettings } from './connections/tokens.js';
 import type { RateLimitSettings } from './ingestion/rate-limiter.js';
+import type { GapSettings } from './gap-detection/tokens.js';
 import type { RealtimeSettings } from './realtime/tokens.js';
 
 export interface ApiConfig {
@@ -13,6 +14,16 @@ export interface ApiConfig {
   http: HttpSettings;
   ingestion: RateLimitSettings;
   realtime: RealtimeSettings;
+  gapDetection: GapSettings;
+  query: QuerySettings;
+}
+
+export interface QuerySettings {
+  /**
+   * An agent is shown as stale when HQ has received nothing about it for this long. Derived
+   * at query time; `observedStatus` is never changed by it (domain-model N1).
+   */
+  staleThresholdMs: number;
 }
 
 export interface HttpSettings {
@@ -136,6 +147,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       maxStreams: positiveInt(env, 'SSE_MAX_STREAMS', 100),
       keepAliveMs: interval(env, 'SSE_KEEP_ALIVE_MS', 15_000),
       catchUpIntervalMs: interval(env, 'SSE_CATCH_UP_INTERVAL_MS', 5_000),
+    },
+    gapDetection: {
+      checkIntervalMs: interval(env, 'GAP_CHECK_INTERVAL_MS', 10_000, true),
+      graceMs: interval(env, 'GAP_GRACE_MS', 30_000, true),
+    },
+    query: {
+      staleThresholdMs: interval(env, 'STALE_THRESHOLD_MS', 300_000),
     },
   };
   if (config.ingestion.burstEvents < INGEST_LIMITS.maxBatchEvents) {

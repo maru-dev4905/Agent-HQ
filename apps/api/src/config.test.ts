@@ -89,3 +89,15 @@ describe('loadConfig — realtime', () => {
     expect(() => loadConfig({ ...base, SSE_KEEP_ALIVE_MS: '3000000000' })).toThrow(/one day/);
   });
 });
+
+describe('loadConfig — gap detection and stale', () => {
+  it('uses documented defaults', () => {
+    const config = loadConfig(base);
+    expect(config.gapDetection).toEqual({ checkIntervalMs: 10_000, graceMs: 30_000 });
+    expect(config.query).toEqual({ staleThresholdMs: 300_000 });
+    expect(loadConfig({ ...base, GAP_CHECK_INTERVAL_MS: '0' }).gapDetection.checkIntervalMs).toBe(
+      0,
+    );
+    expect(() => loadConfig({ ...base, STALE_THRESHOLD_MS: '0' })).toThrow(/positive/);
+  });
+});

@@ -15,7 +15,8 @@ import {
   type QueryStore,
 } from '@agent-hq/database';
 import { DATABASE_CLIENT, EVENT_STORE } from '../tokens.js';
-import { QUERY_STORE } from './tokens.js';
+import type { QuerySettings } from '../config.js';
+import { QUERY_CLOCK, QUERY_SETTINGS, QUERY_STORE } from './tokens.js';
 import { agentView, connectionView, eventView, taskView } from './views.js';
 
 /** Parses a validated decimal cursor; `undefined` means "from the start". */
@@ -39,6 +40,8 @@ export class QueryService {
     @Inject(QUERY_STORE) private readonly store: QueryStore,
     @Inject(EVENT_STORE) private readonly events: EventStore,
     @Inject(DATABASE_CLIENT) private readonly db: DatabaseClient,
+    @Inject(QUERY_SETTINGS) private readonly settings: QuerySettings,
+    @Inject(QUERY_CLOCK) private readonly clock: () => Date,
   ) {}
 
   /** 404 for an unknown workspace, without telling whether it ever existed. */
@@ -51,7 +54,12 @@ export class QueryService {
   async agents(workspaceId: string): Promise<AgentList> {
     await this.assertWorkspace(workspaceId);
     const { agents } = await readProjections(this.db, workspaceId);
-    return { agents: agents.map(agentView) };
+    const now = this.clock();
+    const { staleThresholdMs } = this.settings;
+    return {
+      agents: agents.map((row) => agentView(row, now, staleThresholdMs)),
+      staleThresholdMs,
+    };
   }
 
   async tasks(workspaceId: string): Promise<TaskList> {

@@ -194,13 +194,18 @@ describe('ingestion (HTTP + PostgreSQL)', () => {
         agentStarted('a', { workspaceId: 'local', connectionId }),
         agentStarted('b', { workspaceId: 'other' }),
         agentStarted('c', { connectionId: 'someone-else' }),
+        agentStarted('d', { source: { adapterId: 'hq', runtime: 'hq', externalAgentId: 'x' } }),
       ],
     });
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({
       error: {
         code: 'FORBIDDEN',
-        issues: [{ path: 'events.1.workspaceId' }, { path: 'events.2.connectionId' }],
+        issues: [
+          { path: 'events.1.workspaceId' },
+          { path: 'events.2.connectionId' },
+          { path: 'events.3.source.adapterId' },
+        ],
       },
     });
     expect((await storedEvents()).filter((e) => e.type === 'agent.started')).toHaveLength(0);

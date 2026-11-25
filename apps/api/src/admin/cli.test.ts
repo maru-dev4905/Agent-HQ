@@ -17,6 +17,10 @@ function adminIo(store: AdminIo['store']) {
         calls.push('clear');
         return Promise.resolve();
       },
+      listAgentsOfConnection: () => {
+        calls.push('listAgentsOfConnection');
+        return Promise.resolve([]);
+      },
     },
     readFrom: () => {
       calls.push('readFrom');
@@ -68,7 +72,8 @@ describe('runAdmin', () => {
     await runAdmin(['revoke', 'conn_1'], io);
     expect(out.join('')).toBe('revoked conn_1\n');
     expect(transactions).toEqual(['local']);
-    expect(calls).toEqual(['setConnectionStatus', 'append']);
+    // The status event is projected in the same transaction (agents become unknown, HQ-108).
+    expect(calls).toEqual(['setConnectionStatus', 'append', 'listAgentsOfConnection']);
   });
 
   it('reports an unknown or already revoked connection without recording anything', async () => {

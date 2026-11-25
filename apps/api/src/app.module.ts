@@ -6,6 +6,7 @@ import { HealthModule } from './health/health.module.js';
 import { ApiExceptionFilter } from './http/api-exception.filter.js';
 import { RequestOriginGuard } from './http/request-origin.guard.js';
 import { IngestionModule } from './ingestion/ingestion.module.js';
+import { GapDetectionModule } from './gap-detection/gap-detection.module.js';
 import { ProjectionModule } from './projection/projection.module.js';
 import { QueryModule } from './query/query.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
@@ -26,6 +27,7 @@ export class AppModule {
         IngestionModule.register(connections, config.ingestion),
         QueryModule,
         RealtimeModule.forSettings(config.realtime),
+        GapDetectionModule.forSettings(config.gapDetection),
       ],
       providers: [
         { provide: HTTP_SETTINGS, useValue: config.http },

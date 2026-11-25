@@ -2,7 +2,7 @@ import type { StoredEvent } from '@agent-hq/database';
 import { generate, SCENARIO_NAMES } from '@agent-hq/simulator';
 import { describe, expect, it } from 'vitest';
 import { foldAll, publicView, storeStream } from './projection.test-helpers.js';
-import { isNewer, projectAgent } from './projector.js';
+import { isNewer, projectAgent, projectConnectionLoss, shownAgentStatus } from './projector.js';
 
 describe('projector — scenarios', () => {
   it('single-agent ends idle through explicit signals and its task succeeds', () => {
@@ -260,5 +260,127 @@ describe('isNewer — total order', () => {
     const b = key('2026-01-01T00:00:00.000Z', null, null, 'k2');
     expect(isNewer(a, b)).not.toBe(isNewer(b, a));
     expect(isNewer(a, a)).toBe(false);
+  });
+});
+
+describe('projector — gaps and connection loss (HQ-108)', () => {
+  const fold = (events: StoredEvent[]) =>
+    events.reduce<ReturnType<typeof projectAgent>>((row, e) => projectAgent(row, e) ?? row, null);
+
+  it('a recorded gap makes the agent unknown until a later known event', () => {
+    const started = event(1, {
+      type: 'agent.status.changed',
+      occurredAt: '2026-11-25T00:00:01.000Z',
+      session: 's',
+      sequence: 1,
+      payload: { status: 'working' },
+    });
+    const gap = event(2, {
+      type: 'event.gap.detected',
+      occurredAt: '2026-11-25T00:00:05.000Z',
+      session: 's',
+      sequence: 3,
+      payload: { reason: 'gap', fromSequence: 2, toSequence: 3 },
+    });
+    const tool = event(3, {
+      type: 'tool.call.started',
+      occurredAt: '2026-11-25T00:00:05.000Z',
+      session: 's',
+      sequence: 4,
+      payload: { toolName: 'Bash', externalToolCallId: 'c1' },
+    });
+    const later = event(4, {
+      type: 'agent.status.changed',
+      occurredAt: '2026-11-25T00:00:06.000Z',
+      session: 's',
+      sequence: 5,
+      payload: { status: 'waiting' },
+    });
+    // A tool event after the hole does not tell the status: it stays unknown.
+    expect(fold([started, gap, tool])?.observedStatus).toBe('unknown');
+    // An explicit status after the hole decides again, whatever the arrival order.
+    for (const order of permutations([started, gap, tool, later])) {
+      expect(fold(order)?.observedStatus).toBe('waiting');
+    }
+  });
+
+  /** Delivers events in order; each is received one second after the previous one. */
+  function deliver(events: StoredEvent[]) {
+    let row: ReturnType<typeof projectAgent> = null;
+    events.forEach((e, i) => {
+      const received = {
+        ...e,
+        receivedAt: new Date(Date.UTC(2026, 10, 25, 1, 0, i)).toISOString(),
+      } as StoredEvent;
+      if (received.type === 'connection.health.changed') {
+        if (row !== null) row = projectConnectionLoss(row, received) ?? row;
+      } else {
+        row = projectAgent(row, received) ?? row;
+      }
+    });
+    return row!;
+  }
+  const lost = event(9, {
+    type: 'connection.health.changed',
+    occurredAt: '2026-11-25T00:10:00.000Z',
+    payload: { status: 'disconnected' },
+  });
+  const started = event(1, { type: 'agent.started', occurredAt: '2026-11-25T00:00:00.000Z' });
+  const working = event(2, {
+    type: 'agent.status.changed',
+    occurredAt: '2026-11-25T00:01:00.000Z',
+    payload: { status: 'working' },
+  });
+  const disconnected = event(3, {
+    type: 'agent.disconnected',
+    occurredAt: '2026-11-25T00:05:00.000Z',
+  });
+
+  it('an explicit agent.disconnected wins however late it arrives (review M1)', () => {
+    for (const order of permutations([started, working, disconnected, lost])) {
+      const row = deliver(order);
+      expect(row.observedStatus).toBe('disconnected');
+      expect(shownAgentStatus(row)).toBe('disconnected');
+    }
+  });
+
+  it('shows unknown exactly when the loss came after the last thing received from the agent', () => {
+    for (const order of permutations([started, working, lost])) {
+      const row = deliver(order);
+      expect(row.observedStatus).toBe('working'); // what the agent reported, order-independent
+      expect(shownAgentStatus(row)).toBe(order.at(-1) === lost ? 'unknown' : 'working');
+    }
+    // Never idle: an agent that reported idle still becomes unknown when its connection is lost.
+    const idle = deliver([
+      started,
+      event(4, { type: 'agent.completed', occurredAt: '2026-11-25T00:02:00.000Z' }),
+      lost,
+    ]);
+    expect([idle.observedStatus, shownAgentStatus(idle)]).toEqual(['idle', 'unknown']);
+  });
+
+  it('is not fooled by a source clock that runs ahead of the server (review M1)', () => {
+    const future = event(5, {
+      type: 'agent.status.changed',
+      occurredAt: '2099-01-01T00:00:00.000Z',
+      payload: { status: 'working' },
+    });
+    expect(shownAgentStatus(deliver([started, future, lost]))).toBe('unknown');
+  });
+
+  it('HQ gap records neither refresh activity times nor undo a connection loss', () => {
+    const gap = {
+      ...event(6, {
+        type: 'event.gap.detected',
+        occurredAt: '2026-11-25T00:03:00.000Z',
+        payload: { reason: 'gap' },
+      }),
+      source: { adapterId: 'hq', runtime: 'hq' },
+    } as StoredEvent;
+    const before = deliver([started, working, lost]);
+    const after = deliver([started, working, lost, gap]);
+    expect(after.lastReceivedAt).toBe(before.lastReceivedAt);
+    expect(after.lastEventAt).toBe(before.lastEventAt);
+    expect(shownAgentStatus(after)).toBe('unknown');
   });
 });

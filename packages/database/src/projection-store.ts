@@ -29,6 +29,11 @@ export interface AgentStateRow {
   lastReceivedAt: string;
   lastStoreSequence: bigint;
   orderKeys: Record<string, OrderKey>;
+  /**
+   * Server time the agent's connection was last lost (HQ-108). `observedStatus` holds what
+   * the source reported; the shown status is derived from both (apps/api `shownAgentStatus`).
+   */
+  connectionLostAt: string | null;
 }
 
 export interface TaskStateRow {
@@ -49,6 +54,8 @@ export interface TaskStateRow {
 /** Read-model access inside an EventStore transaction (same commit as the event). */
 export interface ProjectionTransaction {
   getAgent(agentInstanceId: string): Promise<AgentStateRow | null>;
+  /** Agents first seen on a connection, ordered by ID (connection loss, HQ-108). */
+  listAgentsOfConnection(connectionId: string): Promise<AgentStateRow[]>;
   putAgent(row: AgentStateRow): Promise<void>;
   getTask(taskId: string): Promise<TaskStateRow | null>;
   putTask(row: TaskStateRow): Promise<void>;
@@ -57,28 +64,40 @@ export interface ProjectionTransaction {
 }
 
 type Tx = Prisma.TransactionClient;
-type Timestamps = { lastEventAt: Date; lastReceivedAt: Date; orderKeys: Prisma.JsonValue };
+type Timestamps = {
+  lastEventAt: Date;
+  lastReceivedAt: Date;
+  orderKeys: Prisma.JsonValue;
+  /** Agent rows only. */
+  connectionLostAt?: Date | null;
+};
 
 function fromDb<
   T extends { lastEventAt: string; lastReceivedAt: string; orderKeys: Record<string, OrderKey> },
->(row: Omit<T, 'lastEventAt' | 'lastReceivedAt' | 'orderKeys'> & Timestamps): T {
+>(
+  row: Omit<T, 'lastEventAt' | 'lastReceivedAt' | 'orderKeys' | 'connectionLostAt'> & Timestamps,
+): T {
+  const lost = row.connectionLostAt;
   // orderKeys is only written by put* with Record<string, OrderKey>.
   return {
     ...row,
     lastEventAt: row.lastEventAt.toISOString(),
     lastReceivedAt: row.lastReceivedAt.toISOString(),
     orderKeys: row.orderKeys as unknown as Record<string, OrderKey>,
+    ...(lost === undefined ? {} : { connectionLostAt: lost?.toISOString() ?? null }),
   } as unknown as T;
 }
 
 function toDb<
   T extends { lastEventAt: string; lastReceivedAt: string; orderKeys: Record<string, OrderKey> },
 >(row: T) {
+  const lost = (row as { connectionLostAt?: string | null }).connectionLostAt;
   return {
     ...row,
     lastEventAt: new Date(row.lastEventAt),
     lastReceivedAt: new Date(row.lastReceivedAt),
     orderKeys: row.orderKeys as unknown as Prisma.InputJsonValue,
+    ...(lost === undefined ? {} : { connectionLostAt: lost === null ? null : new Date(lost) }),
   };
 }
 
@@ -94,6 +113,13 @@ export function projectionTransaction(tx: Tx, workspaceId: string): ProjectionTr
     async getAgent(agentInstanceId) {
       const row = await tx.agentCurrentState.findFirst({ where: { agentInstanceId, workspaceId } });
       return row === null ? null : fromDb<AgentStateRow>(row);
+    },
+    async listAgentsOfConnection(connectionId) {
+      const rows = await tx.agentCurrentState.findMany({
+        where: { connectionId, workspaceId },
+        orderBy: { agentInstanceId: 'asc' },
+      });
+      return rows.map((r) => fromDb<AgentStateRow>(r));
     },
     async putAgent(row) {
       guard(row.workspaceId);

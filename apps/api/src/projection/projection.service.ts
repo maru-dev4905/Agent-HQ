@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { EventStore, EventStoreTransaction, StoredEvent } from '@agent-hq/database';
 import { EVENT_STORE } from '../tokens.js';
-import { projectAgent, projectTask } from './projector.js';
+import { projectAgent, projectConnectionLoss, projectTask } from './projector.js';
 
 const REPLAY_PAGE = 1000;
 const REPLAY_TIMEOUT_MS = 10 * 60_000;
@@ -18,6 +18,12 @@ export async function applyProjections(
   if (event.taskId !== undefined) {
     const next = projectTask(await tx.projections.getTask(event.taskId), event);
     if (next !== null) await tx.projections.putTask(next);
+  }
+  if (event.type === 'connection.health.changed' && event.payload.status === 'disconnected') {
+    for (const agent of await tx.projections.listAgentsOfConnection(event.connectionId)) {
+      const next = projectConnectionLoss(agent, event);
+      if (next !== null) await tx.projections.putAgent(next);
+    }
   }
 }
 
