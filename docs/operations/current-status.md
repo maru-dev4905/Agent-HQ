@@ -2,20 +2,19 @@
 
 > 목적: 프로젝트의 현재 상태와 세션 간 인계. **모든 세션이 시작할 때 읽고, 끝날 때 갱신한다.**
 > 관리 책임: Coordinator (매 세션)
-> 최종 갱신: 2026-11-25 — Claude Code (HQ-107 Query API + SSE PR)
+> 최종 갱신: 2026-11-25 — Claude Code (HQ-108 Gap·Unknown·Stale PR)
 
 ## 1. 요약
 - 단계: **M1 / Phase 1 Event Ingestion Core — In Progress**. M0 완료(HQ-005는 Backlog)
-- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5). 진행 중: HQ-107 Query API + SSE(PR)
+- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6). 진행 중: HQ-108 Gap·Unknown·Stale(PR)
 - Gate: CI가 PR마다 `verify`·`integration` 실행. main은 보호됨 (필수 check 3개 + CodeRabbit 승인 1건)
 - Git: Task마다 브랜치 → PR → CodeRabbit → 사용자 머지 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004))
 
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-107 Query API + SSE | In Review | 브랜치 `hq-107-query-sse`, PR → CodeRabbit |
-| HQ-109 Dashboard | Ready 예정 | HQ-107 계약·HQ-108 필요. CORS 또는 같은 Origin 프록시 결정 필요 (architecture N7) |
-| HQ-108 Gap/Unknown/Stale | Ready | HQ-105와 독립 (HQ-103·HQ-106 완료) |
+| HQ-108 Gap·Unknown·Stale | In Review | 브랜치 `hq-108-gap-stale`, PR → CodeRabbit |
+| HQ-109 Dashboard | Ready 예정 | HQ-108 머지 후. CORS 또는 같은 Origin 프록시 결정 필요 (architecture N7) |
 | HQ-110 Claude Code 신호 조사 | Backlog | 언제든 병행 가능 (scratch hook 설정은 승인 후) |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 

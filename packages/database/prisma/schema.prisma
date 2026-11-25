@@ -159,21 +159,24 @@ model RegistrationCode {
 /// Read model: current state per agent, derived only from events (ADR-0002). Rebuildable.
 /// `orderKeys` records which event set each field group, so arrival order does not matter.
 model AgentCurrentState {
-  agentInstanceId       String   @id @map("agent_instance_id")
-  workspaceId           String   @map("workspace_id")
-  connectionId          String   @map("connection_id")
-  observedStatus        String   @map("observed_status")
-  rawStatus             String?  @map("raw_status")
-  agentName             String?  @map("agent_name")
-  roleHint              String?  @map("role_hint")
-  parentExternalAgentId String?  @map("parent_external_agent_id")
-  executionLocation     String?  @map("execution_location")
-  lastEventType         String   @map("last_event_type")
-  lastEventAt           DateTime @map("last_event_at") @db.Timestamptz(3)
+  agentInstanceId       String    @id @map("agent_instance_id")
+  workspaceId           String    @map("workspace_id")
+  connectionId          String    @map("connection_id")
+  observedStatus        String    @map("observed_status")
+  rawStatus             String?   @map("raw_status")
+  agentName             String?   @map("agent_name")
+  roleHint              String?   @map("role_hint")
+  parentExternalAgentId String?   @map("parent_external_agent_id")
+  executionLocation     String?   @map("execution_location")
+  lastEventType         String    @map("last_event_type")
+  lastEventAt           DateTime  @map("last_event_at") @db.Timestamptz(3)
   /// Server receive time of the latest event (HQ-108 stale detection must not trust source clocks).
-  lastReceivedAt        DateTime @map("last_received_at") @db.Timestamptz(3)
-  lastStoreSequence     BigInt   @map("last_store_sequence")
-  orderKeys             Json     @map("order_keys")
+  lastReceivedAt        DateTime  @map("last_received_at") @db.Timestamptz(3)
+  lastStoreSequence     BigInt    @map("last_store_sequence")
+  orderKeys             Json      @map("order_keys")
+  /// Server time the agent's connection was last lost (HQ-108). The shown status is `unknown`
+  /// when this is later than lastReceivedAt, unless the agent reported `disconnected`.
+  connectionLostAt      DateTime? @map("connection_lost_at") @db.Timestamptz(3)
 
   agentInstance AgentInstance @relation(fields: [agentInstanceId, workspaceId], references: [id, workspaceId])
 

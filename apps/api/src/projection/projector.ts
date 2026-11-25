@@ -16,7 +16,11 @@ import type { AgentStateRow, OrderKey, StoredEvent, TaskStateRow } from '@agent-
  * `lastStoreSequence` (log position) and `lastReceivedAt` (server time).
  *
  * Status rules (domain-model integration note N1, N4): status only changes on an explicit
- * signal; silence never makes an agent idle. Connection loss → unknown is HQ-108.
+ * signal; silence never makes an agent idle. A recorded gap makes it `unknown` (HQ-108).
+ *
+ * Connection loss is kept apart (`connectionLostAt`, server time) instead of competing with
+ * source-reported statuses: comparing a server-time loss with source-time statuses would
+ * make the result depend on arrival order and clock skew. `shownAgentStatus` combines them.
  */
 
 export function orderKeyOf(event: StoredEvent): OrderKey {
@@ -69,6 +73,10 @@ function agentStatusFor(
       return { status: 'failed', raw: event.payload.errorCode ?? null };
     case 'agent.disconnected':
       return { status: 'disconnected', raw: event.payload.reason ?? null };
+    // Events are missing at this point of the session: what the agent did is not known.
+    // Placed just before the next known event, so later events still decide the state.
+    case 'event.gap.detected':
+      return { status: 'unknown', raw: null };
     default:
       return null;
   }
@@ -84,6 +92,7 @@ const AGENT_EVENT_TYPES = new Set<string>([
   'tool.call.started',
   'tool.call.completed',
   'tool.call.failed',
+  'event.gap.detected',
 ]);
 
 type AgentField = 'agentName' | 'roleHint' | 'parentExternalAgentId' | 'executionLocation';
@@ -111,9 +120,13 @@ export function projectAgent(prev: AgentStateRow | null, event: StoredEvent): Ag
     lastReceivedAt: new Date(event.receivedAt).toISOString(),
     lastStoreSequence: event.storeSequence,
     orderKeys: {},
+    connectionLostAt: null,
   };
   const orderKeys = { ...base.orderKeys };
   const row: AgentStateRow = { ...base, orderKeys };
+  // HQ's own records (gap events) are not news from the agent: they must not make it look
+  // recently active (stale) or recently heard from (connection loss).
+  const fromSource = event.source.adapterId !== HQ_ADAPTER_ID;
 
   if (activityOnly) {
     // lastEventType means "kind of the latest activity" and must stay order-independent.
@@ -121,9 +134,7 @@ export function projectAgent(prev: AgentStateRow | null, event: StoredEvent): Ag
       row.lastEventType = event.type;
       orderKeys['last'] = key;
     }
-    row.lastEventAt = maxIso(row.lastEventAt, key.occurredAt);
-    row.lastReceivedAt = maxIso(row.lastReceivedAt, new Date(event.receivedAt).toISOString());
-    row.lastStoreSequence = maxBig(row.lastStoreSequence, event.storeSequence);
+    touch(row, key, event, fromSource);
     return row;
   }
 
@@ -154,10 +165,49 @@ export function projectAgent(prev: AgentStateRow | null, event: StoredEvent): Ag
     row.lastEventType = event.type;
     orderKeys['last'] = key;
   }
-  row.lastEventAt = maxIso(row.lastEventAt, key.occurredAt);
-  row.lastReceivedAt = maxIso(row.lastReceivedAt, new Date(event.receivedAt).toISOString());
-  row.lastStoreSequence = maxBig(row.lastStoreSequence, event.storeSequence);
+  touch(row, key, event, fromSource);
   return row;
+}
+
+function touch(row: AgentStateRow, key: OrderKey, event: StoredEvent, fromSource: boolean): void {
+  if (fromSource) {
+    row.lastEventAt = maxIso(row.lastEventAt, key.occurredAt);
+    row.lastReceivedAt = maxIso(row.lastReceivedAt, new Date(event.receivedAt).toISOString());
+  }
+  row.lastStoreSequence = maxBig(row.lastStoreSequence, event.storeSequence);
+}
+
+/** `source.adapterId` of events HQ writes itself (connection health, gaps). */
+export const HQ_ADAPTER_ID = 'hq';
+
+/**
+ * Records that the agent's connection was lost (`connection.health.changed` → disconnected),
+ * in server time — for every agent of the connection, whatever it reported: transactions do
+ * not commit in receive-time order, so skipping agents that look `disconnected` right now
+ * could let an earlier-received event commit later and hide the loss. The exception for an
+ * explicit `disconnected` lives in `shownAgentStatus` alone.
+ */
+export function projectConnectionLoss(
+  prev: AgentStateRow,
+  event: StoredEvent,
+): AgentStateRow | null {
+  const lostAt = new Date(event.receivedAt).toISOString();
+  if (prev.connectionLostAt !== null && prev.connectionLostAt >= lostAt) return null;
+  return { ...prev, connectionLostAt: lostAt };
+}
+
+/**
+ * The status to show (domain-model integration notes N1, N5). If the connection was lost
+ * after HQ last received anything from the agent, and the agent did not report
+ * `disconnected` itself, its state can no longer be observed: `unknown` — never `idle`.
+ * Both sides are server times, so neither arrival order nor source clock skew matters.
+ */
+export function shownAgentStatus(row: AgentStateRow): string {
+  const lost =
+    row.connectionLostAt !== null &&
+    row.connectionLostAt > row.lastReceivedAt &&
+    row.observedStatus !== 'disconnected';
+  return lost ? 'unknown' : row.observedStatus;
 }
 
 function taskStatusFor(event: StoredEvent): TaskStatus | null {

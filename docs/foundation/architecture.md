@@ -323,7 +323,7 @@ agent-hq/
 |---|---|---|
 | 400 | `VALIDATION_FAILED` | body 형태 오류, 이벤트 계약 위반, 이벤트 하나가 64 KiB 초과, 짝 없는 서로게이트 같은 잘못된 Unicode |
 | 401 | `AUTHENTICATION_FAILED` | 토큰 없음·무효·폐기·만료 (구분하지 않음) |
-| 403 | `FORBIDDEN` | 허용되지 않은 Host·Origin, body의 `workspaceId`·`connectionId`가 토큰과 다름 |
+| 403 | `FORBIDDEN` | 허용되지 않은 Host·Origin, body의 `workspaceId`·`connectionId`가 토큰과 다름, HQ 전용 `source.adapterId = "hq"` (HQ-108) |
 | 409 | `CONFLICT` | 같은 idempotencyKey로 내용이 다른 이벤트가 이미 저장됨, 또는 `id` 중복 |
 | 413 | `PAYLOAD_TOO_LARGE` | 이벤트 500개 초과, 요청 body 4 MiB 초과 |
 | 429 | `RATE_LIMITED` | Connection별 이벤트 수 한도 초과. `Retry-After`(초) 헤더를 준다 |
@@ -336,7 +336,7 @@ agent-hq/
 
 | 경로 | 응답 200 |
 |---|---|
-| `GET /workspaces/:workspaceId/agents` | `{ agents: AgentView[] }` — `agent_current_state` (ID 순) |
+| `GET /workspaces/:workspaceId/agents` | `{ agents: AgentView[], staleThresholdMs }` — `agent_current_state` (ID 순). `AgentView.observedStatus`는 보여 줄 상태(연결 끊김 반영), `reportedStatus`는 Agent가 보고한 상태, `connectionLostAt`·`stale`은 HQ-108 파생 정보 (domain-model N5) |
 | `GET /workspaces/:workspaceId/tasks` | `{ tasks: TaskView[] }` — `task_current_state` (ID 순) |
 | `GET /workspaces/:workspaceId/connections` | `{ connections: ConnectionView[] }` — 토큰 해시는 포함하지 않는다 |
 | `GET /workspaces/:workspaceId/events?after=&limit=` | `{ events: EventView[], nextCursor }` — `after`(배타적, 기본 0)부터 `storeSequence` 순, `limit` 1~500(기본 100) |

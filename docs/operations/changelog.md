@@ -4,7 +4,15 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-25 — HQ-107 Query API + SSE (PR)
+## 2026-11-25 (2) — HQ-108 Gap·Unknown·Stale (PR)
+- [Added] Gap 감지 주기 작업과 HQ 기록 `event.gap.detected`, 연결 끊김 → Agent `unknown`(조회 시 계산), `AgentView.reportedStatus`·`connectionLostAt`·`stale`·`staleThresholdMs`
+- [Added] migration `20261125010000_agent_connection_loss` (`agent_current_state.connection_lost_at` nullable 추가)
+- [Security] `source.adapterId = "hq"`는 HQ 전용 (Ingestion 403)
+- [Fixed] `connection.health.changed`가 Projection 없이 저장되던 문제 (실시간 ≠ Replay 가능성)
+- [Added] 환경 변수 `GAP_CHECK_INTERVAL_MS`, `GAP_GRACE_MS`, `STALE_THRESHOLD_MS` (모두 선택). domain-model N5, event-schema N9, TD-008
+- **운영 메모**: `pnpm db:migrate`로 migration을 적용한 뒤, 기존 DB에 `connection.health.changed → disconnected` 이벤트가 있으면 `pnpm --filter @agent-hq/api admin replay <workspaceId>`로 Read Model을 다시 만들어야 해당 Agent가 `unknown`으로 반영된다
+
+## 2026-11-25 — HQ-107 Query API + SSE (Done, PR #6)
 - [Added] `GET /workspaces/:id/{agents,tasks,connections,events}`, SSE `GET /workspaces/:id/stream`(cursor replay), Outbox relay, 계약 `packages/contracts/src/query/`, architecture N7
 - [Added] `packages/database`: `createOutboxStore`, `createQueryStore`
 - [Added] 환경 변수 `OUTBOX_POLL_INTERVAL_MS`, `SSE_MAX_STREAMS`, `SSE_KEEP_ALIVE_MS`, `SSE_CATCH_UP_INTERVAL_MS` (모두 선택)

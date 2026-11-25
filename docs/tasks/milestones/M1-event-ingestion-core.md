@@ -213,7 +213,7 @@
   - verification: `pnpm verify` exit 0 (단위 131개), `pnpm test:integration` 41개 통과
 
 ### HQ-107 — Query API + Realtime(SSE, Cursor Replay)
-- Status: In Review (2026-11-25) · Risk: Medium · Role: Worker → Reviewer
+- Status: Done (2026-11-25, PR #6 머지 `ef490c6`) · Risk: Medium · Role: Worker → Reviewer
 - Objective: Read Model 조회 API와, 재연결 시 Cursor부터 이어 받는 SSE 스트림을 제공한다.
 - Background: FR-007, FR-032, ADR-0003(SSE + REST), security T2/T3
 - Scope: Outbox 읽기·정리 인터페이스(`packages/database`, HQ-104에서 이동), 조회 엔드포인트(Agent·Task·Connection·Event Cursor 조회), SSE 스트림(Outbox 알림으로 새 Event를 감지하고, `Last-Event-ID` = `storeSequence` 이후를 Event Store에서 읽어 Replay), `packages/contracts/src/query/`, `127.0.0.1` 바인딩, Host/Origin 검증, API 계약 문서화
@@ -238,7 +238,7 @@
   - PR #6 CodeRabbit 1차: APPROVED (Minor 1: 종료 중 끝난 `open()`이 스트림을 시작해 `app.close()`를 막을 수 있음) → 종료 플래그를 두고 `start()`에서 확인, 단위 테스트
 
 ### HQ-108 — Gap 감지와 Unknown/Stale 표시
-- Status: Backlog · Risk: Medium · Role: Worker → Reviewer
+- Status: In Review (2026-11-25) · Risk: Medium · Role: Worker → Reviewer
 - Objective: 누락이 의심되는 구간을 기록하고, 해당 Agent 상태를 Unknown이나 Stale로 표시한다. 누락을 추정으로 채우지 않는다.
 - Background: event-schema §8, FR-008, domain-model 통합 노트 N1
 - Scope: `sequence` 불연속 감지 → `event.gap.detected` 기록, 명시적 종료 신호 없이 Connection이 끊긴 Agent를 `unknown`으로([domain-model 통합 노트 N1](../../foundation/domain-model.md#n1-agent-상태-정규화-proposed--res-007-s1-해결안-hq-101에서-확정)의 규칙), `staleThreshold` 기반 Stale 표시 속성
@@ -250,6 +250,18 @@
   - [ ] 시뮬레이터 Gap 시나리오에서 `event.gap.detected`가 기록된다
   - [ ] 명시적 종료 신호 없이 Connection이 끊긴 Agent는 `idle`이 아니라 `unknown`으로 표시된다. `agent.disconnected`를 받은 Agent만 `disconnected`가 된다
 - Verification: Medium 기준 Gate
+- 범위 변경 (2026-11-25, 구현 중 확정): `apps/api/src/gap-detection/` 밖에서 수정한 파일 — Projector(`projection/projector.ts`: gap → `unknown`, `projectConnectionLoss`, `shownAgentStatus`), Prisma 스키마·migration(`agent_current_state.connection_lost_at`), Ingestion(`adapterId: "hq"` 예약), `projection/projection.service.ts`(연결 끊김 적용), `packages/database`(`gap-store.ts`, `ProjectionTransaction.listAgentsOfConnection`), Query 계약·서비스(`AgentView.stale`, `staleThresholdMs`), `config.ts`·`app.module.ts`·`.env.example`. **버그 수정**: `connections/apply-status.ts`가 `connection.health.changed`를 저장만 하고 Projection을 적용하지 않아, 실시간 결과와 Replay 결과가 달라질 수 있었다 → 같은 트랜잭션에서 적용. 기록 문서: domain-model N5, event-schema N9, TD-008
+- Execution Log:
+  #### Run 2026-11-25-2
+  - agent_id: claude-code:main (Worker), claude-code:subagent:general-purpose (로컬 Reviewer) · status: In Review
+  - result: Gap 감지 주기 작업(`GapDetectionService`, 유예 30초, 한 번만 기록), HQ 기록 `event.gap.detected`(구멍 위치, Agent별), 연결 끊김 → `unknown`(명시적 `disconnected` 유지), 조회 파생 속성 `stale`
+  - verification: `pnpm verify` 통과(단위 166), `pnpm test:integration` 통과(63, Gap·Stale 4). 변이 검사: 이미 기록한 구멍 제외 조건 제거, 유예 시간 제거, gap → unknown 매핑 제거, health 이벤트 Projection 적용 제거 각각을 테스트가 잡음
+  - 로컬 리뷰 1회차: Request Changes (Major 1: 연결 끊김(서버 시각)을 보고 상태(소스 시각)와 경쟁시켜 도착 순서·시계 차이에 따라 결과가 달라짐, 늦게 온 `agent.disconnected`가 `unknown`으로 남음. Minor 6, Nit 2) → 반영: 보고 상태와 끊김을 분리(`connection_lost_at` 열, migration `20261125010000_agent_connection_loss` nullable 추가), 보여 줄 상태는 서버 시각끼리 비교해 조회 시 계산, HQ 기록은 활동 시각을 바꾸지 않음, 구멍 이전에 떠난 Agent는 Gap 대상에서 제외, Source의 gap 이벤트는 번호에 포함·HQ 기록과 구분, 유예를 구멍 양쪽에 적용, 기록 범위 안의 구멍은 재기록하지 않음, 저장된 경우만 집계, 반례 순열 테스트. 수정 중 추가 발견: Source가 `adapterId: "hq"`로 HQ 기록을 흉내 낼 수 있음 → Ingestion에서 거부
+  - verification(반영 후): `pnpm verify` 통과(단위 169), `pnpm test:integration` 통과(66, Gap·Stale 7)
+  - 로컬 리뷰 2회차: Approve (Minor 1: Source gap payload의 큰 수가 `::int` 캐스트로 감지 작업 전체를 멈출 수 있음 → CASE로 HQ 기록에만 bigint 캐스트, 회귀 테스트. Nit 3: 문서 정정, 끊김 해제 기준은 HQ-110 이후 결정으로 Open)
+  - PR #7 CodeRabbit 1차: APPROVED (Minor 5) → 반영: Gap 이벤트 ID 생성기 주입, lock 안에서 구멍 재확인(`EventStoreTransaction.hasSequenceIn`), 보고 상태와 무관하게 끊김 시각 기록(commit 순서 경합), Gap 대상 판정을 구멍 이전 이벤트로 한정, current-status 중복 행 제거
+  - PR #7 CodeRabbit 2차: CHANGES_REQUESTED (Major 1: 첫 이벤트가 lock을 기다리는 동안 끊김이 먼저 commit되면 새 Agent 행에 끊김이 반영되지 않음. Minor 1: Gap 대상 Agent를 lock 밖에서 계산) → 새 행은 `storeSequence`가 앞선 마지막 끊김을 이어받음(Replay 동일), 대상 Agent를 lock 안에서 계산(`EventStoreTransaction.agentsAffectedByGap`), 회귀 테스트. 검증: verify(단위 170), integration 68
+  - AC: 시뮬레이터 Gap 시나리오에서 `event.gap.detected` 기록 ✅ · 명시적 종료 신호 없이 끊긴 Agent는 `unknown`(그 전 `idle`이어도), `agent.disconnected`를 받은 Agent만 `disconnected` ✅
 
 ### HQ-109 — 개발용 Dashboard v0 (Next.js)
 - Status: Backlog · Risk: Medium · Role: Worker → Reviewer

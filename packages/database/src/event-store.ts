@@ -32,6 +32,17 @@ export interface EventStoreTransaction {
    * revocation won the race).
    */
   setConnectionStatus(expected: ExpectedConnectionState, to: string): Promise<boolean>;
+  /**
+   * Whether any source event of the session has a `sequence` in [from, to], read under the
+   * workspace lock: a gap found outside the lock may have been filled since (HQ-108).
+   */
+  hasSequenceIn(connectionId: string, session: string, from: number, to: number): Promise<boolean>;
+  /**
+   * Agents of the session that a gap starting at `from` affects: all with events in the
+   * session, except those whose last sequenced event before the gap is `agent.disconnected`.
+   * Read under the lock, like `hasSequenceIn` (HQ-108).
+   */
+  agentsAffectedByGap(connectionId: string, session: string, from: number): Promise<string[]>;
 }
 
 export interface ExpectedConnectionState {
@@ -290,6 +301,45 @@ export function createEventStore(db: DatabaseClient): EventStore {
             resolveAgentInstance: (ref, newId) => {
               assertWorkspace(workspaceId, ref.workspaceId);
               return resolveIdentity(tx, 'agent', ref, newId);
+            },
+            hasSequenceIn: async (connectionId, session, from, to) => {
+              const rows = await tx.$queryRaw<{ found: boolean }[]>`
+                SELECT EXISTS (
+                  SELECT 1 FROM events
+                  WHERE workspace_id = ${workspaceId}
+                    AND connection_id = ${connectionId}
+                    AND external_session_id = ${session}
+                    AND sequence BETWEEN ${from} AND ${to}
+                    AND NOT (type = 'event.gap.detected' AND source->>'adapterId' = 'hq')
+                ) AS found`;
+              return rows[0]?.found === true;
+            },
+            agentsAffectedByGap: async (connectionId, session, from) => {
+              const rows = await tx.$queryRaw<{ agent_instance_id: string }[]>`
+                SELECT a.agent_instance_id
+                FROM (
+                  SELECT DISTINCT agent_instance_id FROM events
+                  WHERE workspace_id = ${workspaceId}
+                    AND connection_id = ${connectionId}
+                    AND external_session_id = ${session}
+                    AND agent_instance_id IS NOT NULL
+                ) a
+                WHERE NOT EXISTS (
+                  SELECT 1 FROM (
+                    SELECT e.type FROM events e
+                    WHERE e.workspace_id = ${workspaceId}
+                      AND e.connection_id = ${connectionId}
+                      AND e.external_session_id = ${session}
+                      AND e.agent_instance_id = a.agent_instance_id
+                      AND e.sequence IS NOT NULL
+                      AND e.sequence < ${from}
+                    ORDER BY e.sequence DESC, e.store_sequence DESC
+                    LIMIT 1
+                  ) last
+                  WHERE last.type = 'agent.disconnected'
+                )
+                ORDER BY a.agent_instance_id`;
+              return rows.map((row) => row.agent_instance_id);
             },
             setConnectionStatus: async (expected, to) => {
               const { count } = await tx.connection.updateMany({

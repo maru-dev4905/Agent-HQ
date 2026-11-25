@@ -64,3 +64,5 @@ export { createOutboxStore } from './outbox-store.js';
 export type { OutboxEntry, OutboxStore } from './outbox-store.js';
 export { createQueryStore } from './query-store.js';
 export type { ConnectionView, QueryStore } from './query-store.js';
+export { createGapStore } from './gap-store.js';
+export type { GapStore, SequenceGap } from './gap-store.js';

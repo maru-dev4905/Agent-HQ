@@ -53,7 +53,13 @@ export type EventsQuery = z.infer<typeof eventsQuerySchema>;
 export const agentViewSchema = z.object({
   agentInstanceId: z.string(),
   connectionId: z.string(),
+  /**
+   * Status to show. Equals `reportedStatus` unless the agent's connection was lost after
+   * HQ last heard from it (then `unknown`, never `idle`; domain-model N5).
+   */
   observedStatus: z.enum(AGENT_OBSERVED_STATUSES),
+  /** Latest status derived from the agent's own events (domain-model N4). */
+  reportedStatus: z.enum(AGENT_OBSERVED_STATUSES),
   rawStatus: z.string().nullable(),
   agentName: z.string().nullable(),
   roleHint: z.string().nullable(),
@@ -64,6 +70,13 @@ export const agentViewSchema = z.object({
   lastEventAt: isoSchema,
   lastReceivedAt: isoSchema,
   lastStoreSequence: cursorSchema,
+  /** Server time the agent's connection was last lost, if ever (HQ-108). */
+  connectionLostAt: isoSchema.nullable(),
+  /**
+   * Derived display attribute: nothing about this agent was received for longer than the
+   * list's `staleThresholdMs` (server time). `observedStatus` is never changed by it.
+   */
+  stale: z.boolean(),
 });
 export type AgentView = z.infer<typeof agentViewSchema>;
 
@@ -119,7 +132,11 @@ export const eventViewSchema = z
   .loose();
 export type EventView = z.infer<typeof eventViewSchema>;
 
-export const agentListSchema = z.object({ agents: z.array(agentViewSchema) });
+export const agentListSchema = z.object({
+  agents: z.array(agentViewSchema),
+  /** The threshold `stale` was computed with, so a client can re-evaluate it over time. */
+  staleThresholdMs: z.number().int().positive(),
+});
 export const taskListSchema = z.object({ tasks: z.array(taskViewSchema) });
 export const connectionListSchema = z.object({ connections: z.array(connectionViewSchema) });
 export const eventPageSchema = z.object({
