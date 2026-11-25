@@ -2,7 +2,7 @@
 
 > 목적: 프로젝트의 현재 상태와 세션 간 인계. **모든 세션이 시작할 때 읽고, 끝날 때 갱신한다.**
 > 관리 책임: Coordinator (매 세션)
-> 최종 갱신: 2026-11-25 — Claude Code (HQ-108 Gap·Unknown·Stale PR)
+> 최종 갱신: 2026-11-25 — Claude Code (HQ-109 Dashboard v0)
 
 ## 1. 요약
 - 단계: **M1 / Phase 1 Event Ingestion Core — In Progress**. M0 완료(HQ-005는 Backlog)
@@ -14,7 +14,7 @@
 | Task | 상태 | 비고 |
 |---|---|---|
 | HQ-108 Gap·Unknown·Stale | In Review | 브랜치 `hq-108-gap-stale`, PR → CodeRabbit |
-| HQ-109 Dashboard | Ready 예정 | HQ-108 머지 후. CORS 또는 같은 Origin 프록시 결정 필요 (architecture N7) |
+| HQ-109 Dashboard v0 | In Review | 브랜치 `hq-109-dashboard`(HQ-108 위). 수동 확인(서버 실행·스크린샷) 승인 대기 |
 | HQ-110 Claude Code 신호 조사 | Backlog | 언제든 병행 가능 (scratch hook 설정은 승인 후) |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 
@@ -32,5 +32,5 @@
 - 제품·도메인·이벤트·보안·UX는 명세서가 기준이며, 통합 문서의 "통합 노트"가 본문보다 우선한다.
 - Source는 외부 ID를 보내고 HQ가 매핑한다 (ADR-0006). 파싱 결과만 저장·로그한다.
 - Query·SSE: `GET /workspaces/local/{agents,tasks,connections,events,stream}`. 계약은 architecture N7. SSE는 `Last-Event-ID`로 이어 받는다.
-- Ingestion: `POST /events`, 배치 원자적. 계약은 architecture N6. 전역 Host/Origin Guard가 있어 Web UI(HQ-109)는 `API_ALLOWED_ORIGINS` 설정이 필요하다.
+- Ingestion: `POST /events`, 배치 원자적. 계약은 architecture N6. 전역 Host/Origin Guard가 있다. Web UI는 Next.js rewrite 프록시(`/hq-api/*`)로 같은 Origin에서 부르므로 GET·SSE에는 `API_ALLOWED_ORIGINS` 설정이 필요 없다(향후 브라우저 POST는 Origin이 붙으므로 필요, architecture N7).
 - 테스트는 `@agent-hq/*`를 소스에서 읽는다 (`vitest.config.ts` alias). `pnpm lint`·`test`·`typecheck`·`build`는 Prisma Client를 먼저 생성한다.

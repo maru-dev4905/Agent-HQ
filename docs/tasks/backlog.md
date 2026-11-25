@@ -27,7 +27,7 @@
 | HQ-105 | Ingestion API | Done | High | HQ-101, HQ-103, HQ-104 인터페이스, HQ-106 인터페이스 | C |
 | HQ-107 | Query API + Realtime(SSE, Cursor Replay) | Done | Medium | HQ-105, HQ-106 | D |
 | HQ-108 | Gap 감지와 Unknown/Stale 표시 | In Review | Medium | HQ-103, HQ-106 | D |
-| HQ-109 | 개발용 Dashboard v0 (Next.js) | Backlog | Medium | HQ-107 계약, HQ-108 | E |
+| HQ-109 | 개발용 Dashboard v0 (Next.js) | In Review | Medium | HQ-107 계약, HQ-108 | E |
 | HQ-110 | 스파이크: Claude Code 신호 조사 (RES-002) | Backlog | Low | 없음 (언제든 병행, scratch hook 설정은 승인 후) | — |
 | HQ-111 | E2E: 시뮬레이터 → Ingestion → Dashboard | Backlog | Medium | HQ-102, HQ-105, HQ-108, HQ-109, E2E 도구 승인 | F |
 | HQ-112 | 부하 측정 (RES-005) | Backlog | Low | HQ-102, HQ-105, HQ-107, HQ-109 | F |

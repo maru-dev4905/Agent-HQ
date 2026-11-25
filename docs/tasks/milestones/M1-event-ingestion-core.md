@@ -264,7 +264,7 @@
   - AC: 시뮬레이터 Gap 시나리오에서 `event.gap.detected` 기록 ✅ · 명시적 종료 신호 없이 끊긴 Agent는 `unknown`(그 전 `idle`이어도), `agent.disconnected`를 받은 Agent만 `disconnected` ✅
 
 ### HQ-109 — 개발용 Dashboard v0 (Next.js)
-- Status: Backlog · Risk: Medium · Role: Worker → Reviewer
+- Status: In Review (2026-11-25) · Risk: Medium · Role: Worker → Reviewer
 - Objective: 개발자가 Agent Roster·상태·Event Timeline·Connection 상태·Gap/Unknown을 실시간으로 본다. M3 Operations Dashboard의 출발점이다.
 - Background: FR-030, FR-032, [ui-ux §4](../../foundation/ui-ux.md), NFR-010, security T5
 - Scope: Agent Roster(상태는 아이콘과 텍스트로 함께 표시), Event Timeline, Connection 상태, Unknown/Stale/Gap 표시, SSE 끊김 표시·자동 재연결, CSP
@@ -277,6 +277,14 @@
   - [ ] Agent 콘텐츠가 HTML로 해석되지 않는다 (XSS 테스트 문자열)
   - [ ] 상태를 색상만으로 구분하지 않는다
 - Verification: Medium 기준 Gate + 수동 확인 스크린샷
+- 범위 변경 (2026-11-25, 구현 중 확정): API 호출 방식은 Next.js rewrite 프록시(같은 Origin, CORS 없음)로 정했다(사용자 진행 지시, 추천안). `apps/web` 밖에서 수정한 파일 — 루트 `vitest.config.ts`(Web 테스트 포함), `apps/api/src/ingestion/redaction.test.ts`(병렬 부하에서 흔들린 성능 측정을 워밍업 + 3회 최솟값으로 안정화, 상한 유지 — 로컬 리뷰가 약화 아님으로 판단). 계약 타입은 `apps/web/tsconfig.json`의 `paths`로 `@agent-hq/contracts` 소스를 type-only import한다(패키지 의존성·lockfile 변경 없음). 기록 문서: architecture N7, TD-009, TD-010
+- Execution Log:
+  #### Run 2026-11-25-3
+  - agent_id: claude-code:main (Worker), claude-code:subagent:general-purpose (로컬 Reviewer) · status: In Review
+  - result: Dashboard v0 — Agent Roster(아이콘+텍스트 상태, Stale, Unknown 사유, 현재 Task), Connection 상태, Event Timeline(최근 200건, Gap 강조), SSE 상태 표시·자동 재연결(`Last-Event-ID`)·닫힘 시 다시 연결 버튼, CSP 등 보안 헤더
+  - 로컬 리뷰 1회차: Request Changes (Major 2: 프록시가 API 다운을 500으로 바꿔 EventSource가 영구 종료됨, 연속 Event 중 debounce로 Roster가 갱신되지 않음. Minor 6, Nit 5) → 반영: `lib/stream.ts`(`WorkspaceStream` — 닫히면 409인지 확인 후 backoff로 `?after=<마지막>` 재연결, 409면 초기화 안내), throttle 500ms와 최신 요청만 반영, 재연결 시 Read Model 다시 조회, 실시간이 아닐 때 안내 문구, 조회 실패 문구, Unknown 사유 판정 순서, 계약 Event 이름 고정 테스트, 문서(rewrite는 빌드 시점, keep-alive < 30초, 브라우저 POST의 Origin). 덧붙여 ReDoS 성능 테스트를 병렬 부하에서 흔들리지 않게 워밍업 후 3회 중 최솟값으로 측정(상한 250ms 유지)
+  - 로컬 리뷰 2회차: Approve (Minor 1: 범위 밖 수정 파일 목록 누락 → 추가. Nit: throttle 취소, DB 초기화 후 로그가 이전 cursor를 넘은 경우의 한계 명시)
+  - verification: `pnpm verify` 통과(단위 185, Web 15 포함, Next build 성공). XSS 문자열 4종 렌더링 테스트, 스트림 재연결·409·backoff·throttle 단위 테스트. 수동 확인(API·Web 실행 + 시뮬레이터 + 스크린샷)은 **미실행** — dev DB migration 적용과 서버 실행이 사용자 승인 사항
 
 ### HQ-110 — 스파이크: Claude Code 신호 조사 (RES-002)
 - Status: Backlog · Risk: Low · Role: Architect · 병행 가능
