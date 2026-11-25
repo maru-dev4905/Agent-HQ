@@ -77,3 +77,13 @@
 - Verification Method: 프로세스 2개에서 같은 Connection 한도가 합산되어 적용되는지 확인.
 - Related Tasks: HQ-105
 - Created / Updated: 2026-11-24
+
+### TD-007 — Outbox relay와 SSE 스트림이 단일 프로세스를 가정한다
+- Status / Priority: Open / Low
+- Description: Outbox relay(`apps/api/src/realtime/outbox-relay.ts`)는 Outbox 항목을 읽어 같은 프로세스의 스트림에 신호를 보내고 항목을 지운다. API 프로세스가 여럿이면 한 프로세스가 지운 항목의 신호를 다른 프로세스의 스트림이 받지 못한다. 동시 스트림 상한(`SSE_MAX_STREAMS`)도 프로세스별이다.
+- Impact: 이벤트가 빠지지는 않는다. 다른 프로세스의 스트림은 자체 재조회 주기(기본 5초)에 따라 늦게 받는다. 로컬 셀프호스트(프로세스 하나)에서는 영향이 없다.
+- Root Cause: M1은 단일 프로세스이고, Outbox는 알림 용도일 뿐 전달 보장은 cursor 읽기가 맡는다(ADR-0002).
+- Proposed Solution: 여러 프로세스를 띄우는 시점에 Redis pub/sub 또는 PostgreSQL `LISTEN/NOTIFY`로 신호를 프로세스 간에 퍼뜨린다. Outbox 정리는 한 프로세스(또는 BullMQ job)가 맡는다.
+- Verification Method: 프로세스 2개에서 한쪽에 연결한 스트림이 다른 쪽 Ingestion 이벤트를 relay 주기 안에 받는지 확인.
+- Related Tasks: HQ-107
+- Created / Updated: 2026-11-25

@@ -330,3 +330,21 @@ agent-hq/
 
 - **Host/Origin** (security T3): Host는 loopback 이름(`127.0.0.1`, `localhost`, `::1`)과 `API_ALLOWED_HOSTS`만 허용한다. `Origin` 헤더가 있으면 `API_ALLOWED_ORIGINS`에 정확히 있어야 한다. 기본값은 빈 목록이라 브라우저 요청은 모두 거부된다. 모든 경로에 적용되므로, Web UI가 브라우저에서 API를 직접 부르게 되면(HQ-109) 그 Origin을 설정에 추가해야 한다.
 - **Rate limit** (security T8): Connection마다 token bucket을 두고 이벤트 수로 센다. 기본값은 초당 500개, 최대 burst 2000개다(`INGEST_RATE_*`). API 프로세스 메모리에 있으므로 프로세스가 하나일 때만 정확하다 (TD-006).
+
+### N7. API 계약 — Query·Realtime (HQ-107, 2026-11-25)
+스키마의 단일 원천은 `packages/contracts/src/query/`이다. 모든 경로는 Workspace 범위이고, Phase 1에는 Workspace `local` 하나와 사용자 인증 없음(security §5)이 전제다. 보호 수단은 `127.0.0.1` 바인딩과 전역 Host/Origin Guard(N6)다.
+
+| 경로 | 응답 200 |
+|---|---|
+| `GET /workspaces/:workspaceId/agents` | `{ agents: AgentView[] }` — `agent_current_state` (ID 순) |
+| `GET /workspaces/:workspaceId/tasks` | `{ tasks: TaskView[] }` — `task_current_state` (ID 순) |
+| `GET /workspaces/:workspaceId/connections` | `{ connections: ConnectionView[] }` — 토큰 해시는 포함하지 않는다 |
+| `GET /workspaces/:workspaceId/events?after=&limit=` | `{ events: EventView[], nextCursor }` — `after`(배타적, 기본 0)부터 `storeSequence` 순, `limit` 1~500(기본 100) |
+| `GET /workspaces/:workspaceId/stream` | SSE (`text/event-stream`) |
+
+- 64-bit 정수인 `storeSequence`·`lastStoreSequence`·`nextCursor`는 10진 문자열이다(0 ~ 2^63-1, 넘으면 400). 응답에는 `Cache-Control: no-store`가 붙는다.
+- 오류: 없는 Workspace 404 `NOT_FOUND`, 잘못된 쿼리(음수·문자·int64 초과 cursor, 10진수가 아닌 limit나 범위 밖 limit, 정의되지 않은 파라미터) 400 `VALIDATION_FAILED`, Host/Origin 403 `FORBIDDEN`, 스트림 cursor가 저장된 마지막 이벤트보다 앞섬(DB 초기화 등) 409 `CONFLICT`, 동시 스트림 상한 초과 429 `RATE_LIMITED`. 브라우저 `EventSource`는 200이 아닌 응답을 받으면 재연결을 멈추므로, 클라이언트는 다시 조회한 뒤 cursor 없이 연결한다.
+- `EventView`는 Ingestion이 저장한 이벤트 그대로다(파싱됨, 미정의 필드 제거, Secret 마스킹). 원본 입력은 어디에도 없다.
+- **SSE**: 저장된 이벤트 하나가 메시지 하나다 — `id: <storeSequence>`, `event: agent-event`, `data: <EventView JSON>`. 시작 cursor는 `Last-Event-ID` 헤더 → `?after=` → 현재 head(새 이벤트만) 순으로 정한다. 브라우저 `EventSource`는 재연결할 때 `Last-Event-ID`를 자동으로 보내며, 이것이 원래 URL의 `after`보다 우선한다. 처음 연결할 때 `retry: 3000`을 보내고, 15초마다 `: keep-alive` 주석을 보낸다. 스트림은 Event Store를 100건씩 읽고, 느린 클라이언트에는 쓰기 버퍼가 빌 때까지 기다린다(backpressure).
+- **누락·중복이 없는 이유**: 스트림은 마지막으로 보낸 `storeSequence`만 기억하고 Event Store에서 그 이후를 읽는다. 같은 Workspace의 이벤트는 `storeSequence` 순서대로 commit된다(HQ-104 advisory lock). 그래서 cursor 이후를 읽으면 빠지는 이벤트도 두 번 보내는 이벤트도 없다. 새 이벤트 감지는 Outbox relay(기본 200ms 주기)가 Workspace 신호를 보내는 방식이다. 신호를 놓쳐도 각 스트림이 5초마다 스스로 다시 읽으므로 전달이 늦어질 뿐 빠지지 않는다.
+- **브라우저 사용(HQ-109 메모)**: Origin Guard는 허용 목록만 통과시킨다. CORS 응답 헤더는 아직 없다. Web UI는 같은 Origin(Next.js rewrite 프록시 등)으로 부르거나, HQ-109에서 CORS를 추가하면서 `API_ALLOWED_ORIGINS`를 설정한다.

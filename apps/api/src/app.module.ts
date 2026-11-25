@@ -7,6 +7,8 @@ import { ApiExceptionFilter } from './http/api-exception.filter.js';
 import { RequestOriginGuard } from './http/request-origin.guard.js';
 import { IngestionModule } from './ingestion/ingestion.module.js';
 import { ProjectionModule } from './projection/projection.module.js';
+import { QueryModule } from './query/query.module.js';
+import { RealtimeModule } from './realtime/realtime.module.js';
 import { InfrastructureModule } from './infrastructure.module.js';
 import { HTTP_SETTINGS } from './tokens.js';
 
@@ -22,6 +24,8 @@ export class AppModule {
         connections,
         ProjectionModule,
         IngestionModule.register(connections, config.ingestion),
+        QueryModule,
+        RealtimeModule.forSettings(config.realtime),
       ],
       providers: [
         { provide: HTTP_SETTINGS, useValue: config.http },

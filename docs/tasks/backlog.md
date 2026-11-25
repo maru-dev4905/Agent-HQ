@@ -24,8 +24,8 @@
 | HQ-103 | Connection 모델 + 토큰 인증 | In Review (PR) | High | HQ-101, HQ-104 인터페이스 | B |
 | HQ-104 | Event Store + G4 도입 | Done | High | HQ-101, Docker 실행 승인 | B |
 | HQ-106 | Projector + Projections + Replay | Done | High | HQ-104 | C |
-| HQ-105 | Ingestion API | In Review | High | HQ-101, HQ-103, HQ-104 인터페이스, HQ-106 인터페이스 | C |
-| HQ-107 | Query API + Realtime(SSE, Cursor Replay) | Backlog | Medium | HQ-105, HQ-106 | D |
+| HQ-105 | Ingestion API | Done | High | HQ-101, HQ-103, HQ-104 인터페이스, HQ-106 인터페이스 | C |
+| HQ-107 | Query API + Realtime(SSE, Cursor Replay) | In Review | Medium | HQ-105, HQ-106 | D |
 | HQ-108 | Gap 감지와 Unknown/Stale 표시 | Backlog | Medium | HQ-103, HQ-106 | D |
 | HQ-109 | 개발용 Dashboard v0 (Next.js) | Backlog | Medium | HQ-107 계약, HQ-108 | E |
 | HQ-110 | 스파이크: Claude Code 신호 조사 (RES-002) | Backlog | Low | 없음 (언제든 병행, scratch hook 설정은 승인 후) | — |

@@ -158,7 +158,7 @@
   - AC: update/delete 미노출 ✅ · 중복 시 기존 유지+중복 반환 ✅ · 계약 테스트 분리 ✅ · G4 `Local` 기록 ✅ · (원문 AC "DB 파일 0600"은 PostgreSQL Docker 볼륨 구성으로 바뀌어 해당 없음. 데이터는 저장소 밖 Docker 볼륨 `agent-hq_postgres-data`에 있다)
 
 ### HQ-105 — Ingestion API
-- Status: In Review (2026-11-24) · Risk: High · Role: Worker → Reviewer (+ Security Review)
+- Status: Done (2026-11-25, PR #5 머지 `1b26606`) · Risk: High · Role: Worker → Reviewer (+ Security Review)
 - Objective: Event를 받아 인증·검증·마스킹·멱등 저장하고, Projection 갱신과 Outbox 기록을 한 트랜잭션에서 처리한다.
 - Background: FR-001~004, NFR-005, security T2/T3/T8, RSK-002, RSK-005
 - Scope: 외부 ID → HQ ID 매핑(`(workspaceId, connectionId, externalAgentId|externalTaskId)` → `agentInstanceId`|`taskId`, ADR-0006), **파싱 결과만 저장·로그(원본 입력 금지)**, `ignoredFields` 집계, `POST /events:ingest` 계열(단건·배치, path는 계약으로 확정), `packages/contracts/src/ingestion/`, Connection 토큰 Guard(**`workspaceId`·`connectionId`는 토큰에서 가져오고, body 값이 다르면 거부**), 스키마 거부 응답(error envelope 계약), 2차 마스킹, `receivedAt` 부여, 크기 상한·Connection별 rate limit, `127.0.0.1` 기본 바인딩, Host/Origin 검증, Projector 호출, Outbox 기록
@@ -213,7 +213,7 @@
   - verification: `pnpm verify` exit 0 (단위 131개), `pnpm test:integration` 41개 통과
 
 ### HQ-107 — Query API + Realtime(SSE, Cursor Replay)
-- Status: Backlog · Risk: Medium · Role: Worker → Reviewer
+- Status: In Review (2026-11-25) · Risk: Medium · Role: Worker → Reviewer
 - Objective: Read Model 조회 API와, 재연결 시 Cursor부터 이어 받는 SSE 스트림을 제공한다.
 - Background: FR-007, FR-032, ADR-0003(SSE + REST), security T2/T3
 - Scope: Outbox 읽기·정리 인터페이스(`packages/database`, HQ-104에서 이동), 조회 엔드포인트(Agent·Task·Connection·Event Cursor 조회), SSE 스트림(Outbox 알림으로 새 Event를 감지하고, `Last-Event-ID` = `storeSequence` 이후를 Event Store에서 읽어 Replay), `packages/contracts/src/query/`, `127.0.0.1` 바인딩, Host/Origin 검증, API 계약 문서화
@@ -226,6 +226,16 @@
   - [ ] 잘못된 Host/Origin의 조회·SSE 요청을 거부한다
   - [ ] API 응답이 계약 문서와 일치한다
 - Verification: Medium 기준 Gate + 재연결 통합 테스트(G4)
+- 범위 변경 (2026-11-25, 구현 중 확정): Coordinator 소유 파일 `apps/api/src/{app.module,config}.ts`, `.env.example`(선택 환경 변수 4개)도 수정했다. `packages/database`에 `outbox-store.ts`(Scope의 Outbox 인터페이스)와 조회 전용 `query-store.ts`(Connection 목록·head cursor·Workspace 존재 확인)를 추가했다. Host/Origin 검증과 `127.0.0.1` 바인딩은 HQ-105의 전역 Guard·설정을 그대로 쓴다. 기록 문서: TD-007
+- Execution Log:
+  #### Run 2026-11-25-1
+  - agent_id: claude-code:main (Worker), claude-code:subagent:general-purpose (로컬 Reviewer) · status: In Review
+  - result: Query API 4개(`agents`, `tasks`, `connections`, `events` cursor 페이지)와 SSE `stream`(cursor replay, `Last-Event-ID` 우선, keep-alive, backpressure, 동시 스트림 상한), Outbox relay(주기적으로 읽어 Workspace 신호 발행 후 삭제), 계약 `packages/contracts/src/query/`, architecture N7
+  - verification: `pnpm verify` 통과(단위 161), `pnpm test:integration` 통과(57, Query·SSE 6). 변이 검사: `Last-Event-ID` 무시, relay 신호 제거, cursor 미갱신, drain 중 wake 무시 각각을 테스트가 잡음
+  - 로컬 리뷰 1회차: Request Changes (Major 1: 시작 전에 끊긴 클라이언트의 session이 영구히 남아 스트림 상한을 소진. Minor 6, Nit 5) → 반영: 시작 시 끊긴 응답 감지, backpressure listener 해제, int64 상한 검사(400), head보다 앞선 cursor 409, 상한 슬롯 동기 예약, 페이지 100건·조회 limit 500, 10진 limit만 허용, drain 종료 후 늦은 wake 재확인, 타이머 간격 상한 1일, 회귀 테스트. 수정 중 추가 발견: Zod가 regex 실패 후에도 refine을 실행해 `after=abc`가 500이 되던 문제 수정
+  - verification(반영 후): `pnpm verify` 통과(단위 162), `pnpm test:integration` 통과(59, Query·SSE 8)
+  - 로컬 리뷰 2회차: Approve (Nit 1: hijack 실패 시 예약 슬롯 반환 → 반영)
+  - PR #6 CodeRabbit 1차: APPROVED (Minor 1: 종료 중 끝난 `open()`이 스트림을 시작해 `app.close()`를 막을 수 있음) → 종료 플래그를 두고 `start()`에서 확인, 단위 테스트
 
 ### HQ-108 — Gap 감지와 Unknown/Stale 표시
 - Status: Backlog · Risk: Medium · Role: Worker → Reviewer

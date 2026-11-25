@@ -73,3 +73,19 @@ describe('loadConfig — http and ingestion', () => {
     expect(() => loadConfig({ ...base, INGEST_RATE_EVENTS_PER_SECOND: '0' })).toThrow(/positive/);
   });
 });
+
+describe('loadConfig — realtime', () => {
+  it('uses documented defaults and allows disabling the outbox relay', () => {
+    expect(loadConfig(base).realtime).toEqual({
+      outboxPollIntervalMs: 200,
+      maxStreams: 100,
+      keepAliveMs: 15_000,
+      catchUpIntervalMs: 5_000,
+    });
+    expect(
+      loadConfig({ ...base, OUTBOX_POLL_INTERVAL_MS: '0' }).realtime.outboxPollIntervalMs,
+    ).toBe(0);
+    expect(() => loadConfig({ ...base, SSE_MAX_STREAMS: '0' })).toThrow(/positive/);
+    expect(() => loadConfig({ ...base, SSE_KEEP_ALIVE_MS: '3000000000' })).toThrow(/one day/);
+  });
+});
