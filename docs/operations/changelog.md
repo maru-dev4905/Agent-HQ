@@ -4,7 +4,14 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-24 (2) — HQ-105 Ingestion API (PR)
+## 2026-11-25 — HQ-107 Query API + SSE (PR)
+- [Added] `GET /workspaces/:id/{agents,tasks,connections,events}`, SSE `GET /workspaces/:id/stream`(cursor replay), Outbox relay, 계약 `packages/contracts/src/query/`, architecture N7
+- [Added] `packages/database`: `createOutboxStore`, `createQueryStore`
+- [Added] 환경 변수 `OUTBOX_POLL_INTERVAL_MS`, `SSE_MAX_STREAMS`, `SSE_KEEP_ALIVE_MS`, `SSE_CATCH_UP_INTERVAL_MS` (모두 선택)
+- [Added] TD-007
+- **운영 메모**: Outbox 항목은 이제 relay가 신호를 보낸 뒤 삭제한다(알림 용도, 이벤트 자체는 events 테이블에 남는다)
+
+## 2026-11-24 (2) — HQ-105 Ingestion API (Done, PR #5)
 - [Added] `POST /events` 배치 Ingestion(원자적, 멱등), 계약 `packages/contracts/src/ingestion/`, architecture N6(API 계약·오류 표)
 - [Security] 2차 Secret 마스킹, 전역 Host/Origin Guard(T3), body 4 MiB·이벤트 64 KiB·배치 500개 상한과 Connection별 rate limit(T8), 짝 없는 서로게이트 거부
 - [Added] 환경 변수 `API_ALLOWED_HOSTS`, `API_ALLOWED_ORIGINS`, `INGEST_RATE_EVENTS_PER_SECOND`, `INGEST_RATE_BURST_EVENTS` (모두 선택)

@@ -59,3 +59,8 @@ export type {
 
 export { createConnectionStore } from './connection-store.js';
 export type { ConnectionRecord, ConnectionStore, NewConnection } from './connection-store.js';
+
+export { createOutboxStore } from './outbox-store.js';
+export type { OutboxEntry, OutboxStore } from './outbox-store.js';
+export { createQueryStore } from './query-store.js';
+export type { ConnectionView, QueryStore } from './query-store.js';

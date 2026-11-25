@@ -2,6 +2,7 @@ import { DEFAULT_HEARTBEAT_THRESHOLDS } from '@agent-hq/domain';
 import { INGEST_LIMITS } from '@agent-hq/contracts';
 import type { ConnectionSettings } from './connections/tokens.js';
 import type { RateLimitSettings } from './ingestion/rate-limiter.js';
+import type { RealtimeSettings } from './realtime/tokens.js';
 
 export interface ApiConfig {
   host: string;
@@ -11,6 +12,7 @@ export interface ApiConfig {
   connections: ConnectionSettings;
   http: HttpSettings;
   ingestion: RateLimitSettings;
+  realtime: RealtimeSettings;
 }
 
 export interface HttpSettings {
@@ -51,6 +53,13 @@ function positiveInt(
 }
 
 const DAY_MS = 86_400_000;
+
+/** Timer intervals: Node treats delays above 2^31-1 ms as 1 ms, so cap them at one day. */
+function interval(env: NodeJS.ProcessEnv, key: string, fallback: number, allowZero = false) {
+  const value = positiveInt(env, key, fallback, allowZero);
+  if (value > DAY_MS) throw new Error(`${key} must be at most ${DAY_MS} (one day)`);
+  return value;
+}
 const MAX_TOKEN_TTL_DAYS = 3650;
 
 function tokenTtlDays(env: NodeJS.ProcessEnv): number {
@@ -121,6 +130,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     ingestion: {
       eventsPerSecond: positiveInt(env, 'INGEST_RATE_EVENTS_PER_SECOND', 500),
       burstEvents: positiveInt(env, 'INGEST_RATE_BURST_EVENTS', 2000),
+    },
+    realtime: {
+      outboxPollIntervalMs: interval(env, 'OUTBOX_POLL_INTERVAL_MS', 200, true),
+      maxStreams: positiveInt(env, 'SSE_MAX_STREAMS', 100),
+      keepAliveMs: interval(env, 'SSE_KEEP_ALIVE_MS', 15_000),
+      catchUpIntervalMs: interval(env, 'SSE_CATCH_UP_INTERVAL_MS', 5_000),
     },
   };
   if (config.ingestion.burstEvents < INGEST_LIMITS.maxBatchEvents) {
