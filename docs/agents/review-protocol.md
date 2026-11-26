@@ -78,7 +78,7 @@ Task 브랜치에서 작업 (Task에 위험도 0~3 기록, quality-gates §3)
 
 **머지 조건 (HQ-006, 2026-11-26 사용자 결정)**
 - GitHub main 보호 규칙의 필수 조건은 CI `verify (G1 G2 G3 G6)`·`integration (G4)` 통과뿐이다. 승인 수와 `CodeRabbit` check는 필수가 아니다. 그 대신 **로컬 독립 리뷰가 필수**다(위험도 0은 자가 점검).
-- CodeRabbit은 참고용이며, **위험도 2~3 PR에서만** 요청한다. 그 PR은 CodeRabbit 지적을 수정 작업으로 반영하고(Major 이상은 수정, Minor 이하는 판단), 최신 커밋 승인을 받아야 `ready-to-merge`가 붙는다. 보호 규칙은 위험도를 구분하지 못하므로, 위험도 2~3 PR은 이 라벨을 보고 머지한다. **`ready-to-merge`는 `risk` 라벨만큼만 믿을 수 있다**: 사용자는 머지 전에 PR의 `risk` 라벨이 Task의 Risk와 같은지 확인한다. Agent는 Task에 기록한 위험도와 같은 라벨만 붙이고, 라벨을 낮추는 변경은 건별 승인을 받는다.
+- CodeRabbit은 참고용이며, **위험도 2~3 PR에서만** 요청한다. 그 PR은 CodeRabbit 지적을 수정 작업으로 반영하고(Major 이상은 수정, Minor 이하는 판단), 최신 커밋 승인을 받아야 `ready-to-merge`가 붙는다. 보호 규칙은 위험도를 구분하지 못하므로, 위험도 2~3 PR은 이 라벨을 보고 머지한다. **`ready-to-merge`는 `risk` 라벨만큼만 믿을 수 있고, 로컬 리뷰 통과를 확인하지 않는다**(예: 위험도 1 PR은 로컬 Major가 남아 있어도 CI만 통과하면 라벨이 붙는다). 로컬 리뷰 결과와 남은 지적은 PR 본문에 적고, 예외 머지는 그 내용과 사용자 결정을 따로 확인한다. 사용자는 머지 전에 PR의 `risk` 라벨이 Task의 Risk와 같은지 확인한다. Agent는 Task에 기록한 위험도와 같은 라벨만 붙이고, 라벨을 낮추는 변경은 건별 승인을 받는다.
 - 위험도 라벨이 없는 PR은 가장 엄격한 위험도 3으로 취급한다(`ready-to-merge.yml`).
 - 규칙·승인·ADR·보안 문서(`CLAUDE.md`, `docs/decisions/`, `docs/engineering/security.md` 등)를 바꾸는 PR은 문서만 바꿔도 최소 위험도 1이다(독립 리뷰 필수).
 - 사용량을 아끼기 위해 수정 사항은 한 커밋에 모아 push하고, 리뷰 요청도 한 번에 한다.

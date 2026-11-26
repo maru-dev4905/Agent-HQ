@@ -24,8 +24,10 @@
 > **CI (HQ-004 완료, 2026-11-23)**: `.github/workflows/ci.yml`이 PR과 main push마다 `verify`(G1·G2·G3·G6)와 `integration`(G4)을 실행하며, main 브랜치 보호의 필수 check다. G8에는 CodeRabbit PR 리뷰가 추가되었다. HQ-006(2026-11-26)부터 CodeRabbit 승인은 머지 필수 조건이 아니고, 위험도 2~3 PR에서만 요청해 지적을 반영한다 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)).
 
 ## 2. 통합 명령
+
 `pnpm verify` = `typecheck → lint → format:check → test → build` (G1·G2·G3·G6). HQ-003에서 도입했다.
 - 전제: Node 26 (`nvm use`). Prisma Client 생성은 `typecheck`·`build`가 먼저 실행한다.
+- 부하 측정 `pnpm measure:load`(HQ-112)는 **Gate가 아니다.** 성능 변화를 확인할 때 수동으로 실행한다(`pnpm infra:up` 필요, 통합 테스트 DB를 비운다). 결과 해석은 [RES-005](../research/RES-005-load-measurement.md).
 - G4(통합 테스트)는 `pnpm infra:up`으로 PostgreSQL·Redis가 떠 있어야 하며, HQ-104에서 별도 명령으로 추가한다.
 
 ## 3. 위험도별 필수 Gate

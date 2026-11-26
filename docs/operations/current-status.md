@@ -2,29 +2,31 @@
 
 > 목적: 프로젝트의 현재 상태와 세션 간 인계. **모든 세션이 시작할 때 읽고, 끝날 때 갱신한다.**
 > 관리 책임: Coordinator (매 세션)
-> 최종 갱신: 2026-11-26 — Claude Code (HQ-110 Done, HQ-006 리뷰 흐름 조정)
+> 최종 갱신: 2026-11-26 — Claude Code (HQ-006 Done, HQ-112 부하 측정)
 
 ## 1. 요약
 - 단계: **M1 / Phase 1 Event Ingestion Core — In Progress**. M0 완료(HQ-005는 Backlog)
-- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6), HQ-108 Gap·Unknown·Stale(PR #7), HQ-109 Dashboard v0(PR #8), HQ-110 Claude Code 신호 조사(PR #9). 진행 중: HQ-006 리뷰 흐름 조정
+- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6), HQ-108 Gap·Unknown·Stale(PR #7), HQ-109 Dashboard v0(PR #8), HQ-110 Claude Code 신호 조사(PR #9), HQ-006 리뷰 흐름 조정(PR #10). 진행 중: HQ-112 부하 측정
 - Gate: CI가 PR마다 `verify`·`integration` 실행. main 보호: 필수 check는 CI 2개(HQ-006부터 승인 필수 없음)
 - Git: Task마다 브랜치 → 로컬 리뷰 → PR(`risk:*` 라벨) → CodeRabbit(위험도 2~3만) → 사용자 머지 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004))
 
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-006 리뷰 흐름 조정 | In Review | 브랜치 `hq-006-review-flow`, risk:2 |
-| HQ-111 E2E / HQ-112 부하 측정 | Backlog | HQ-111은 E2E 도구 승인 필요 |
+| HQ-112 부하 측정 | In Review | 브랜치 `hq-112-load-measurement`, risk:1. RES-005 Concluded |
+| HQ-113 쓰기 경로 최적화 / HQ-114 Gap 증분 검사 | Backlog | RES-005 미충족 목표 대응 |
+| HQ-111 E2E | Backlog | E2E 도구 도입 승인 필요 |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 
 ## 3. 사용자 결정 대기
 1. 남은 Open Questions: OQ-5(Orca 등 기존 도구와의 관계), OQ-6(MVP 3D 최소 범위), 명세서 Open Decisions
 2. HQ-005(프로젝트 `.claude/settings.json`, subagent 정의) 도입 여부
-3. PR #4에서 물은 결정: `agent.completed → idle` 매핑(domain-model N4), 세션 내 시계 역행 시 시각 우선(event-schema N8), `apps/api`의 `@agent-hq/simulator` devDependency — 머지로 현재 방식 수용으로 간주, 이의가 있으면 새 Task
+3. RES-005 NFR 목표 수치 제안(NFR-002a) 확정 여부
+4. PR #4에서 물은 결정: `agent.completed → idle` 매핑(domain-model N4), 세션 내 시계 역행 시 시각 우선(event-schema N8), `apps/api`의 `@agent-hq/simulator` devDependency — 머지로 현재 방식 수용으로 간주, 이의가 있으면 새 Task
 
 ## 4. 인계 사항 (직전 세션 → 다음 세션)
 - main은 보호되어 직접 push할 수 없다. 모든 변경은 Task 브랜치와 PR로 들어간다. 머지는 사용자만 한다.
-- 머지 흐름(HQ-006): PR에 `risk:0`~`risk:3` 라벨. 로컬 독립 리뷰 필수, CodeRabbit은 위험도 2~3만 `@coderabbitai review`로 요청(자동 리뷰 꺼짐, 사용량 한도 주의). main 보호는 CI 필수만.
+- 머지 흐름(HQ-006): PR에 `risk:0`~`risk:3` 라벨. 로컬 독립 리뷰 필수(위험도 0은 자가 점검), CodeRabbit은 위험도 2~3만 `@coderabbitai review`로 요청(자동 리뷰 꺼짐, 사용량 한도 주의). main 보호는 CI 필수만.
 - 이제부터 작업 흐름은 [review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)을 따른다 (Task 브랜치 → 로컬 리뷰 → PR + `risk:*` 라벨 → CodeRabbit(위험도 2~3만) → 사용자 머지).
 - dev DB를 초기화(`prisma migrate reset`)해야 하는 상황이 오면 사용자 승인을 받는다. Prisma도 Agent 실행 시 이를 거부한다.
 - **Node 26 필요**: 저장소에서 `nvm use`. Agent 셸은 nvm 기본값(24)이 잡히므로 `PATH="$HOME/.nvm/versions/node/v26.13.1/bin:$PATH"`를 앞에 붙인다.

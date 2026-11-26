@@ -65,8 +65,9 @@
 - Root Cause: Replay의 원자성(중간 상태가 보이지 않음)을 처리량보다 우선했다.
 - Proposed Solution: 지금은 **오프라인 작업으로 운영**한다(관리 CLI 도움말에 명시). 로그가 커지면 Read Model을 새 테이블에 만든 뒤 교체하는 방식이나 스냅샷을 검토한다.
 - Verification Method: 큰 로그에서 replay 소요 시간 측정 (HQ-112).
-- Related Tasks: HQ-106, HQ-112
-- Created / Updated: 2026-11-24
+- 측정 (2026-11-26, HQ-112): Event 5만 건 Replay 77~81 s(부하 있는 기계) — 그동안 Workspace lock을 잡는다. ADR-0002 재검토 조건(60 s) 초과 → HQ-113에서 메모리 fold + 일괄 쓰기로 최적화 예정
+- Related Tasks: HQ-106, HQ-112, HQ-113
+- Created / Updated: 2026-11-24 / 2026-11-26
 
 ### TD-006 — Ingestion rate limit이 프로세스 메모리에 있다
 - Status / Priority: Open / Low
@@ -95,8 +96,9 @@
 - Root Cause: 정확성(늦게 온 이벤트 포함)을 단순한 구현으로 먼저 확보했다.
 - Proposed Solution: 마지막으로 확인한 `storeSequence` 이후에 이벤트가 온 세션만 다시 검사하거나, 세션별 최대 `sequence`·개수를 요약 테이블로 유지한다. 같은 이유로, 연결 끊김 이벤트는 그 Connection의 Agent 행 전체를 Workspace lock 안에서 갱신한다. Agent가 많아지면 행 수 상한이나 Connection 단위 기록으로 바꾼다.
 - Verification Method: HQ-112 부하 측정에서 Gap 감지 한 주기의 실행 시간 측정.
-- Related Tasks: HQ-108, HQ-112
-- Created / Updated: 2026-11-25
+- 측정 (2026-11-26, HQ-112): Event 5만 건에서 정상 상태 1회 0.15~0.19 s(문제 없음). 장애 뒤 밀린 구멍 약 970개 기록은 6~7 s. 로그가 훨씬 커질 때(예: 50만 건) 다시 잰다 — HQ-114 보류
+- Related Tasks: HQ-108, HQ-112, HQ-114
+- Created / Updated: 2026-11-25 / 2026-11-26
 
 ### TD-009 — Dashboard CSP가 inline script를 허용한다
 - Status / Priority: Open / Low
