@@ -190,7 +190,12 @@ const POOL_MESSAGES = [
   'Unable to start a transaction in the given time', // Prisma interactive transaction maxWait
   'Timed out fetching a new connection from the connection pool',
 ];
-const TIMEOUT_MESSAGES = ['Transaction already closed', 'Transaction not found'];
+/**
+ * Prisma 7.10.1 `TransactionExecutionTimeoutError`. Its code P2028 is shared with permanent
+ * errors (committed/rolled-back transaction reuse, unknown transaction ID, invalid isolation
+ * level), so the code alone never means "busy" (PR #12 review). Re-check on Prisma upgrades.
+ */
+const TIMEOUT_MESSAGES = ['cannot be executed on an expired transaction'];
 
 /** Maps driver and Prisma errors that mean "busy, nothing committed" (HQ-113). */
 export function busyReason(error: unknown): WorkspaceBusyError['reason'] | null {
@@ -199,7 +204,7 @@ export function busyReason(error: unknown): WorkspaceBusyError['reason'] | null 
   const says = (texts: string[]) => messages.some((m) => texts.some((t) => m.includes(t)));
   if (codes.includes('55P03') || says(LOCK_MESSAGES)) return 'lock';
   if (codes.includes('P2024') || says(POOL_MESSAGES)) return 'pool';
-  if (codes.includes('P2028') || says(TIMEOUT_MESSAGES)) return 'timeout';
+  if (says(TIMEOUT_MESSAGES)) return 'timeout';
   return null;
 }
 

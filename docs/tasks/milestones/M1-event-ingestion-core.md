@@ -371,6 +371,7 @@
   - 과정에서 찾은 것: pg-pool `timeout exceeded when trying to connect`가 바쁨 분류에서 빠져 500(트랜잭션 밖 Guard 조회 포함) → 분류 추가, 전역 필터 처리. 임시 재현 테스트로 확인 후 삭제
   - verification: `pnpm verify`(단위 196), `pnpm test:integration`(69, 503 busy 테스트 포함). 실시간 = Replay·순서 무관 테스트 유지
   - 로컬 리뷰(보안 검토 포함): Approve (Minor 5, Nit 4) → 반영: 503 테스트가 lock 경로(5 s)임을 시간으로 확인, 바쁨 분류를 코드·정확한 메시지로 좁힘(payload 문자열로 503이 되지 않게, HttpException 제외), 분류가 순환·BigInt 오류에도 throw하지 않음, `lock_timeout TO DEFAULT`로 복원, 재시도 멱등성 문구, TD-005 문구, replay CLI 도움말, RSK-019에 503→429 가능성
+  - PR #12 CodeRabbit 1차: APPROVED (Minor 1: P2028은 시간 초과 외 영구 오류에도 쓰여 코드만으로 503 분류하면 영구 실패를 가림) → Prisma 7.10.1 런타임 소스에서 메시지를 확인해 `expired transaction` 문구일 때만 시간 초과로 분류, 테스트 추가
   - AC: Replay 5만 건 ≤ 60 s ✅ · 동시 full batch 10건에서 500 없음 ✅ · 실시간 = Replay·순서 무관 테스트 유지 ✅
 
 ### HQ-114 — Gap 감지 증분 검사
