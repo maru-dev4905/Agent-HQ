@@ -84,7 +84,7 @@ Agent HQ는 다양한 AI 에이전트의 실행과 협업을 하나의 공간에
 - 의존성 추가/제거 (dev 의존성 포함), 새 런타임·DB·외부 서비스 도입
 - `.claude/settings*.json`, CI 설정, hooks 등 harness 설정 변경. 사용자 전역 설정(`~/.claude/` 등)은 수정 자체를 하지 않는다
 - 외부 서비스 가입·연결, 배포, 유료 API 호출, MCP를 통한 외부 쓰기(이슈 생성·문서 게시·메시지 전송)
-  - 상시 승인 예외 (2026-11-25 사용자 결정): 이 저장소 PR에 `@coderabbitai review` 리뷰 요청 댓글을 다는 것. 그 밖의 PR 쓰기(스레드 resolve, 답글 등)는 건별 승인이다. 근거: [review-protocol §6](docs/agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)
+  - 상시 승인 예외: 이 저장소 PR에 `@coderabbitai review` 리뷰 요청 댓글을 다는 것(2026-11-25 사용자 결정), PR에 Task에 기록한 위험도와 **같은 값의** `risk:0`~`risk:3` 라벨을 붙이는 것(2026-11-26 사용자 결정. 라벨을 낮추는 변경은 건별 승인). 그 밖의 PR 쓰기(스레드 resolve, 답글 등)는 건별 승인이다. 근거: [review-protocol §6](docs/agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)
 - 파일·디렉터리 대량 삭제, 데이터 삭제, DB migration 적용
 - Docker 컨테이너·이미지 실행, 장시간 백그라운드 서버 실행
 - Secret·환경 변수 생성/변경

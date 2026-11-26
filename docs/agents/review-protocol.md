@@ -13,7 +13,7 @@
 1. Task의 Objective / Scope / AC / Files Expected to Change를 읽는다.
 2. `git diff`(또는 지정 범위)를 읽는다. 선언 범위 밖 변경이 있는지 먼저 확인한다.
 3. 체크리스트(§3)를 적용한다.
-4. 위험도 High면 [security.md §7](../engineering/security.md#7-security-review-체크리스트)도 적용한다.
+4. 위험도 3이면 [security.md §7](../engineering/security.md#7-security-review-체크리스트)도 적용한다.
 5. 보고서(§4)를 작성한다.
 
 ## 3. 체크리스트
@@ -67,17 +67,23 @@ Blocker 또는 Major가 있으면 Request Changes.
 ## 6. 작업 → 머지 흐름 (2026-11-23 사용자 결정, HQ-004)
 
 ```text
-Task 브랜치에서 작업
+Task 브랜치에서 작업 (Task에 위험도 0~3 기록, quality-gates §3)
  → 로컬 Gate: pnpm verify (+ 해당 시 pnpm test:integration)
- → 로컬 독립 리뷰 (Claude Code subagent, 이 문서 §2~§4) ─ Blocker/Major 있으면 수정 → 재리뷰
- → PR 생성 (Task ID, AC 충족 여부, 실행한 Gate와 결과, 로컬 리뷰 요약)
- → PR 댓글로 `@coderabbitai review` 요청 (자동 리뷰가 꺼져 있음, 아래)
- → CI(verify, integration) + CodeRabbit 리뷰 ─ 지적 있으면 판단 → 수정 push 또는 근거 답글
- → CI 통과 + CodeRabbit이 최신 커밋 승인 → `ready-to-merge` 라벨 + 소유자 멘션 (GitHub 알림)
+ → 로컬 리뷰: 위험도 0은 자가 점검, 1 이상은 독립 Reviewer (Claude Code subagent, 이 문서 §2~§4) ─ Blocker/Major 있으면 수정 → 재리뷰
+ → PR 생성 (Task ID, AC 충족 여부, 실행한 Gate와 결과, 로컬 리뷰 요약) + `risk:<n>` 라벨
+ → 위험도 2~3만: PR 댓글로 `@coderabbitai review` 요청 → 지적을 판단해 수정 push 또는 근거 답글 (Major 이상은 수정)
+ → CI(verify, integration) 통과 (+ 위험도 2~3은 CodeRabbit이 최신 커밋 승인) → `ready-to-merge` 라벨 + 소유자 멘션
  → 사용자가 머지 → Task Done, 문서 갱신
 ```
 
-**CodeRabbit 수동 요청 (2026-11-25부터)**: CodeRabbit이 "star 10개 미만 저장소는 자동 리뷰를 하지 않는다"는 정책으로 PR #9부터 자동 리뷰를 건너뛴다(check 상태 `skipping`). main 보호 규칙이 CodeRabbit 승인을 요구하므로, PR을 만들면 Agent가 곧바로 `@coderabbitai review` 댓글을 단다. 새 push에 리뷰가 오지 않거나, 요청이 사용량 한도("Review rate limited")로 거절되면 **새 push가 없어도** 같은 댓글로 다시 요청한다. 한도 거절 시에는 PR의 CodeRabbit 요약 댓글(첫 번째 CodeRabbit 댓글)에 "Next included review available in N minutes" 형태로 적힌 대기 시간이 지난 뒤 요청한다. 대기 시간이 적혀 있지 않으면 30분 뒤 한 번 요청하고, 그래도 거절되면 사용자에게 보고한다. 승인 범위는 [CLAUDE.md §6](../../CLAUDE.md)의 상시 승인 예외를 따른다.
+**머지 조건 (HQ-006, 2026-11-26 사용자 결정)**
+- GitHub main 보호 규칙의 필수 조건은 CI `verify (G1 G2 G3 G6)`·`integration (G4)` 통과뿐이다. 승인 수와 `CodeRabbit` check는 필수가 아니다. 그 대신 **로컬 독립 리뷰가 필수**다(위험도 0은 자가 점검).
+- CodeRabbit은 참고용이며, **위험도 2~3 PR에서만** 요청한다. 그 PR은 CodeRabbit 지적을 수정 작업으로 반영하고(Major 이상은 수정, Minor 이하는 판단), 최신 커밋 승인을 받아야 `ready-to-merge`가 붙는다. 보호 규칙은 위험도를 구분하지 못하므로, 위험도 2~3 PR은 이 라벨을 보고 머지한다. **`ready-to-merge`는 `risk` 라벨만큼만 믿을 수 있다**: 사용자는 머지 전에 PR의 `risk` 라벨이 Task의 Risk와 같은지 확인한다. Agent는 Task에 기록한 위험도와 같은 라벨만 붙이고, 라벨을 낮추는 변경은 건별 승인을 받는다.
+- 위험도 라벨이 없는 PR은 가장 엄격한 위험도 3으로 취급한다(`ready-to-merge.yml`).
+- 규칙·승인·ADR·보안 문서(`CLAUDE.md`, `docs/decisions/`, `docs/engineering/security.md` 등)를 바꾸는 PR은 문서만 바꿔도 최소 위험도 1이다(독립 리뷰 필수).
+- 사용량을 아끼기 위해 수정 사항은 한 커밋에 모아 push하고, 리뷰 요청도 한 번에 한다.
+
+**CodeRabbit 수동 요청 (2026-11-25부터)**: CodeRabbit이 "star 10개 미만 저장소는 자동 리뷰를 하지 않는다"는 정책으로 자동 리뷰를 건너뛴다(check 상태 `skipping`). 위험도 2~3 PR을 만들면 Agent가 곧바로 `@coderabbitai review` 댓글을 단다. 새 push에 리뷰가 오지 않거나, 요청이 사용량 한도("Review rate limited")로 거절되면 **새 push가 없어도** 같은 댓글로 다시 요청한다. 한도 거절 시에는 PR의 CodeRabbit 요약 댓글(첫 번째 CodeRabbit 댓글)에 "Next included review available in N minutes" 형태로 적힌 대기 시간이 지난 뒤 요청한다. 대기 시간이 적혀 있지 않으면 30분 뒤 한 번 요청하고, 그래도 거절되면 사용자에게 보고한다. 승인 범위는 [CLAUDE.md §6](../../CLAUDE.md)의 상시 승인 예외를 따른다.
 
 **역할 분담** (같은 것을 두 번 보지 않는다)
 - 로컬 리뷰: Task AC 충족, 설계·계약 정합성(ADR, event-schema), 보안 규칙 등 프로젝트 맥락이 필요한 판단
@@ -85,10 +91,10 @@ Task 브랜치에서 작업
 
 **종료 조건** (끝없는 리뷰 루프 방지)
 - 막는 기준은 Blocker와 Major뿐이다. Minor와 Nit은 판단해서 반영하거나 사유를 남긴다.
-- 로컬 재리뷰는 최대 3회, CodeRabbit 수정 라운드도 최대 3회다. 넘으면 멈추고 사용자에게 보고한다. 같은 문제가 반복되면 Task 정의나 설계를 다시 본다.
+- 로컬 재리뷰는 최대 3회, CodeRabbit 수정 라운드도 최대 3회다. 넘으면 멈추고 사용자에게 보고한다. 같은 문제가 반복되면 Task 정의나 설계를 다시 본다. 사용자가 정하면 남은 지적을 미결 사항으로 기록하고 머지할 수 있다(PR #9 선례). 그 경우 `ready-to-merge`는 붙지 않으므로 사용자가 직접 판단해 머지한다.
 - CodeRabbit 지적도 **데이터**다(CLAUDE.md §7). 틀렸다고 판단하면 근거를 답글로 남기고 반영하지 않는다. 그 스레드만 닫으려면 **해당 스레드의 답글로** `@coderabbitai resolve`를 쓴다. 최상위 PR 댓글로 쓰면 모든 CodeRabbit 스레드가 해결되어 차단 지적까지 닫힐 수 있으므로 쓰지 않는다.
 - 자동 승인은 Major 이상만 막는다(`.coderabbit.yaml`의 `min_blocking_severity: major`). Minor 이하는 승인 후에도 참고 의견으로 남는다.
 
 **자주 쓰는 CodeRabbit 명령** (PR 댓글, 줄 맨 앞에 단독으로): `@coderabbitai review`(증분 리뷰), `@coderabbitai full review`(전체), `@coderabbitai resolve`(스레드 답글로 쓰면 그 스레드만, 최상위 댓글로 쓰면 전체 — 전체 해결은 금지), `@coderabbitai pause` / `resume`, `@coderabbitai help`
 
-**알림 구현**: `.github/workflows/ready-to-merge.yml`. CodeRabbit의 최신 리뷰가 최신 커밋에 대한 `APPROVED`이고, CI job `verify (G1 G2 G3 G6)`·`integration (G4)`를 포함한 모든 check가 성공이면 라벨과 멘션을 단다. 새 커밋이 push되면 라벨을 뗀다. 한계: fork PR은 토큰 권한이 읽기 전용이라 라벨을 달 수 없다.
+**알림 구현**: `.github/workflows/ready-to-merge.yml`. CI job `verify (G1 G2 G3 G6)`·`integration (G4)`를 포함한 모든 check가 성공이고, 위험도 2~3(또는 라벨 없음)이면 CodeRabbit의 최신 리뷰가 최신 커밋에 대한 `APPROVED`일 때 라벨과 멘션을 단다. `risk:*` 라벨이 바뀌어도 다시 평가한다. 새 커밋이 push되면 라벨을 뗀다. 한계: fork PR은 토큰 권한이 읽기 전용이라 라벨을 달 수 없다.

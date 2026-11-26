@@ -4,7 +4,12 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-25 (4) — HQ-110 Claude Code 신호 조사 (PR)
+## 2026-11-26 — HQ-006 리뷰 흐름 조정 (PR)
+- [Changed] 위험도 0~3 체계. 로컬 독립 리뷰 필수(위험도 0은 자가 점검), CodeRabbit은 위험도 2~3 PR에서만 요청하고 지적을 수정 작업으로 반영 (quality-gates §3, review-protocol §6)
+- [Changed] main 보호 규칙: 필수 check `verify`·`integration`만, 승인 필수 제거. `ready-to-merge.yml`은 `risk:*` 라벨로 판정(라벨 없으면 3)
+- [Changed] CLAUDE.md §6: PR `risk:*` 라벨 상시 승인
+
+## 2026-11-25 (4) — HQ-110 Claude Code 신호 조사 (Done, PR #9)
 - [Added] `docs/research/RES-002-claude-code-signals.md`: 공식 hook 문서 정리, scratch 실험 결과, adapter-spec §6 ↔ hook 매핑, Event 계약 대조(변경 불필요), M2 Bridge 설계 입력
 - [Changed] RES-002 Concluded, RSK-001·RSK-009 진행 기록, HQ-109 수동 확인 결과 기록
 - [Changed] review-protocol §6: CodeRabbit 자동 리뷰 중단(star 10개 미만 정책) → PR마다 `@coderabbitai review` 댓글로 요청 (사용자 상시 승인)

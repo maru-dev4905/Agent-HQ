@@ -9,7 +9,7 @@
 ```markdown
 ### HQ-XXX — <Title>
 - Status: Backlog | Ready | In Progress | Blocked | In Review | Done
-- Risk: Low | Medium | High
+- Risk: 0 | 1 | 2 | 3 ([quality-gates §3](../engineering/quality-gates.md#3-위험도별-필수-gate). 이전 표기 Low·Medium·High는 0~1·2·3)
 - Role: <배정 역할/Agent>
 - Objective: <이 Task가 끝나면 무엇이 가능해지는가 — 한두 문장>
 - Background: <왜 필요한가, 관련 FR/ADR/Issue>
@@ -38,7 +38,7 @@ In Review ──(결함)──▶ In Progress
 ```
 
 - **Ready 조건 (Definition of Ready)**: Objective, Scope/Out of Scope, AC, Verification Steps, Files Expected to Change가 채워져 있고 Dependencies가 해소됨.
-- **Done 조건 (Definition of Done)**: 모든 AC 충족, 위험도별 필수 Gate 통과([quality-gates §3](../engineering/quality-gates.md#3-위험도별-필수-gate)), 리뷰 통과(Medium 이상), 관련 문서 갱신, Execution Log 기록. **커밋 여부는 Done 조건이 아니지만 미커밋 상태를 보고에 명시**한다.
+- **Done 조건 (Definition of Done)**: 모든 AC 충족, 위험도별 필수 Gate 통과([quality-gates §3](../engineering/quality-gates.md#3-위험도별-필수-gate)), 리뷰 통과(위험도 1 이상: 로컬 독립 리뷰, 2 이상: CodeRabbit 지적 반영), 관련 문서 갱신, Execution Log 기록. **커밋 여부는 Done 조건이 아니지만 미커밋 상태를 보고에 명시**한다.
 - Blocked 시 사유와 해제 조건을 적는다. Agent가 할 일이 남아 있으면 Blocked가 아니다. 사용자 결정을 **요청한 뒤** 대기하는 상태가 Blocked다.
 - Verification Steps에는 위험도별 필수 Gate([quality-gates §3](../engineering/quality-gates.md#3-위험도별-필수-gate))를 그대로 적거나 "quality-gates §3 <위험도> 기준"으로 링크한다. 일부만 골라 적지 않는다.
 - 의존성은 [backlog.md](../tasks/backlog.md)와 milestone 파일에 같은 내용으로 적는다. 사용자 승인 의존성도 포함한다.
