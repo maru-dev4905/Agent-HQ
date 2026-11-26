@@ -1,5 +1,7 @@
-# Notifies the repository owner when a PR is ready to merge (HQ-004):
-# CodeRabbit approved the latest commit AND every check on it succeeded.
+# Notifies the repository owner when a PR is ready to merge (HQ-004, HQ-006).
+# Every check on the latest commit must succeed. Risk labels decide whether CodeRabbit must
+# also approve (review-protocol §6): `risk:0`/`risk:1` → CI only; `risk:2`/`risk:3` or no
+# risk label → CodeRabbit approval of the latest commit as well.
 # Adds the `ready-to-merge` label plus a mention (GitHub notification); removes the label on new pushes.
 name: ready-to-merge
 
@@ -10,7 +12,7 @@ on:
     workflows: [CI]
     types: [completed]
   pull_request:
-    types: [synchronize, reopened]
+    types: [synchronize, reopened, labeled, unlabeled, ready_for_review]
 
 permissions:
   contents: read
@@ -37,6 +39,11 @@ jobs:
             const BOT = 'coderabbitai[bot]';
             const REQUIRED_CHECKS = ['verify (G1 G2 G3 G6)', 'integration (G4)'];
             const OK = new Set(['success', 'neutral', 'skipped']);
+            // Highest risk label wins; a PR without one is treated as the strictest level.
+            const riskOf = (labels) => {
+              const levels = labels.map((l) => /^risk:([0-3])$/.exec(l.name)?.[1]).filter(Boolean).map(Number);
+              return levels.length === 0 ? 3 : Math.max(...levels);
+            };
             const { owner, repo } = context.repo;
 
             const prNumbers =
@@ -54,7 +61,15 @@ jobs:
               };
 
               if (pr.state !== 'open' || pr.draft) { await removeLabel('not open'); continue; }
-              if (context.eventName === 'pull_request') { await removeLabel('new commits'); continue; }
+              const action = context.payload.action;
+              if (context.eventName === 'pull_request' && (action === 'synchronize' || action === 'reopened')) {
+                await removeLabel('new commits');
+                continue;
+              }
+              // A change of our own label must not trigger another evaluation loop.
+              if (context.eventName === 'pull_request' && context.payload.label?.name === LABEL) continue;
+              const risk = riskOf(pr.labels);
+              const needsCodeRabbit = risk >= 2;
 
               const reviews = await github.paginate(github.rest.pulls.listReviews, { owner, repo, pull_number: number });
               const decisive = reviews.filter((r) => r.user?.login === BOT && ['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(r.state));
@@ -65,8 +80,8 @@ jobs:
               const relevant = runs.filter((r) => r.name !== 'evaluate');
               const requiredPresent = REQUIRED_CHECKS.every((name) => relevant.some((r) => r.name === name));
               const allGreen = relevant.every((r) => r.status === 'completed' && OK.has(r.conclusion));
-              const ready = approved && requiredPresent && allGreen;
-              core.info(`#${number}: approved=${approved} required=${requiredPresent} green=${allGreen}`);
+              const ready = (!needsCodeRabbit || approved) && requiredPresent && allGreen;
+              core.info(`#${number}: risk=${risk} approved=${approved} required=${requiredPresent} green=${allGreen}`);
 
               if (!ready) { await removeLabel('not ready'); continue; }
 
@@ -79,6 +94,8 @@ jobs:
               if (notified) continue;
               await github.rest.issues.createComment({
                 owner, repo, issue_number: number,
-                body: `${MARKER(pr.head.sha)}\n@${owner} 머지 준비 완료: CodeRabbit이 최신 커밋(${pr.head.sha.slice(0, 7)})을 승인했고 모든 check가 통과했습니다.`,
+                body: needsCodeRabbit
+                  ? `${MARKER(pr.head.sha)}\n@${owner} 머지 준비 완료 (risk:${risk}): CodeRabbit이 최신 커밋(${pr.head.sha.slice(0, 7)})을 승인했고 모든 check가 통과했습니다.`
+                  : `${MARKER(pr.head.sha)}\n@${owner} 머지 준비 완료 (risk:${risk}): 최신 커밋(${pr.head.sha.slice(0, 7)})의 모든 check가 통과했습니다. 이 위험도는 CodeRabbit 승인이 필요 없습니다.`,
               });
             }

@@ -16,12 +16,12 @@
 | G6 Build | 배포 산출물 생성 | **CI** | `pnpm build` (tsc -b + next build) | HQ-003 |
 | G6b Dependency Audit | 알려진 취약점 | **Not introduced** | — | HQ-003/HQ-004 |
 | G7 Security Review | Secret 노출, 입력 검증, 권한 | **Manual** | [security.md 체크리스트](security.md#7-security-review-체크리스트) | 즉시 적용 |
-| G8 Code Review | 독립 리뷰 | **Manual** | [review-protocol](../agents/review-protocol.md) | 즉시 적용 |
+| G8 Code Review | 독립 리뷰 | **Manual** | [review-protocol](../agents/review-protocol.md) (위험도 2~3은 CodeRabbit 포함) | 즉시 적용 |
 | G9 Docs Consistency | 링크 오류·문서 모순 | **Manual** | 아래 §4 | 즉시 적용 |
 
 > 상태 값: `Not introduced` | `Manual` | `Local` (로컬 명령 존재) | `CI` (CI에서 강제)
 >
-> **CI (HQ-004 완료, 2026-11-23)**: `.github/workflows/ci.yml`이 PR과 main push마다 `verify`(G1·G2·G3·G6)와 `integration`(G4)을 실행하며, main 브랜치 보호의 필수 check다. G8에는 CodeRabbit PR 리뷰가 추가되었고, CodeRabbit 승인 1건이 머지 조건이다 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)).
+> **CI (HQ-004 완료, 2026-11-23)**: `.github/workflows/ci.yml`이 PR과 main push마다 `verify`(G1·G2·G3·G6)와 `integration`(G4)을 실행하며, main 브랜치 보호의 필수 check다. G8에는 CodeRabbit PR 리뷰가 추가되었다. HQ-006(2026-11-26)부터 CodeRabbit 승인은 머지 필수 조건이 아니고, 위험도 2~3 PR에서만 요청해 지적을 반영한다 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)).
 
 ## 2. 통합 명령
 `pnpm verify` = `typecheck → lint → format:check → test → build` (G1·G2·G3·G6). HQ-003에서 도입했다.
@@ -30,13 +30,16 @@
 
 ## 3. 위험도별 필수 Gate
 
-| Task 위험도 | 예 | 필수 Gate |
-|---|---|---|
-| Low | 문서, 주석, UI 문구 | G8(자가 점검 허용), G9 |
-| Medium | 일반 기능, 단일 패키지 변경 | G1, G2, G3, G6, G8(독립 Reviewer) |
-| High | Event 스키마, 저장소, 마스킹·보안, 공용 패키지, hook(관찰 대상 Agent에 영향) | Medium + G4(DB·HTTP 등 외부 경계를 통합하는 Task. 순수 계약·도메인 패키지는 계약 테스트로 대체하고 그 사실을 보고), G7, 해당 시 G5, ADR 확인 |
+위험도는 0~3으로 매긴다 (HQ-006, 2026-11-26 사용자 결정. 이전의 Low·Medium·High는 각각 0~1, 2, 3에 해당한다).
 
-Task 작성 시 위험도를 기록한다 ([task-protocol](../agents/task-protocol.md)).
+| 위험도 | 예 | 필수 Gate | 리뷰 |
+|---|---|---|---|
+| 0 | 문서만 변경 (단, 규칙·승인·ADR·보안 문서는 최소 1) | G9 | 로컬 자가 점검 |
+| 1 | 테스트·작은 수정, 단일 모듈, 동작 변화 작음 | G1, G2, G3, G6 | 로컬 독립 Reviewer. CodeRabbit은 요청하지 않음 |
+| 2 | 일반 기능, 여러 모듈, CI·워크플로 | G1, G2, G3, G6 (+ 해당 시 G4) | 로컬 독립 Reviewer + **CodeRabbit 요청, 지적을 수정 작업으로 반영** |
+| 3 | Event 스키마, 저장소, migration, 마스킹·보안, 공용 패키지, hook(관찰 대상 Agent에 영향) | 위험도 2 + G4(DB·HTTP 등 외부 경계를 통합하는 Task. 순수 계약·도메인 패키지는 계약 테스트로 대체하고 그 사실을 보고), G7, 해당 시 G5, ADR 확인 | 위험도 2 + 보안 검토 |
+
+Task 작성 시 위험도를 기록하고([task-protocol](../agents/task-protocol.md)), PR에는 같은 값의 `risk:<n>` 라벨을 붙인다([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)).
 
 ## 4. 문서 Gate (G9) 수동 절차
 1. 변경한 문서의 상대 링크가 실제 파일을 가리키는지 확인한다.

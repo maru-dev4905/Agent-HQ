@@ -291,7 +291,7 @@
   - AC: 새로고침 없이 반영 ✅ · XSS 문자열이 HTML로 해석되지 않음 ✅(자동 테스트) · 색상만으로 구분하지 않음 ✅(아이콘+텍스트)
 
 ### HQ-110 — 스파이크: Claude Code 신호 조사 (RES-002)
-- Status: In Review (2026-11-25) · Risk: Low · Role: Architect · 병행 가능
+- Status: Done (2026-11-26, PR #9 관리자 머지 `361c73d`) · Risk: Low · Role: Architect · 병행 가능
 - Objective: Claude Code hook이 제공하는 실제 신호를 확인하고 Event 계약과 M2 설계의 입력을 만든다.
 - Background: RSK-001, RSK-009, FR-021, [adapter-spec 통합 노트 N1](../../foundation/adapter-spec.md)
 - Scope: 설치된 버전의 공식 문서 확인, scratch 프로젝트의 로깅 hook 실험, hook ↔ Event Type 매핑표, Session/Subagent 식별자 제공 여부, heartbeat 대체 신호, 세션당 Event량. 데이터 처리는 [data-governance N4](../../engineering/data-governance.md#n4-개발-과정의-데이터-즉시-적용)를 따른다.
@@ -314,7 +314,7 @@
   - PR #9: CodeRabbit 자동 리뷰 중단(star 10개 미만 정책) → 사용자 상시 승인으로 `@coderabbitai review` 요청(CLAUDE.md §6 예외, review-protocol §6). 1차 CHANGES_REQUESTED (Major 2: `not_executed` 확정 전 발행 위험, subagent 재개 시 멱등 키 충돌. Minor 2: 길이·해시 저장 필드 없음, 상시 승인을 CLAUDE.md §6에 반영) → RES-002 5.2·5.4·5.5·6 보완, CLAUDE.md §6 예외 추가. 함께: backlog HQ-103 Done, roadmap M0·M1 상태 정정. 2차(사용량 한도로 두 번 거절된 뒤 13:00 UTC 재요청): CHANGES_REQUESTED (Major 3: 늦은 실패와 `not_executed`의 키 충돌, 동기 hook timeout, 재개 subagent의 Stop 연결. Minor 1: 한도 거절 시 재요청) → `not_executed` 별도 단계 키, 동기 hook 짧은 timeout과 유실 한계 기록, Stop은 열린 실행 FIFO 연결, review-protocol 재요청 조건 보완. 3차(dffcf5e): CHANGES_REQUESTED (Major 1: 유실된 SubagentStop 뒤 재개 시 FIFO 오연결. Minor 1: 대기 시간 없는 한도 거절의 재요청 기준) → 3라운드 상한 도달, 사용자 결정으로 Major는 RES-002 §6.1 "M2 Bridge 설계 미결 사항"으로 기록, Minor는 review-protocol에 기준 추가(30분 후 1회, 이후 보고). 추가 리뷰 요청 없이 사용자 지시로 관리자 머지
 
 ### HQ-111 — E2E: 시뮬레이터 → Ingestion → Dashboard
-- Status: Backlog · Risk: Medium · Role: QA → Reviewer
+- Status: Backlog · Risk: 2 (새 E2E 도구 도입) · Role: QA → Reviewer
 - Objective: M1 파이프라인 전체를 브라우저 테스트로 검증한다.
 - Background: M1 종료 조건 7, [testing-strategy](../../engineering/testing-strategy.md)
 - Scope: E2E 러너 도입, Compose·서버·시뮬레이터 기동 스크립트, 위임 시나리오·끊김 시나리오 테스트, quality-gates의 G5 갱신
@@ -328,7 +328,7 @@
 - Verification: Medium 기준 Gate + G5
 
 ### HQ-112 — 부하 측정 (RES-005)
-- Status: Backlog · Risk: Low · Role: QA
+- Status: Backlog · Risk: 1 (측정 스크립트·문서) · Role: QA
 - Objective: 명세서 roadmap §13의 측정 항목 중 M1에서 측정 가능한 것을 측정하고, 목표 수치를 제안한다.
 - Background: NFR-002, NFR-003, ADR-0002/0003 Revisit Conditions
 - Scope: 시뮬레이터 부하 모드, 측정 스크립트, 측정 조건(하드웨어, Event 수, 동시 Agent 수) 기록. 같은 Workspace에 동시 full batch(500개) N건을 보낼 때 timeout 여부(RSK-019)

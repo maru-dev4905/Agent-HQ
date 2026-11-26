@@ -17,11 +17,12 @@
 
 ## 2. 규모·위험도별 역할 구성
 
-| Task 유형 | 구성 |
+| Task 유형 (위험도, [quality-gates §3](../engineering/quality-gates.md#3-위험도별-필수-gate)) | 구성 |
 |---|---|
-| Low (문서, 작은 수정) | Coordinator가 직접 수행 + 자가 점검 |
-| Medium (일반 기능) | Coordinator → Worker → Reviewer(독립) |
-| High (스키마, 저장소, 보안, hook) | Architect(설계/ADR) → 사용자 승인 → Worker → Reviewer + QA → Documenter |
+| 0 (문서만) | Coordinator가 직접 수행 + 자가 점검 |
+| 1 (작은 코드 수정, 단일 모듈) | Coordinator 또는 Worker → **Reviewer(독립)** |
+| 2 (일반 기능, CI·워크플로) | Coordinator → Worker → Reviewer(독립) → PR에서 CodeRabbit 지적 반영 |
+| 3 (스키마, 저장소, 보안, hook) | Architect(설계/ADR) → 사용자 승인 → Worker → Reviewer(독립, 보안 검토 포함) + QA → Documenter → PR에서 CodeRabbit 지적 반영 |
 | 조사 (Research) | Architect 또는 탐색 subagent → 결과를 research/에 기록 |
 
 모든 역할을 항상 실행하지 않는다.
@@ -42,4 +43,4 @@
 ## 4. 역할 간 인계 규칙
 - Worker → Reviewer: Task ID, diff 범위(커밋 또는 파일 목록), 실행한 Gate 결과, 알려진 한계.
 - Reviewer → Coordinator: 리뷰 보고. Reviewer는 직접 수정하지 않는다.
-- 발견된 결함 수정은 원래 Worker에게 되돌린다 (Coordinator가 직접 고치지 않는 것이 원칙, 단 Low는 예외).
+- 발견된 결함 수정은 원래 Worker에게 되돌린다 (Coordinator가 직접 고치지 않는 것이 원칙, 단 위험도 0~1은 예외).

@@ -153,9 +153,31 @@
   - main 브랜치 보호 (사용자 승인 2026-11-23): 필수 check `verify (G1 G2 G3 G6)`·`integration (G4)`·`CodeRabbit`, 승인 1건(CodeRabbit APPROVED가 충족), 새 push 시 기존 승인 무효화, force push·삭제 금지, 관리자 우회는 비상용으로 허용(Agent는 사용하지 않음)
   - 알게 된 점: `CodeRabbit` check는 수정 요청 상태에서도 success로 끝난다. 그래서 승인 여부는 check가 아니라 "승인 1건 필수" 규칙으로 막아야 한다
 
+### HQ-006 — 리뷰 흐름 조정 (위험도별 CodeRabbit)
+- Status: In Review (2026-11-26)
+- Risk: 2 (CI 워크플로·저장소 보호 규칙 변경)
+- Objective: CodeRabbit 자동 리뷰 중단과 사용량 한도에 맞춰, 로컬 독립 리뷰를 필수로 두고 CodeRabbit은 위험도 2~3 PR에서만 쓰도록 머지 흐름을 바꾼다.
+- Background: 2026-11-25 CodeRabbit "star 10개 미만" 자동 리뷰 중단, PR #9의 사용량 한도 거절, 2026-11-26 사용자 결정(위험도 0~3, 2~3은 CodeRabbit 지적을 수정 작업으로 반영)
+- Scope: 위험도 0~3 체계(quality-gates §3, task-protocol), review-protocol §6 머지 흐름, CLAUDE.md §6 상시 승인(`risk:*` 라벨), `.github/workflows/ready-to-merge.yml` 위험도 판정, GitHub `risk:0`~`risk:3` 라벨 생성, main 보호 규칙에서 승인 필수와 `CodeRabbit` 필수 check 제거(CI 필수 유지)
+- Out of Scope: CodeRabbit 플랜 변경, `.coderabbit.yaml` 변경
+- Dependencies: 사용자 승인(2026-11-26: 보호 규칙 변경, 워크플로 수정, 라벨 상시 승인)
+- Files Expected to Change: `.github/workflows/ready-to-merge.yml`, `CLAUDE.md`, `docs/agents/{review-protocol,task-protocol,subagent-roles}.md`, `docs/engineering/quality-gates.md`, 상태 문서
+- Acceptance Criteria:
+  - [ ] 위험도 0~1 PR은 CI 통과만으로 `ready-to-merge`, 위험도 2~3·라벨 없음은 CodeRabbit 최신 커밋 승인까지 필요
+  - [ ] main 보호 규칙: 필수 check `verify`·`integration`만, 승인 수 0, force push·삭제 금지 유지
+  - [ ] 문서의 승인·흐름 규칙이 서로 일치 (CLAUDE.md §6 단일 원천)
+- Role: Coordinator → Reviewer(독립) → CodeRabbit
+- Verification Steps: 워크플로 스크립트 모의 실행(위험도별 9가지 경우), 보호 규칙 API 조회, 이 PR(risk:2)의 `pull_request`·`pull_request_review` 경로. `workflow_run` 경로와 위험도 0~1 경로는 머지 뒤 main의 워크플로로 동작하므로 **머지 후 첫 PR에서 검증**한다
+- Execution Log:
+  #### Run 2026-11-26-1
+  - agent_id: claude-code:main · status: In Review
+  - result: 위험도 0~3 체계와 위험도별 리뷰 규칙, `ready-to-merge.yml`(risk 라벨 판정, 라벨 없으면 3, 라벨 변경 시 재평가), CLAUDE.md §6 라벨 상시 승인
+  - 로컬 리뷰 1회차: Request Changes (Major 2: subagent-roles의 옛 위험도 표가 작은 코드 수정을 자가 점검으로 허용, 라벨 상시 승인이 라벨 낮추기까지 포함해 CodeRabbit 우회 가능. Minor 5, Nit 4) → 반영: subagent-roles 0~3 표, 상시 승인은 Task 위험도와 같은 라벨만(낮추기는 건별 승인), `risk` 라벨 확인 책임 명시, 규칙·승인·ADR·보안 문서는 최소 위험도 1, 열린 Task(HQ-005·111·112) 위험도 재분류, 머지 후 검증 항목 명시, ready_for_review 트리거 추가
+  - verification: 워크플로 스크립트를 가짜 GitHub 객체로 모의 실행 — 9가지 경우 모두 기대대로(risk:0·1 CI만, risk:2 미승인 불가, risk:3 승인 시 가능, 라벨 없음 불가, CI 실패 불가, 복수 라벨은 가장 높은 값, labeled 이벤트 재평가, synchronize 시 라벨 제거)
+
 ### HQ-005 — Claude Code 프로젝트 설정
 - Status: Backlog
-- Risk: Medium
+- Risk: 2 (harness 설정)
 - Objective: 문서 규칙 일부를 Claude Code 설정으로 강제하고, 역할별 subagent 정의를 만든다 (TD-001).
 - Background: agent-workflow §4, subagent-roles §3
 - Scope: 프로젝트 `.claude/settings.json` 권한(deny/ask) 제안, `.claude/agents/` 역할 정의(Reviewer, Architect 등) 제안. 적용 전 설정 키를 설치 버전 공식 문서로 확인.
