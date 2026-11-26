@@ -167,7 +167,7 @@
   - [ ] main 보호 규칙: 필수 check `verify`·`integration`만, 승인 수 0, force push·삭제 금지 유지
   - [ ] 문서의 승인·흐름 규칙이 서로 일치 (CLAUDE.md §6 단일 원천)
 - Role: Coordinator → Reviewer(독립) → CodeRabbit
-- Verification Steps: 워크플로 스크립트 모의 실행(위험도별 9가지 경우), 보호 규칙 API 조회, 이 PR(risk:2)의 `pull_request`·`pull_request_review` 경로. `workflow_run` 경로와 위험도 0~1 경로는 머지 뒤 main의 워크플로로 동작하므로 **머지 후 첫 PR에서 검증**한다
+- Verification Steps: 워크플로 스크립트 모의 실행(위험도별 9가지 경우), 보호 규칙 API 조회, 이 PR(risk:2)의 `pull_request`·`pull_request_review` 경로. `workflow_run` 경로와 위험도 0~1 경로는 머지 뒤 main의 워크플로로 동작하므로 머지 후 첫 PR에서 검증한다 — **PR #11(risk:1)에서 CI 통과 뒤 `ready-to-merge`와 멘션이 자동으로 붙는 것을 확인(2026-11-26)**
 - Execution Log:
   #### Run 2026-11-26-1
   - agent_id: claude-code:main · status: In Review

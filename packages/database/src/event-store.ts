@@ -123,8 +123,84 @@ function contentHash(event: AgentEvent): string {
   return sha256(canonicalJson(body));
 }
 
+/** How long a transaction waits for the workspace lock before giving up (HQ-113). */
+const LOCK_TIMEOUT_MS = 5_000;
+
 async function lockWorkspace(tx: Tx, workspaceId: string): Promise<void> {
+  // Bounded wait: a busy workspace is reported as WorkspaceBusyError (retryable) instead of
+  // the whole transaction running into its timeout. Reset afterwards so row locks taken
+  // later in the transaction keep the default behaviour.
+  await tx.$executeRawUnsafe(`SET LOCAL lock_timeout = '${LOCK_TIMEOUT_MS}ms'`);
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${workspaceId}, 0))`;
+  await tx.$executeRawUnsafe('SET LOCAL lock_timeout TO DEFAULT');
+}
+
+/**
+ * The workspace was too busy: its lock was not acquired in time, no pool connection was free,
+ * or the transaction ran past its timeout. Nothing was committed, so retrying is safe.
+ */
+export class WorkspaceBusyError extends Error {
+  constructor(
+    readonly reason: 'lock' | 'pool' | 'timeout',
+    options?: { cause?: unknown },
+  ) {
+    super(`Workspace busy (${reason})`, options);
+    this.name = 'WorkspaceBusyError';
+  }
+}
+
+interface ErrorFields {
+  codes: string[];
+  messages: string[];
+}
+
+/**
+ * Collects `code`, `meta.code` and `message` along the `cause` chain (bounded depth, no
+ * JSON.stringify): classification never throws, even on cyclic or BigInt-bearing errors.
+ */
+function fieldsOf(error: unknown, depth = 0, into: ErrorFields = { codes: [], messages: [] }) {
+  if (depth > 4 || typeof error !== 'object' || error === null) return into;
+  const e = error as {
+    code?: unknown;
+    message?: unknown;
+    meta?: { code?: unknown } | null;
+    cause?: unknown;
+  };
+  if (typeof e.code === 'string') into.codes.push(e.code);
+  if (typeof e.meta === 'object' && e.meta !== null && typeof e.meta.code === 'string') {
+    into.codes.push(e.meta.code);
+  }
+  if (typeof e.message === 'string') into.messages.push(e.message);
+  return fieldsOf(e.cause, depth + 1, into);
+}
+
+/** Errors raised deliberately by callers (e.g. Nest HttpException) — never "busy". */
+function isOwnError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    typeof (error as { getStatus?: unknown }).getStatus === 'function'
+  );
+}
+
+/** Exact driver/Prisma texts only — free-form matching could turn a real bug into a 503. */
+const LOCK_MESSAGES = ['canceling statement due to lock timeout'];
+const POOL_MESSAGES = [
+  'timeout exceeded when trying to connect', // pg-pool, every connection in use
+  'Unable to start a transaction in the given time', // Prisma interactive transaction maxWait
+  'Timed out fetching a new connection from the connection pool',
+];
+const TIMEOUT_MESSAGES = ['Transaction already closed', 'Transaction not found'];
+
+/** Maps driver and Prisma errors that mean "busy, nothing committed" (HQ-113). */
+export function busyReason(error: unknown): WorkspaceBusyError['reason'] | null {
+  if (error instanceof WorkspaceBusyError) return error.reason;
+  const { codes, messages } = fieldsOf(error);
+  const says = (texts: string[]) => messages.some((m) => texts.some((t) => m.includes(t)));
+  if (codes.includes('55P03') || says(LOCK_MESSAGES)) return 'lock';
+  if (codes.includes('P2024') || says(POOL_MESSAGES)) return 'pool';
+  if (codes.includes('P2028') || says(TIMEOUT_MESSAGES)) return 'timeout';
+  return null;
 }
 
 async function append(tx: Tx, input: AgentEvent): Promise<AppendOutcome> {
@@ -280,30 +356,31 @@ export function createEventStore(db: DatabaseClient): EventStore {
   return {
     transaction(workspaceId, work, options) {
       if (workspaceId.trim() === '') throw new Error('workspaceId is required');
-      return db.$transaction(
-        async (tx) => {
-          await lockWorkspace(tx, workspaceId);
-          return work({
-            projections: projectionTransaction(tx, workspaceId),
-            readFrom: async (after, limit) => {
-              assertReadRange(after, limit);
-              const rows = await tx.event.findMany({
-                where: { workspaceId, storeSequence: { gt: after } },
-                orderBy: { storeSequence: 'asc' },
-                take: limit,
-              });
-              return rows.map(toStoredEvent);
-            },
-            append: (event) => {
-              assertWorkspace(workspaceId, event.workspaceId);
-              return append(tx, event);
-            },
-            resolveAgentInstance: (ref, newId) => {
-              assertWorkspace(workspaceId, ref.workspaceId);
-              return resolveIdentity(tx, 'agent', ref, newId);
-            },
-            hasSequenceIn: async (connectionId, session, from, to) => {
-              const rows = await tx.$queryRaw<{ found: boolean }[]>`
+      return db
+        .$transaction(
+          async (tx) => {
+            await lockWorkspace(tx, workspaceId);
+            return work({
+              projections: projectionTransaction(tx, workspaceId),
+              readFrom: async (after, limit) => {
+                assertReadRange(after, limit);
+                const rows = await tx.event.findMany({
+                  where: { workspaceId, storeSequence: { gt: after } },
+                  orderBy: { storeSequence: 'asc' },
+                  take: limit,
+                });
+                return rows.map(toStoredEvent);
+              },
+              append: (event) => {
+                assertWorkspace(workspaceId, event.workspaceId);
+                return append(tx, event);
+              },
+              resolveAgentInstance: (ref, newId) => {
+                assertWorkspace(workspaceId, ref.workspaceId);
+                return resolveIdentity(tx, 'agent', ref, newId);
+              },
+              hasSequenceIn: async (connectionId, session, from, to) => {
+                const rows = await tx.$queryRaw<{ found: boolean }[]>`
                 SELECT EXISTS (
                   SELECT 1 FROM events
                   WHERE workspace_id = ${workspaceId}
@@ -312,10 +389,10 @@ export function createEventStore(db: DatabaseClient): EventStore {
                     AND sequence BETWEEN ${from} AND ${to}
                     AND NOT (type = 'event.gap.detected' AND source->>'adapterId' = 'hq')
                 ) AS found`;
-              return rows[0]?.found === true;
-            },
-            agentsAffectedByGap: async (connectionId, session, from) => {
-              const rows = await tx.$queryRaw<{ agent_instance_id: string }[]>`
+                return rows[0]?.found === true;
+              },
+              agentsAffectedByGap: async (connectionId, session, from) => {
+                const rows = await tx.$queryRaw<{ agent_instance_id: string }[]>`
                 SELECT a.agent_instance_id
                 FROM (
                   SELECT DISTINCT agent_instance_id FROM events
@@ -339,32 +416,38 @@ export function createEventStore(db: DatabaseClient): EventStore {
                   WHERE last.type = 'agent.disconnected'
                 )
                 ORDER BY a.agent_instance_id`;
-              return rows.map((row) => row.agent_instance_id);
-            },
-            setConnectionStatus: async (expected, to) => {
-              const { count } = await tx.connection.updateMany({
-                where: {
-                  id: expected.id,
-                  workspaceId,
-                  status: expected.status,
-                  lastHeartbeatAt: expected.lastHeartbeatAt,
-                  revokedAt: expected.revokedAt,
-                },
-                data: { status: to },
-              });
-              return count === 1;
-            },
-            resolveTask: (ref, newId) => {
-              assertWorkspace(workspaceId, ref.workspaceId);
-              return resolveIdentity(tx, 'task', ref, newId);
-            },
-          });
-        },
-        {
-          ...TRANSACTION_OPTIONS,
-          ...(options?.timeoutMs === undefined ? {} : { timeout: options.timeoutMs }),
-        },
-      );
+                return rows.map((row) => row.agent_instance_id);
+              },
+              setConnectionStatus: async (expected, to) => {
+                const { count } = await tx.connection.updateMany({
+                  where: {
+                    id: expected.id,
+                    workspaceId,
+                    status: expected.status,
+                    lastHeartbeatAt: expected.lastHeartbeatAt,
+                    revokedAt: expected.revokedAt,
+                  },
+                  data: { status: to },
+                });
+                return count === 1;
+              },
+              resolveTask: (ref, newId) => {
+                assertWorkspace(workspaceId, ref.workspaceId);
+                return resolveIdentity(tx, 'task', ref, newId);
+              },
+            });
+          },
+          {
+            ...TRANSACTION_OPTIONS,
+            ...(options?.timeoutMs === undefined ? {} : { timeout: options.timeoutMs }),
+          },
+        )
+        .catch((error: unknown) => {
+          // Errors thrown by `work` itself (validation, conflicts, HTTP errors) pass through.
+          const reason = isOwnError(error) ? null : busyReason(error);
+          if (reason === null) throw error;
+          throw new WorkspaceBusyError(reason, { cause: error });
+        });
     },
 
     async readFrom(workspaceId, after, limit) {

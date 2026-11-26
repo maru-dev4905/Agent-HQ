@@ -9,10 +9,17 @@ import { describe, expect, it } from 'vitest';
 import { ApiExceptionFilter } from './api-exception.filter.js';
 
 function run(exception: unknown) {
-  const sent: { status?: number; body?: unknown } = {};
+  const headers: Record<string, string> = {};
+  const sent: { status?: number; body?: unknown; headers?: Record<string, string> } = {};
+  // Non-enumerable so existing whole-object comparisons keep checking only status and body.
+  Object.defineProperty(sent, 'headers', { value: headers, enumerable: false });
   const reply = {
     status(code: number) {
       sent.status = code;
+      return reply;
+    },
+    header(name: string, value: string) {
+      headers[name] = value;
       return reply;
     },
     send(body: unknown) {
@@ -49,5 +56,21 @@ describe('ApiExceptionFilter', () => {
       status: 500,
       body: { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } },
     });
+  });
+});
+
+describe('ApiExceptionFilter — busy database (HQ-113)', () => {
+  it('answers 503 + Retry-After when the pool or a lock is exhausted outside a transaction', () => {
+    for (const error of [
+      new Error('timeout exceeded when trying to connect'),
+      new Error('canceling statement due to lock timeout'),
+    ]) {
+      const sent = run(error);
+      expect(sent.status).toBe(503);
+      expect(sent.headers?.['Retry-After']).toBe('2');
+      expect(sent.body).toEqual({
+        error: { code: 'SERVICE_UNAVAILABLE', message: 'Service temporarily unavailable' },
+      });
+    }
   });
 });

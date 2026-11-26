@@ -68,6 +68,8 @@ export interface ProjectionTransaction {
   putTask(row: TaskStateRow): Promise<void>;
   /** Deletes every read-model row of the workspace (used by replay before re-applying). */
   clear(): Promise<void>;
+  /** Inserts rows in bulk after `clear` (replay writes the folded result at once, HQ-113). */
+  insertAll(agents: AgentStateRow[], tasks: TaskStateRow[]): Promise<void>;
 }
 
 type Tx = Prisma.TransactionClient;
@@ -160,6 +162,20 @@ export function projectionTransaction(tx: Tx, workspaceId: string): ProjectionTr
         create: data,
         update: data,
       });
+    },
+    async insertAll(agents, tasks) {
+      for (const row of [...agents, ...tasks]) guard(row.workspaceId);
+      const CHUNK = 1000;
+      for (let i = 0; i < agents.length; i += CHUNK) {
+        await tx.agentCurrentState.createMany({
+          data: agents.slice(i, i + CHUNK).map((r) => toDb(r)),
+        });
+      }
+      for (let i = 0; i < tasks.length; i += CHUNK) {
+        await tx.taskCurrentState.createMany({
+          data: tasks.slice(i, i + CHUNK).map((r) => toDb(r)),
+        });
+      }
     },
     async clear() {
       await tx.agentCurrentState.deleteMany({ where: { workspaceId } });

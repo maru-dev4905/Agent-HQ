@@ -15,6 +15,8 @@ export const API_ERROR_CODES = [
   'RATE_LIMITED',
   /** Any other client error; retrying the same request will not help. */
   'REQUEST_REJECTED',
+  /** Temporarily unable to serve (e.g. the workspace is busy); retry after `Retry-After`. */
+  'SERVICE_UNAVAILABLE',
   'INTERNAL_ERROR',
 ] as const;
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];

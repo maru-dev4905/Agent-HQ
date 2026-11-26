@@ -39,7 +39,13 @@ export async function pingDatabase(
   }
 }
 
-export { createEventStore, MAX_READ_LIMIT, WorkspaceMismatchError } from './event-store.js';
+export {
+  busyReason,
+  createEventStore,
+  MAX_READ_LIMIT,
+  WorkspaceBusyError,
+  WorkspaceMismatchError,
+} from './event-store.js';
 export type {
   AppendOutcome,
   EventStore,
