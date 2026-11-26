@@ -77,7 +77,7 @@ Task 브랜치에서 작업
  → 사용자가 머지 → Task Done, 문서 갱신
 ```
 
-**CodeRabbit 수동 요청 (2026-11-25부터)**: CodeRabbit이 "star 10개 미만 저장소는 자동 리뷰를 하지 않는다"는 정책으로 PR #9부터 자동 리뷰를 건너뛴다(check 상태 `skipping`). main 보호 규칙이 CodeRabbit 승인을 요구하므로, PR을 만들면 Agent가 곧바로 `@coderabbitai review` 댓글을 단다. 새 push에 리뷰가 오지 않거나, 요청이 사용량 한도("Review rate limited")로 거절되면 **새 push가 없어도** 같은 댓글로 다시 요청한다. 한도 거절 시에는 CodeRabbit 요약 댓글에 적힌 대기 시간이 지난 뒤 요청한다. 승인 범위는 [CLAUDE.md §6](../../CLAUDE.md)의 상시 승인 예외를 따른다.
+**CodeRabbit 수동 요청 (2026-11-25부터)**: CodeRabbit이 "star 10개 미만 저장소는 자동 리뷰를 하지 않는다"는 정책으로 PR #9부터 자동 리뷰를 건너뛴다(check 상태 `skipping`). main 보호 규칙이 CodeRabbit 승인을 요구하므로, PR을 만들면 Agent가 곧바로 `@coderabbitai review` 댓글을 단다. 새 push에 리뷰가 오지 않거나, 요청이 사용량 한도("Review rate limited")로 거절되면 **새 push가 없어도** 같은 댓글로 다시 요청한다. 한도 거절 시에는 PR의 CodeRabbit 요약 댓글(첫 번째 CodeRabbit 댓글)에 "Next included review available in N minutes" 형태로 적힌 대기 시간이 지난 뒤 요청한다. 대기 시간이 적혀 있지 않으면 30분 뒤 한 번 요청하고, 그래도 거절되면 사용자에게 보고한다. 승인 범위는 [CLAUDE.md §6](../../CLAUDE.md)의 상시 승인 예외를 따른다.
 
 **역할 분담** (같은 것을 두 번 보지 않는다)
 - 로컬 리뷰: Task AC 충족, 설계·계약 정합성(ADR, event-schema), 보안 규칙 등 프로젝트 맥락이 필요한 판단

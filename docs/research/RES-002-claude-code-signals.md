@@ -113,5 +113,12 @@ scratch 프로젝트(저장소 밖)의 `.claude/settings.local.json`에만 `asyn
 - Task: hook에 Agent HQ Task에 해당하는 신호가 확인되지 않았다(`TaskCreated`/`TaskCompleted` 미관찰). adapter-spec 비목표에 따라 Claude Code Adapter는 `task.*`를 만들지 않는다.
 - HQ-108의 Open 항목(연결 끊김 해제 기준): Claude Code에는 heartbeat가 없고 `occurredAt`은 Bridge가 hook 실행 시각으로 찍는다. Bridge outbox가 재연결 후 끊기기 전 이벤트를 flush하면 현재 규칙(끊긴 뒤 무엇이든 받으면 해제)에 따라 `unknown`이 풀린다. 이를 막으려면 해제 기준을 "끊긴 시각 이후의 `occurredAt`"으로 바꿔야 하는데, Bridge 시계와 서버 시계가 같은 기계라는 MVP 전제에서만 안전하다. **M2 Bridge 설계 때 결정**하도록 넘긴다.
 
+## 6.1 M2 Bridge 설계 미결 사항 (PR #9 리뷰에서 남긴 것)
+문서만으로 확정하지 않고, M2 Bridge 구현과 계약 테스트에서 실제 동작을 보며 정한다.
+- **유실된 `SubagentStop`과 재개 실행의 연결**: 첫 실행의 `SubagentStop`이 timeout 등으로 유실된 뒤 같은 `agent_id`가 재개되면, FIFO 규칙(5.5)은 두 번째 실행의 Stop을 첫 실행에 연결해 두 번째 실행이 열린 채 남는다. 후보: 새 `SubagentStart`가 오면 같은 `agent_id`의 열린 이전 실행을 "종료 미확인"으로 닫고(추정 실패가 아니라 별도 상태), Stop은 가장 최근 실행에 연결한다. 동기 hook으로 순서가 보장되는지 먼저 측정한다.
+- **동기 hook timeout 값과 유실 감지**(5.4): timeout으로 유실된 이벤트는 Bridge 순번에 구멍을 만들지 않아 Gap으로 잡히지 않는다. hook 쪽 순번이나 heartbeat로 감지할 수 있는지 검토한다.
+- **`not_executed` 유예 시간 값**(5.4)과 **D2 길이·해시 선택 필드 추가 여부**(5.2).
+- **연결 끊김 해제 기준**(HQ-108 Open, §6).
+
 ## 7. 수집 파일 삭제 기록
 - 2026-11-25T10:23:33Z: scratch 디렉터리 `hq110/`(기록 파일 `log.jsonl` 55줄, scratch 프로젝트와 그 `.claude/settings.local.json`, 기록 스크립트, 실행 출력)를 `rm -rf`로 삭제하고 존재하지 않음을 확인했다. 기록 파일에는 원문 콘텐츠가 없었다(필드 이름·타입·길이, 식별자, 열거형 값만). 저장소에는 아무 실험 데이터도 커밋하지 않았다.
