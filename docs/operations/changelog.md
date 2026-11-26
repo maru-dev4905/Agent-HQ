@@ -4,10 +4,15 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-26 — HQ-006 리뷰 흐름 조정 (PR)
+## 2026-11-26 (2) — HQ-112 부하 측정 (PR)
+- [Added] 시뮬레이터 부하 모드 `generateLoad`, 측정 스위트 `pnpm measure:load`(Gate 아님), `docs/research/RES-005-load-measurement.md`
+- [Changed] RES-005 Concluded, NFR-002a 목표 수치 제안, TD-005·TD-008·RSK-019 실측값, HQ-113·HQ-114 추가
+- [Changed] PR #10 참고 의견 반영(review-protocol·changelog·current-status 문구)
+
+## 2026-11-26 — HQ-006 리뷰 흐름 조정 (Done, PR #10)
 - [Changed] 위험도 0~3 체계. 로컬 독립 리뷰 필수(위험도 0은 자가 점검), CodeRabbit은 위험도 2~3 PR에서만 요청하고 지적을 수정 작업으로 반영 (quality-gates §3, review-protocol §6)
 - [Changed] main 보호 규칙: 필수 check `verify`·`integration`만, 승인 필수 제거. `ready-to-merge.yml`은 `risk:*` 라벨로 판정(라벨 없으면 3)
-- [Changed] CLAUDE.md §6: PR `risk:*` 라벨 상시 승인
+- [Changed] CLAUDE.md §6: Task 위험도와 같은 값의 PR `risk:*` 라벨 상시 승인(라벨을 낮추는 변경은 건별 승인)
 
 ## 2026-11-25 (4) — HQ-110 Claude Code 신호 조사 (Done, PR #9)
 - [Added] `docs/research/RES-002-claude-code-signals.md`: 공식 hook 문서 정리, scratch 실험 결과, adapter-spec §6 ↔ hook 매핑, Event 계약 대조(변경 불필요), M2 Bridge 설계 입력

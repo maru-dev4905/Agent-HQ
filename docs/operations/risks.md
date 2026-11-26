@@ -209,6 +209,6 @@
 - Root Cause: 정합성(늦은 커밋을 건너뛰지 않는 Cursor)을 처리량보다 우선했다.
 - Proposed Solution: 트랜잭션 `maxWait`·`timeout`을 명시했다(HQ-104). Ingestion에서 배치로 묶어 한 트랜잭션에 여러 이벤트를 넣는다(HQ-105). HQ-112에서 측정해 풀 크기와 배치 전략을 정한다.
 - Verification Method: HQ-112 부하 측정에서 timeout 0건.
-- 측정 (HQ-105 로컬 리뷰, 2026-11-24, 개발 머신 1회): 500개 배치 1건 약 0.9초. 같은 Workspace에 500개 배치 4건 동시 → 약 3.6초에 전부 200. 트랜잭션 timeout(10초)이 lock 대기 시간을 포함하므로, 여러 Connection이 동시에 full batch를 10건 이상 보내면 마지막 요청이 timeout으로 500을 받을 수 있다(추정). Connection별 rate limit으로는 막을 수 없다. HQ-112에서 "동시 full batch N건"을 측정 항목에 넣는다.
-- Related Tasks: HQ-104, HQ-105, HQ-112
-- Created / Updated: 2026-11-23 / 2026-11-24
+- 측정 (HQ-105 로컬 리뷰, 2026-11-24, 개발 머신 1회): 500개 배치 1건 약 0.9초. 같은 Workspace에 500개 배치 4건 동시 → 약 3.6초에 전부 200. 트랜잭션 timeout(10초)이 lock 대기 시간을 포함하므로, 여러 Connection이 동시에 full batch를 10건 이상 보내면 마지막 요청이 timeout으로 500을 받을 수 있다(추정). Connection별 rate limit으로는 막을 수 없다. HQ-112에서 "동시 full batch N건"을 측정 항목에 넣는다. **실측 (2026-11-26, HQ-112)**: 정확히 500건씩 동시 5건까지 모두 성공, 10건에서 4건, 20건에서 12~13건이 500(`INTERNAL_ERROR` — 트랜잭션 timeout으로 추정, 20건은 연결 풀 대기도 섞였을 수 있음). 대응은 HQ-113(묶음 처리로 트랜잭션 단축, lock 대기 초과 시 503 + `Retry-After`).
+- Related Tasks: HQ-104, HQ-105, HQ-112, HQ-113
+- Created / Updated: 2026-11-23 / 2026-11-26

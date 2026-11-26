@@ -6,3 +6,5 @@ export { SCENARIO_NAMES, SCENARIOS } from './scenarios.js';
 export type { ScenarioName } from './scenarios.js';
 export { sendEvents } from './send.js';
 export type { SendOptions, SendReport } from './send.js';
+export { generateLoad } from './load.js';
+export type { LoadOptions } from './load.js';

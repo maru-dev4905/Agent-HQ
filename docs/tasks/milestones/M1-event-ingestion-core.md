@@ -328,7 +328,7 @@
 - Verification: Medium 기준 Gate + G5
 
 ### HQ-112 — 부하 측정 (RES-005)
-- Status: Backlog · Risk: 1 (측정 스크립트·문서) · Role: QA
+- Status: In Review (2026-11-26) · Risk: 1 (측정 스크립트·문서) · Role: QA
 - Objective: 명세서 roadmap §13의 측정 항목 중 M1에서 측정 가능한 것을 측정하고, 목표 수치를 제안한다.
 - Background: NFR-002, NFR-003, ADR-0002/0003 Revisit Conditions
 - Scope: 시뮬레이터 부하 모드, 측정 스크립트, 측정 조건(하드웨어, Event 수, 동시 Agent 수) 기록. 같은 Workspace에 동시 full batch(500개) N건을 보낼 때 timeout 여부(RSK-019)
@@ -339,3 +339,35 @@
   - [ ] ingestion latency, dashboard update latency, duplicate rate, reconnect recovery를 측정 조건과 함께 기록한다
   - [ ] 측정값으로 NFR 목표 수치를 제안하고, ADR Revisit 조건에 해당하는지 결론을 낸다
 - Verification: Low 기준 Gate. 2회 반복 측정해 편차 기록
+- 범위 변경 (2026-11-26): 측정 코드는 `apps/api/test/load/measure.load.ts`(통합 테스트 DB·in-process API), 실행 설정 `vitest.load.config.ts`와 루트 스크립트 `pnpm measure:load`(Gate 아님)를 추가했다. 결과는 별도 문서 `docs/research/RES-005-load-measurement.md`. 함께 반영: PR #10 CodeRabbit 참고 의견 3건(문서 문구), HQ-006 Done 기록
+- Execution Log:
+  #### Run 2026-11-26-2
+  - agent_id: claude-code:main (QA) · status: In Review
+  - result: 시뮬레이터 부하 모드 `generateLoad`(run별 고유 ID, 결정적) + 테스트, 측정 스위트(ingestion latency·처리량, 동시 full batch, dashboard update latency, duplicate rate, reconnect recovery, 로그 5만 건에서 Replay·Gap 감지·SSE 전체 재전송), RES-005 결과·NFR 목표 제안·ADR 재검토 결론
+  - 측정(최종 2회, 부하 있는 기계): 화면 반영 p95 220/221 ms(저부하), Event 1개 요청 p95 30/36 ms, 처리량 321/286 events/s, 중복 저장 0, 재연결 5,000건 146/112 ms(누락·중복 없음), 동시 500개 배치 10건에서 4/10이 500, Replay 5만 건 81/77 s(ADR-0002 조건 60 s 초과), Gap 감지 정상 상태 0.15/0.19 s
+  - 로컬 리뷰 2회차: Approve (Minor 2: 세션 간 Replay 편차 명시, 500 원인 표현 완화 → 반영)
+  - 로컬 리뷰 1회차: Request Changes (Major 2: 실제 보낸 건수가 명목보다 적음(재연결 780·3,848건, 배치 325~345건), Gap 감지 측정에 밀린 구멍 기록이 섞임. Minor 7, Nit 7) → 측정 코드 수정(정확한 건수, Gap 정상 상태·밀린 기록 분리, 실패 원인 기록·재시도, 수신 순서로 중복 검사, 런타임 설정 고정) 후 재측정. 결론을 추정으로 표기, 저부하 한정, 재시도 근거 정정, 문서 정정
+  - AC: 4개 지표를 측정 조건과 함께 기록 ✅ · NFR 목표 제안과 ADR 재검토 결론 ✅(ADR-0002 재생성 조건 해당 → 구조 유지, 구현 최적화 HQ-113)
+  - 후속: HQ-113(쓰기 경로 최적화). HQ-114는 정상 상태 측정이 충분히 빨라 보류
+
+### HQ-113 — 쓰기 경로 최적화 (Replay·Ingestion 배치·lock 대기)
+- Status: Backlog · Risk: 3 (저장소·Projection) · Role: Architect → Worker → Reviewer
+- Objective: RES-005에서 미충족한 목표를 맞춘다 — Projection 전체 재생성 5만 건 ≤ 60 s(ADR-0002), 동시 full batch에서 500 대신 재시도 가능한 오류.
+- Background: [RES-005](../../research/RES-005-load-measurement.md) §3~§5, TD-005, RSK-019
+- Scope: Replay를 메모리 fold(순수 Projector) + 일괄 쓰기로 변경, Ingestion 배치의 외부 ID 조회와 Projection 쓰기 묶음 처리, lock 대기 초과 시 503 + `Retry-After`
+- Out of Scope: 프로세스 분리, 다른 DB
+- Acceptance Criteria:
+  - [ ] `pnpm measure:load`에서 Replay 5만 건 ≤ 60 s
+  - [ ] 동시 full batch 10건에서 500 없음(성공 또는 503 + `Retry-After`)
+  - [ ] 실시간 = Replay, 순서 무관 테스트 유지
+- Verification: 위험도 3 Gate + `pnpm measure:load` 전후 비교(세션 간 편차가 커서 같은 세션에서 연달아 측정)
+
+### HQ-114 — Gap 감지 증분 검사
+- Status: Backlog (보류) · Risk: 2 · Role: Worker → Reviewer
+- Objective: Gap 감지 1회가 로그 크기에 비례하지 않게 한다(TD-008).
+- Background: RES-005 §2.3 — 5만 건에서 정상 상태 0.15~0.19 s, 밀린 구멍 970개 기록 6~7 s. **지금은 필요 없다.** 로그가 50만 건 수준이 되거나 정상 상태 1회가 1 s를 넘으면 시작한다
+- Scope: 마지막 검사 이후 이벤트가 온 세션만 다시 검사, 필요하면 세션별 요약
+- Acceptance Criteria:
+  - [ ] 50만 건 로그에서 정상 상태 Gap 감지 1회 ≤ 1 s
+  - [ ] 기존 Gap 통합 테스트 유지
+- Verification: 위험도 2 Gate + `pnpm measure:load`

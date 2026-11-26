@@ -27,7 +27,7 @@
 | RES-002 | Claude Code 이벤트 수집 방식 | M1 중 (M2 전) | High | Concluded → [상세](RES-002-claude-code-signals.md) |
 | RES-003 | MCP 도구 흐름 관찰 방식 | M2 | Medium | Open |
 | RES-004 | 3D Office 기술과 목표 수준 | M3 | Medium | Open |
-| RES-005 | 저장소·실시간 처리 부하 | M1 | Medium | Open |
+| RES-005 | 저장소·실시간 처리 부하 | M1 | Medium | Concluded → [상세](RES-005-load-measurement.md) |
 | RES-006 | 기존 Agent 관찰·오케스트레이션 도구 조사 | M0~M1 | High | Open |
 | RES-007 | 기획 명세서(ChatGPT, v0.1.0) 검토 | M0 | High | Concluded → [상세](RES-007-chatgpt-spec-review.md) |
 
@@ -92,7 +92,8 @@
 - Proposed Solution: HQ-105/HQ-107 완료 후 시뮬레이터로 부하를 만들어 측정.
 - Verification Method: p95 지연·처리량 측정값 기록.
 - Related Tasks: HQ-112
-- Created / Updated: 2026-11-22
+- Created / Updated: 2026-11-22 / 2026-11-26
+- Result (2026-11-26, HQ-112): 실시간 경로는 MVP 목표를 충족(화면 반영 p95 ≈ 0.22 s 저부하, 중복 저장 0, 재연결 5,000건 0.1 s, Gap 감지 정상 상태 0.2 s). Projection 재생성(5만 건 77~81 s — ADR-0002 재검토 조건 해당)과 동시 500개 배치 10건부터의 500은 구현 최적화 대상(HQ-113). 상세: [RES-005](RES-005-load-measurement.md)
 
 ### RES-006 — 기존 Agent 관찰·오케스트레이션 도구 조사
 - Status / Priority: Open / High

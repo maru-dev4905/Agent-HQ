@@ -13,6 +13,7 @@
     "vitest.config.ts",
     "packages/database/prisma.config.ts",
     "vitest.integration.config.ts",
-    "vitest.shared.ts"
+    "vitest.shared.ts",
+    "vitest.load.config.ts"
   ]
 }

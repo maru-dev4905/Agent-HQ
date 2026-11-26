@@ -20,7 +20,8 @@
     "db:migrate": "pnpm --filter @agent-hq/database migrate:deploy",
     "dev:api": "pnpm --filter @agent-hq/api dev",
     "dev:web": "pnpm --filter @agent-hq/web dev",
-    "test:integration": "pnpm generate && vitest run --config vitest.integration.config.ts"
+    "test:integration": "pnpm generate && vitest run --config vitest.integration.config.ts",
+    "measure:load": "pnpm generate && vitest run --config vitest.load.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
