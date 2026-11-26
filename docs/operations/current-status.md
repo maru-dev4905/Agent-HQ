@@ -2,19 +2,19 @@
 
 > 목적: 프로젝트의 현재 상태와 세션 간 인계. **모든 세션이 시작할 때 읽고, 끝날 때 갱신한다.**
 > 관리 책임: Coordinator (매 세션)
-> 최종 갱신: 2026-11-25 — Claude Code (HQ-109 Dashboard v0)
+> 최종 갱신: 2026-11-25 — Claude Code (HQ-109 Done, HQ-110 시작)
 
 ## 1. 요약
 - 단계: **M1 / Phase 1 Event Ingestion Core — In Progress**. M0 완료(HQ-005는 Backlog)
-- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6), HQ-108 Gap·Unknown·Stale(PR #7). 진행 중: HQ-109 Dashboard v0(PR)
+- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6), HQ-108 Gap·Unknown·Stale(PR #7), HQ-109 Dashboard v0(PR #8). 진행 중: HQ-110 Claude Code 신호 조사
 - Gate: CI가 PR마다 `verify`·`integration` 실행. main은 보호됨 (필수 check 3개 + CodeRabbit 승인 1건)
 - Git: Task마다 브랜치 → PR → CodeRabbit → 사용자 머지 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004))
 
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-109 Dashboard v0 | In Review | 브랜치 `hq-109-dashboard`, PR → CodeRabbit. 수동 확인(dev DB migration·서버 실행·스크린샷) 승인 대기 |
-| HQ-110 Claude Code 신호 조사 | Ready | 다음 후보. N5 끊김 해제 기준 결정에도 필요 |
+| HQ-110 Claude Code 신호 조사 | In Review | 브랜치 `hq-110-claude-code-signals`, RES-002 Concluded |
+| HQ-111 E2E / HQ-112 부하 측정 | Backlog | HQ-111은 E2E 도구 승인 필요 |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 
 ## 3. 사용자 결정 대기
@@ -24,6 +24,7 @@
 
 ## 4. 인계 사항 (직전 세션 → 다음 세션)
 - main은 보호되어 직접 push할 수 없다. 모든 변경은 Task 브랜치와 PR로 들어간다. 머지는 사용자만 한다.
+- CodeRabbit은 자동 리뷰를 하지 않는다(star 10개 미만 정책). PR을 만들면 `@coderabbitai review` 댓글로 요청한다(상시 승인).
 - 이제부터 작업 흐름은 [review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004)을 따른다 (Task 브랜치 → 로컬 리뷰 → PR → CodeRabbit → 사용자 머지).
 - dev DB를 초기화(`prisma migrate reset`)해야 하는 상황이 오면 사용자 승인을 받는다. Prisma도 Agent 실행 시 이를 거부한다.
 - **Node 26 필요**: 저장소에서 `nvm use`. Agent 셸은 nvm 기본값(24)이 잡히므로 `PATH="$HOME/.nvm/versions/node/v26.13.1/bin:$PATH"`를 앞에 붙인다.

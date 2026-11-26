@@ -3,15 +3,15 @@
 > 목적: 마일스톤의 순서, 목표, 종료 조건. 세부 Task는 [tasks/](../tasks/README.md)에 있다.
 > 관리 책임: Coordinator가 제안하고 사용자가 승인한다.
 > 출처: 기획 명세서 v0.1.0 `roadmap.md`([원본](../research/source/chatgpt-spec-v0.1/roadmap.md))의 Phase 구조를 채택했다 ([ADR-0004](../decisions/ADR-0004-adopt-spec-baseline.md)). 마일스톤 번호 M*n*은 명세서의 Phase *n*에 대응한다.
-> 상태: Phase 구조 Confirmed / Phase별 Task 분해는 Proposed. 갱신 2026-11-22
+> 상태: Phase 구조 Confirmed / Phase별 Task 분해는 Proposed. 갱신 2026-11-25
 
 ## MVP 목표 (명세서 §1)
 Claude Code에서 실행되는 외부 에이전트와 Subagent의 관찰 가능한 이벤트를 Agent HQ로 전달하고, 공통 Event Model을 통해 Dashboard와 3D Office에 실제 상태로 표현한다. 우선순위는 **정확한 관찰 → 신뢰할 수 있는 이벤트 → 이해 가능한 시각화**다.
 
 | 마일스톤 | 명세서 Phase | 목표 | 종료 조건 (요약, 상세는 명세서와 milestone 파일) | 상태 |
 |---|---|---|---|---|
-| **M0** | Phase 0 Foundation & Decisions | Harness, ADR, Monorepo, 개발 환경 | 의존성 방향 명시, 기본 빌드·테스트 통과, 로컬 DB migration 실행 (Event Schema contract test는 M1 첫 Task HQ-101로 넘김) | In Progress |
-| **M1** | Phase 1 Event Ingestion Core | 인증된 연결로 Event를 받아 저장·Projection·Realtime 처리 | 무효 Event 거부, 중복 방지, 수신·발생 시각 분리, Workspace 권한 검증, Cursor Replay, Gap/Unknown 표시 | Backlog |
+| **M0** | Phase 0 Foundation & Decisions | Harness, ADR, Monorepo, 개발 환경 | 의존성 방향 명시, 기본 빌드·테스트 통과, 로컬 DB migration 실행 (Event Schema contract test는 M1 첫 Task HQ-101로 넘김) | Done (HQ-005 선택 Task만 남음) |
+| **M1** | Phase 1 Event Ingestion Core | 인증된 연결로 Event를 받아 저장·Projection·Realtime 처리 | 무효 Event 거부, 중복 방지, 수신·발생 시각 분리, Workspace 권한 검증, Cursor Replay, Gap/Unknown 표시 | In Progress (HQ-111·112 남음) |
 | **M2** | Phase 2 Local Bridge & Claude Code Adapter | 로컬 Claude Code 이벤트 수집 | 연결·해제, 지원 hook 수신, Agent/Session 식별, Tool 매핑, 재연결 중복·누락 처리, Capability 표시, Secret 비노출 | Backlog |
 | **M3** | Phase 3 Operations Dashboard | 실제 Event를 이해할 수 있는 UI | 상태 반영, 원본 Event 추적, 끊김·누락 표현, Dashboard·API 일치 | Backlog |
 | **M4** | Phase 4 3D Office | 같은 Projection의 3D 표현 | Event 기반 상태 변화, Unknown/Idle 구분, Dashboard와 일치, 3D를 꺼도 기능 유지, 폭주 시 수집 비방해 | Backlog |

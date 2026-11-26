@@ -1,7 +1,7 @@
 # Backlog
 
 > 목적: 전체 Task 상태의 단일 원천. 상세는 마일스톤 파일을 본다. 의존성은 milestone 파일과 같은 내용으로 유지한다.
-> 관리 책임: Coordinator. 최종 갱신: 2026-11-22
+> 관리 책임: Coordinator. 최종 갱신: 2026-11-25
 > 마일스톤 M*n* = 기획 명세서 Phase *n* ([roadmap](../foundation/roadmap.md))
 
 ## M0 — Harness Bootstrap / Phase 0 ([상세](milestones/M0-harness-bootstrap.md))
@@ -21,14 +21,14 @@
 |---|---|---|---|---|---|
 | HQ-101 | Event 계약 패키지 (Envelope + MVP Type) | Done | High | HQ-003 | A |
 | HQ-102 | 결정적 시뮬레이터 (테스트용 Source) | Done | Medium | HQ-101 | B |
-| HQ-103 | Connection 모델 + 토큰 인증 | In Review (PR) | High | HQ-101, HQ-104 인터페이스 | B |
+| HQ-103 | Connection 모델 + 토큰 인증 | Done | High | HQ-101, HQ-104 인터페이스 | B |
 | HQ-104 | Event Store + G4 도입 | Done | High | HQ-101, Docker 실행 승인 | B |
 | HQ-106 | Projector + Projections + Replay | Done | High | HQ-104 | C |
 | HQ-105 | Ingestion API | Done | High | HQ-101, HQ-103, HQ-104 인터페이스, HQ-106 인터페이스 | C |
 | HQ-107 | Query API + Realtime(SSE, Cursor Replay) | Done | Medium | HQ-105, HQ-106 | D |
 | HQ-108 | Gap 감지와 Unknown/Stale 표시 | Done | Medium | HQ-103, HQ-106 | D |
-| HQ-109 | 개발용 Dashboard v0 (Next.js) | In Review | Medium | HQ-107 계약, HQ-108 | E |
-| HQ-110 | 스파이크: Claude Code 신호 조사 (RES-002) | Backlog | Low | 없음 (언제든 병행, scratch hook 설정은 승인 후) | — |
+| HQ-109 | 개발용 Dashboard v0 (Next.js) | Done | Medium | HQ-107 계약, HQ-108 | E |
+| HQ-110 | 스파이크: Claude Code 신호 조사 (RES-002) | In Review | Low | 없음 (언제든 병행, scratch hook 설정은 승인 후) | — |
 | HQ-111 | E2E: 시뮬레이터 → Ingestion → Dashboard | Backlog | Medium | HQ-102, HQ-105, HQ-108, HQ-109, E2E 도구 승인 | F |
 | HQ-112 | 부하 측정 (RES-005) | Backlog | Low | HQ-102, HQ-105, HQ-107, HQ-109 | F |
 

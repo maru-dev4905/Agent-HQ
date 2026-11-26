@@ -264,7 +264,7 @@
   - AC: 시뮬레이터 Gap 시나리오에서 `event.gap.detected` 기록 ✅ · 명시적 종료 신호 없이 끊긴 Agent는 `unknown`(그 전 `idle`이어도), `agent.disconnected`를 받은 Agent만 `disconnected` ✅
 
 ### HQ-109 — 개발용 Dashboard v0 (Next.js)
-- Status: In Review (2026-11-25) · Risk: Medium · Role: Worker → Reviewer
+- Status: Done (2026-11-25, PR #8 머지 `64cfb29`) · Risk: Medium · Role: Worker → Reviewer
 - Objective: 개발자가 Agent Roster·상태·Event Timeline·Connection 상태·Gap/Unknown을 실시간으로 본다. M3 Operations Dashboard의 출발점이다.
 - Background: FR-030, FR-032, [ui-ux §4](../../foundation/ui-ux.md), NFR-010, security T5
 - Scope: Agent Roster(상태는 아이콘과 텍스트로 함께 표시), Event Timeline, Connection 상태, Unknown/Stale/Gap 표시, SSE 끊김 표시·자동 재연결, CSP
@@ -286,10 +286,12 @@
   - 로컬 리뷰 2회차: Approve (Minor 1: 범위 밖 수정 파일 목록 누락 → 추가. Nit: throttle 취소, DB 초기화 후 로그가 이전 cursor를 넘은 경우의 한계 명시)
   - PR #8 CodeRabbit 1차: APPROVED (Minor 8) → 반영 6: 승인·외부 대기 Task도 현재 Task로 표시, Read Model 응답 형태 검사, 조회 요청은 한 번에 하나(진행 중 요청이 끝나면 한 번 더), 같은 배치 안 중복 제거, SSE 메시지 검증(잘못된 메시지는 건너뛰고 cursor 유지·알림), probe 5초 제한. 추가로 프록시 경로를 읽기 5개로 좁힘(보안 요약). 미반영 2: Web 상대 import `.js`(Next 번들러 해석, coding-standards에 예외 명시), 운영 CSP `'unsafe-inline'`(nonce 필요, TD-009)
   - PR #8 CodeRabbit 2차: CHANGES_REQUESTED (Major 1: 프록시가 Host를 loopback으로 바꿔 Web 서버 대상 DNS rebinding이 API Host 검사를 우회) → API `RequestOriginGuard`가 `X-Forwarded-Host`도 검사(Next 16.4.6 `proxy-request.js`가 원래 Host를 이 헤더로 넘기는 것을 소스로 확인), 단위·통합 테스트. 범위 밖 수정: `apps/api/src/http/request-origin.guard.ts`
-  - verification: `pnpm verify` 통과(단위 185, Web 15 포함, Next build 성공). XSS 문자열 4종 렌더링 테스트, 스트림 재연결·409·backoff·throttle 단위 테스트. 수동 확인(API·Web 실행 + 시뮬레이터 + 스크린샷)은 **미실행** — dev DB migration 적용과 서버 실행이 사용자 승인 사항
+  - verification: `pnpm verify` 통과(단위 188, Web 16 포함, Next build 성공), `pnpm test:integration` 68. XSS 문자열 4종 렌더링 테스트, 스트림 재연결·409·backoff·throttle 단위 테스트
+  - 수동 확인 (2026-11-25, 사용자 승인): dev DB `pnpm db:migrate`(`20261125010000_agent_connection_loss` 적용) → API(`dist/main.js`)와 Web(`next start`, 운영 빌드) 실행 → 시뮬레이터 Connection 등록 → headless Chromium(로컬 Playwright 캐시의 실행 파일, 새 설치 없음)을 CDP로 조작. 페이지를 연 채 delegation 23건 전송 → 새로고침 없이 Roster·Timeline 반영(페이지에 심은 표식 값 유지로 재로드 없음 확인), failure-gap 10건 전송 후 약 48초 뒤 `⚠ event.gap.detected · sequence 8–9 누락` 표시. 운영 CSP에 `unsafe-eval` 없음, 브라우저 콘솔 오류·CSP 위반 0건, 프록시는 읽기 경로만(`POST /hq-api/connections` 404). 서버·브라우저 종료, 토큰 파일과 브라우저 프로필 삭제. 스크린샷은 세션 scratchpad에만 보관(커밋하지 않음). 관찰: 두 시나리오가 같은 외부 ID와 같은 가상 시작 시각을 써서 `main`은 더 최신인 `agent.completed`에 따라 `유휴`로 표시(규칙대로). Gap 요약 문구가 범위를 두 번 보여 줌(사소, 후속)
+  - AC: 새로고침 없이 반영 ✅ · XSS 문자열이 HTML로 해석되지 않음 ✅(자동 테스트) · 색상만으로 구분하지 않음 ✅(아이콘+텍스트)
 
 ### HQ-110 — 스파이크: Claude Code 신호 조사 (RES-002)
-- Status: Backlog · Risk: Low · Role: Architect · 병행 가능
+- Status: In Review (2026-11-25) · Risk: Low · Role: Architect · 병행 가능
 - Objective: Claude Code hook이 제공하는 실제 신호를 확인하고 Event 계약과 M2 설계의 입력을 만든다.
 - Background: RSK-001, RSK-009, FR-021, [adapter-spec 통합 노트 N1](../../foundation/adapter-spec.md)
 - Scope: 설치된 버전의 공식 문서 확인, scratch 프로젝트의 로깅 hook 실험, hook ↔ Event Type 매핑표, Session/Subagent 식별자 제공 여부, heartbeat 대체 신호, 세션당 Event량. 데이터 처리는 [data-governance N4](../../engineering/data-governance.md#n4-개발-과정의-데이터-즉시-적용)를 따른다.
@@ -302,6 +304,14 @@
   - [ ] Event 계약 변경 필요 여부 결론 (필요하면 ADR 제안). HQ-101이 끝났다면 계약과 대조한 결과를 기록한다 (M1 종료 조건 9의 담당)
   - [ ] 수집 파일 삭제 기록
 - Verification: Low 기준 Gate
+- Execution Log:
+  #### Run 2026-11-25-4
+  - agent_id: claude-code:main (Architect, 자가 점검 — Low 위험) · status: In Review
+  - result: 공식 hook 레퍼런스 조사(web-fetch) + scratch 실험(사용자 승인, 세션 6개, 저장소 밖 `.claude/settings.local.json`에만 async 기록 hook, 전역 설정 미수정). `docs/research/RES-002-claude-code-signals.md` 작성, research README·RSK-001·RSK-009 갱신
+  - 주요 발견: 메인 세션 hook에는 `agent_id` 없음, subagent 도구 hook에는 `agent_id`·`agent_type` 있음, 권한 거부·실행 전 거부된 도구는 Post 이벤트 없이 `PostToolBatch`에만 나타남, SIGTERM 시 `SessionEnd`는 오지만 실행 중 도구의 종료 이벤트와 `Stop`은 없음, 타임스탬프·sequence·heartbeat 없음, 세션당 4~18건(작은 작업)
+  - AC: §6 초기 범위 ↔ hook 매핑표(각 항목에 근거) ✅ · Event 계약 변경 필요 여부 결론(불필요, ADR 없음, 표현 규약은 M2 계약 테스트) ✅ · 수집 파일 삭제 기록(2026-11-25T10:23:33Z) ✅
+  - verification: G9 문서 점검(링크·상태 라벨), 제품 코드 변경 없음. 사용자 결정: `Stop` → `waiting`(2026-11-25)
+  - PR #9: CodeRabbit 자동 리뷰 중단(star 10개 미만 정책) → 사용자 상시 승인으로 `@coderabbitai review` 요청(CLAUDE.md §6 예외, review-protocol §6). 1차 CHANGES_REQUESTED (Major 2: `not_executed` 확정 전 발행 위험, subagent 재개 시 멱등 키 충돌. Minor 2: 길이·해시 저장 필드 없음, 상시 승인을 CLAUDE.md §6에 반영) → RES-002 5.2·5.4·5.5·6 보완, CLAUDE.md §6 예외 추가. 함께: backlog HQ-103 Done, roadmap M0·M1 상태 정정. 2차(사용량 한도로 두 번 거절된 뒤 13:00 UTC 재요청): CHANGES_REQUESTED (Major 3: 늦은 실패와 `not_executed`의 키 충돌, 동기 hook timeout, 재개 subagent의 Stop 연결. Minor 1: 한도 거절 시 재요청) → `not_executed` 별도 단계 키, 동기 hook 짧은 timeout과 유실 한계 기록, Stop은 열린 실행 FIFO 연결, review-protocol 재요청 조건 보완. 3차(dffcf5e): CHANGES_REQUESTED (Major 1: 유실된 SubagentStop 뒤 재개 시 FIFO 오연결. Minor 1: 대기 시간 없는 한도 거절의 재요청 기준) → 3라운드 상한 도달, 사용자 결정으로 Major는 RES-002 §6.1 "M2 Bridge 설계 미결 사항"으로 기록, Minor는 review-protocol에 기준 추가(30분 후 1회, 이후 보고). 추가 리뷰 요청 없이 사용자 지시로 관리자 머지
 
 ### HQ-111 — E2E: 시뮬레이터 → Ingestion → Dashboard
 - Status: Backlog · Risk: Medium · Role: QA → Reviewer
