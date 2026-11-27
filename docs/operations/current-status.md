@@ -2,19 +2,19 @@
 
 > 목적: 프로젝트의 현재 상태와 세션 간 인계. **모든 세션이 시작할 때 읽고, 끝날 때 갱신한다.**
 > 관리 책임: Coordinator (매 세션)
-> 최종 갱신: 2026-11-26 — Claude Code (HQ-006 Done, HQ-112 부하 측정)
+> 최종 갱신: 2026-11-26 — Claude Code (HQ-112 Done, HQ-113 쓰기 경로 최적화)
 
 ## 1. 요약
 - 단계: **M1 / Phase 1 Event Ingestion Core — In Progress**. M0 완료(HQ-005는 Backlog)
-- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6), HQ-108 Gap·Unknown·Stale(PR #7), HQ-109 Dashboard v0(PR #8), HQ-110 Claude Code 신호 조사(PR #9), HQ-006 리뷰 흐름 조정(PR #10). 진행 중: HQ-112 부하 측정
+- 완료: HQ-101 Event 계약, HQ-104 Event Store, HQ-102 시뮬레이터(PR #2), HQ-103 Connection 인증(PR #3), HQ-106 Projector(PR #4), HQ-105 Ingestion API(PR #5), HQ-107 Query API + SSE(PR #6), HQ-108 Gap·Unknown·Stale(PR #7), HQ-109 Dashboard v0(PR #8), HQ-110 Claude Code 신호 조사(PR #9), HQ-006 리뷰 흐름 조정(PR #10), HQ-112 부하 측정(PR #11). 진행 중: HQ-113 쓰기 경로 최적화
 - Gate: CI가 PR마다 `verify`·`integration` 실행. main 보호: 필수 check는 CI 2개(HQ-006부터 승인 필수 없음)
 - Git: Task마다 브랜치 → 로컬 리뷰 → PR(`risk:*` 라벨) → CodeRabbit(위험도 2~3만) → 사용자 머지 ([review-protocol §6](../agents/review-protocol.md#6-작업--머지-흐름-2026-11-23-사용자-결정-hq-004))
 
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-112 부하 측정 | In Review | 브랜치 `hq-112-load-measurement`, risk:1. RES-005 Concluded |
-| HQ-113 쓰기 경로 최적화 / HQ-114 Gap 증분 검사 | Backlog | RES-005 미충족 목표 대응 |
+| HQ-113 쓰기 경로 최적화 | In Review | 브랜치 `hq-113-write-path`, risk:3 |
+| HQ-114 Gap 증분 검사 | Backlog (보류) | 정상 상태 Gap 감지가 충분히 빠름 |
 | HQ-111 E2E | Backlog | E2E 도구 도입 승인 필요 |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 

@@ -17,6 +17,10 @@ function adminIo(store: AdminIo['store']) {
         calls.push('clear');
         return Promise.resolve();
       },
+      insertAll: () => {
+        calls.push('insertAll');
+        return Promise.resolve();
+      },
       listAgentsOfConnection: () => {
         calls.push('listAgentsOfConnection');
         return Promise.resolve([]);
@@ -88,7 +92,8 @@ describe('runAdmin', () => {
     await runAdmin(['replay'], io);
     await runAdmin(['replay', 'ws_other'], io);
     expect(transactions).toEqual(['local', 'ws_other']);
-    expect(calls).toEqual(['clear', 'readFrom', 'clear', 'readFrom']);
+    // Replay folds in memory, then clears and writes the result at once (HQ-113).
+    expect(calls).toEqual(['readFrom', 'clear', 'insertAll', 'readFrom', 'clear', 'insertAll']);
     expect(out.join('')).toBe(
       'replayed 0 events into read models of local\nreplayed 0 events into read models of ws_other\n',
     );

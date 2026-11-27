@@ -20,6 +20,8 @@ const USAGE = `Usage: agent-hq-admin <command>
   registration-code     Create a one-time code (valid 10 minutes) to register a connection
   revoke <connectionId> Revoke a connection's token
   replay [workspaceId]  Rebuild read models from the event log (default: local).
+                        Run it offline: it holds the workspace lock, and fails with
+                        "Workspace busy" if another writer keeps the lock for 5 s.
                         Offline operation: appends to the workspace wait (and may time out) while it runs`;
 
 export interface AdminIo {

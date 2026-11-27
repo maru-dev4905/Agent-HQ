@@ -2,7 +2,7 @@ import { Body, Controller, HttpCode, Inject, Post, Res, UseGuards } from '@nestj
 import { INGEST_PATH, type IngestResponse } from '@agent-hq/contracts';
 import { ConnectionTokenGuard, Principal } from '../connections/connection-token.guard.js';
 import type { ConnectionPrincipal } from '../connections/tokens.js';
-import { IngestionService, RateLimitedException } from './ingestion.service.js';
+import { IngestionService, RetryableException } from './ingestion.service.js';
 
 interface ReplyLike {
   header(name: string, value: string): unknown;
@@ -24,7 +24,7 @@ export class IngestionController {
     try {
       return await this.ingestion.ingest(principal, body);
     } catch (error) {
-      if (error instanceof RateLimitedException) {
+      if (error instanceof RetryableException) {
         reply.header('Retry-After', String(error.retryAfterSeconds));
       }
       throw error;

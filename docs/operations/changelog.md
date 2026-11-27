@@ -4,7 +4,13 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-26 (2) — HQ-112 부하 측정 (PR)
+## 2026-11-26 (3) — HQ-113 쓰기 경로 최적화 (PR)
+- [Changed] Projection 적용을 접근 계층(DB·배치 캐시·메모리)으로 분리해 실시간·배치·Replay가 같은 코드를 씀. Replay는 메모리 fold + 일괄 쓰기(5만 건 269 s → 1.6~3.0 s)
+- [Changed] Ingestion 배치: 외부 ID·Read Model 행 캐시, 행당 1회 쓰기(500개 배치 106 → 870~1,173 events/s)
+- [Added] 오류 코드 `SERVICE_UNAVAILABLE`(503 + `Retry-After`): Workspace lock 대기 5 s 초과, 연결 풀 소진, 트랜잭션 시간 초과 — Ingestion과 전역 오류 필터
+- [Changed] RES-005 §7, ADR-0002 재검토 조건 해소, TD-005·RSK-019 갱신
+
+## 2026-11-26 (2) — HQ-112 부하 측정 (Done, PR #11)
 - [Added] 시뮬레이터 부하 모드 `generateLoad`, 측정 스위트 `pnpm measure:load`(Gate 아님), `docs/research/RES-005-load-measurement.md`
 - [Changed] RES-005 Concluded, NFR-002a 목표 수치 제안, TD-005·TD-008·RSK-019 실측값, HQ-113·HQ-114 추가
 - [Changed] PR #10 참고 의견 반영(review-protocol·changelog·current-status 문구)

@@ -7,11 +7,16 @@ import {
   type ExceptionFilter,
 } from '@nestjs/common';
 import { errorBody, errorEnvelopeSchema, type ApiErrorCode } from '@agent-hq/contracts';
+import { busyReason } from '@agent-hq/database';
 
 interface ReplyLike {
   status(code: number): ReplyLike;
+  header(name: string, value: string): ReplyLike;
   send(body: unknown): void;
 }
+
+/** Retry delay for 503 answers caused by a busy database (pool, lock, transaction time). */
+const BUSY_RETRY_AFTER_SECONDS = '2';
 
 const CODE_BY_STATUS: Partial<Record<number, ApiErrorCode>> = {
   [HttpStatus.BAD_REQUEST]: 'VALIDATION_FAILED',
@@ -22,6 +27,7 @@ const CODE_BY_STATUS: Partial<Record<number, ApiErrorCode>> = {
   [HttpStatus.CONFLICT]: 'CONFLICT',
   [HttpStatus.PAYLOAD_TOO_LARGE]: 'PAYLOAD_TOO_LARGE',
   [HttpStatus.TOO_MANY_REQUESTS]: 'RATE_LIMITED',
+  [HttpStatus.SERVICE_UNAVAILABLE]: 'SERVICE_UNAVAILABLE',
 };
 
 /**
@@ -39,6 +45,7 @@ const MESSAGE_BY_CODE: Record<ApiErrorCode, string> = {
   PAYLOAD_TOO_LARGE: 'Payload too large',
   RATE_LIMITED: 'Too many requests',
   REQUEST_REJECTED: 'Request rejected',
+  SERVICE_UNAVAILABLE: 'Service temporarily unavailable',
   INTERNAL_ERROR: 'Internal server error',
 };
 
@@ -75,6 +82,20 @@ export class ApiExceptionFilter implements ExceptionFilter {
       // Fastify client errors (e.g. malformed JSON body, oversized payload).
       const code = codeFor(status);
       reply.status(status).send(errorBody(code, MESSAGE_BY_CODE[code]));
+      return;
+    }
+
+    // The database is busy (e.g. every pool connection in use while the token guard runs):
+    // a temporary condition the client may retry — a 503, not an internal error (HQ-113).
+    // Whether a retry is idempotent depends on the route (ingestion batches are; N6/N7).
+    if (busyReason(exception) !== null) {
+      this.logger.warn(
+        `database busy: ${exception instanceof Error ? exception.message : String(exception)}`,
+      );
+      reply
+        .header('Retry-After', BUSY_RETRY_AFTER_SECONDS)
+        .status(HttpStatus.SERVICE_UNAVAILABLE)
+        .send(errorBody('SERVICE_UNAVAILABLE', MESSAGE_BY_CODE.SERVICE_UNAVAILABLE));
       return;
     }
 

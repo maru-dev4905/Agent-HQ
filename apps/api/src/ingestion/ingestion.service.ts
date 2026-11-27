@@ -15,7 +15,11 @@ import {
   type IngestResponse,
   type IngestResult,
 } from '@agent-hq/contracts';
-import type { EventStore, EventStoreTransaction } from '@agent-hq/database';
+import {
+  WorkspaceBusyError,
+  type EventStore,
+  type EventStoreTransaction,
+} from '@agent-hq/database';
 import {
   parseIncomingEvent,
   type AgentEvent,
@@ -28,22 +32,37 @@ import {
   type Clock,
   type ConnectionPrincipal,
 } from '../connections/tokens.js';
-import { applyProjections } from '../projection/projection.service.js';
+import { applyToProjections, BatchProjections } from '../projection/projection.service.js';
 import { HQ_ADAPTER_ID } from '../projection/projector.js';
 import { EVENT_STORE } from '../tokens.js';
 import type { EventRateLimiter } from './rate-limiter.js';
 import { redactSecrets, redactText } from './redaction.js';
 import { EVENT_RATE_LIMITER } from './tokens.js';
 
-/** Thrown when a connection exceeds its event rate; the controller sets `Retry-After`. */
-export class RateLimitedException extends HttpException {
-  constructor(readonly retryAfterSeconds: number) {
+/** An error the source may retry after `retryAfterSeconds`; the controller sets `Retry-After`. */
+export class RetryableException extends HttpException {
+  constructor(
+    readonly retryAfterSeconds: number,
+    body: ReturnType<typeof errorBody>,
+    status: HttpStatus,
+  ) {
+    super(body, status);
+  }
+}
+
+/** The connection exceeded its event rate. */
+export class RateLimitedException extends RetryableException {
+  constructor(retryAfterSeconds: number) {
     super(
+      retryAfterSeconds,
       errorBody('RATE_LIMITED', `Too many events; retry after ${retryAfterSeconds}s`),
       HttpStatus.TOO_MANY_REQUESTS,
     );
   }
 }
+
+/** Retry delay when the workspace is busy (lock, pool or transaction time exhausted). */
+const BUSY_RETRY_AFTER_SECONDS = 2;
 
 const MAX_FIELD_NAME_LENGTH = 128;
 const LONG_FIELD_NAME = '[field name too long]';
@@ -118,9 +137,20 @@ export class IngestionService {
     if (!decision.allowed) throw new RateLimitedException(decision.retryAfterSeconds);
 
     const prepared = this.prepare(principal, raw);
-    const results = await this.store.transaction(principal.workspaceId, (tx) =>
-      this.appendAll(tx, principal, prepared),
-    );
+    let results: IngestResult[];
+    try {
+      results = await this.store.transaction(principal.workspaceId, (tx) =>
+        this.appendAll(tx, principal, prepared),
+      );
+    } catch (error) {
+      if (!(error instanceof WorkspaceBusyError)) throw error;
+      // Nothing was committed (the batch is atomic): the source can safely send it again.
+      throw new RetryableException(
+        BUSY_RETRY_AFTER_SECONDS,
+        errorBody('SERVICE_UNAVAILABLE', 'Workspace is busy; retry the same batch later'),
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
     this.logSummary(principal, results);
     return { results };
   }
@@ -237,8 +267,12 @@ export class IngestionService {
   ): Promise<IngestResult[]> {
     const results: IngestResult[] = [];
     const conflicts: ContractIssue[] = [];
+    // Per-batch caches (HQ-113): each external ID is resolved once and each read-model row is
+    // read once and written once, instead of several round trips per event.
+    const ids = new Map<string, string>();
+    const projections = new BatchProjections(tx.projections);
     for (const [index, { event: base, ignoredFields, redactedFields }] of prepared.entries()) {
-      const event = await this.withHqIds(tx, principal, base);
+      const event = await this.withHqIds(tx, principal, base, ids);
       const outcome = await tx.append(event);
       if (outcome.status === 'id_conflict') {
         conflicts.push({ path: `events.${index}.id`, message: 'Event id is already used' });
@@ -252,7 +286,7 @@ export class IngestionService {
         continue;
       }
       if (outcome.status === 'stored') {
-        await applyProjections(tx, { ...event, storeSequence: outcome.storeSequence });
+        await applyToProjections(projections, { ...event, storeSequence: outcome.storeSequence });
       }
       results.push({
         idempotencyKey: event.idempotencyKey,
@@ -272,6 +306,7 @@ export class IngestionService {
         ),
       );
     }
+    await projections.flush();
     return results;
   }
 
@@ -280,8 +315,16 @@ export class IngestionService {
     tx: EventStoreTransaction,
     principal: ConnectionPrincipal,
     event: AgentEvent,
+    cache: Map<string, string>,
   ): Promise<AgentEvent> {
     const { externalAgentId, externalTaskId } = event.source;
+    const cached = async (key: string, resolve: () => Promise<string>) => {
+      const hit = cache.get(key);
+      if (hit !== undefined) return hit;
+      const id = await resolve();
+      cache.set(key, id);
+      return id;
+    };
     const ref = (externalId: string) => ({
       workspaceId: principal.workspaceId,
       connectionId: principal.connectionId,
@@ -290,11 +333,15 @@ export class IngestionService {
     const agentInstanceId =
       externalAgentId === undefined
         ? undefined
-        : await tx.resolveAgentInstance(ref(externalAgentId), this.newId);
+        : await cached(`agent:${externalAgentId}`, () =>
+            tx.resolveAgentInstance(ref(externalAgentId), this.newId),
+          );
     const taskId =
       externalTaskId === undefined
         ? undefined
-        : await tx.resolveTask(ref(externalTaskId), this.newId);
+        : await cached(`task:${externalTaskId}`, () =>
+            tx.resolveTask(ref(externalTaskId), this.newId),
+          );
     return {
       ...event,
       ...(agentInstanceId === undefined ? {} : { agentInstanceId }),

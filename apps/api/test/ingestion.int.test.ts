@@ -309,6 +309,38 @@ describe('ingestion (HTTP + PostgreSQL)', () => {
     expect((await storedEvents()).filter((e) => e.type === 'agent.started')).toHaveLength(0);
   });
 
+  it('answers 503 + Retry-After when the workspace lock is busy, and stores nothing (HQ-113)', async () => {
+    const { token } = await connect();
+    // Fixture: another transaction holds the workspace lock longer than the 5 s lock timeout.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let locked!: () => void;
+    const isLocked = new Promise<void>((resolve) => (locked = resolve));
+    const holder = db.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('local', 0))`;
+        locked();
+        await held;
+      },
+      { timeout: 20_000 },
+    );
+    await isLocked;
+    const started = Date.now();
+    const busy = await post(token, { events: [agentStarted('busy-1')] });
+    const waited = Date.now() - started;
+    release();
+    await holder;
+    expect(busy.statusCode).toBe(503);
+    // The 5 s lock timeout answered, not the 10 s transaction timeout.
+    expect(waited).toBeGreaterThanOrEqual(4_500);
+    expect(waited).toBeLessThan(8_000);
+    expect(busy.headers['retry-after']).toBe('2');
+    expect(busy.json()).toMatchObject({ error: { code: 'SERVICE_UNAVAILABLE' } });
+    expect((await storedEvents()).map((e) => e.idempotencyKey)).not.toContain('busy-1');
+    // The same batch succeeds once the workspace is free.
+    expect((await post(token, { events: [agentStarted('busy-1')] })).statusCode).toBe(200);
+  }, 20_000);
+
   it('rejects oversized events, batches and bodies, and rate-limits per connection', async () => {
     const { token } = await connect();
     const big = await post(token, {

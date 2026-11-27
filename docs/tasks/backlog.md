@@ -31,8 +31,8 @@
 | HQ-109 | 개발용 Dashboard v0 (Next.js) | Done | Medium | HQ-107 계약, HQ-108 | E |
 | HQ-110 | 스파이크: Claude Code 신호 조사 (RES-002) | Done | Low | 없음 (언제든 병행, scratch hook 설정은 승인 후) | — |
 | HQ-111 | E2E: 시뮬레이터 → Ingestion → Dashboard | Backlog | 2 | HQ-102, HQ-105, HQ-108, HQ-109, E2E 도구 승인 | F |
-| HQ-112 | 부하 측정 (RES-005) | In Review | 1 | HQ-102, HQ-105, HQ-107, HQ-109 | F |
-| HQ-113 | 쓰기 경로 최적화 (Replay·Ingestion 배치·lock 대기) | Backlog | 3 | HQ-112 | G |
+| HQ-112 | 부하 측정 (RES-005) | Done | 1 | HQ-102, HQ-105, HQ-107, HQ-109 | F |
+| HQ-113 | 쓰기 경로 최적화 (Replay·Ingestion 배치·lock 대기) | In Review | 3 | HQ-112 | G |
 | HQ-114 | Gap 감지 증분 검사 | Backlog (보류) | 2 | HQ-112 | G |
 
 병렬 그룹: 같은 문자는 선행 그룹이 끝난 뒤 병렬로 실행할 수 있다. B 그룹은 HQ-101 계약이 커밋된 뒤에 시작한다. 인터페이스 의존(HQ-104·HQ-106 인터페이스)은 해당 타입만 먼저 커밋되면 충족된다.

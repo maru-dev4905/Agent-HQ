@@ -328,7 +328,7 @@
 - Verification: Medium 기준 Gate + G5
 
 ### HQ-112 — 부하 측정 (RES-005)
-- Status: In Review (2026-11-26) · Risk: 1 (측정 스크립트·문서) · Role: QA
+- Status: Done (2026-11-26, PR #11 머지 `32d5014`) · Risk: 1 (측정 스크립트·문서) · Role: QA
 - Objective: 명세서 roadmap §13의 측정 항목 중 M1에서 측정 가능한 것을 측정하고, 목표 수치를 제안한다.
 - Background: NFR-002, NFR-003, ADR-0002/0003 Revisit Conditions
 - Scope: 시뮬레이터 부하 모드, 측정 스크립트, 측정 조건(하드웨어, Event 수, 동시 Agent 수) 기록. 같은 Workspace에 동시 full batch(500개) N건을 보낼 때 timeout 여부(RSK-019)
@@ -351,16 +351,28 @@
   - 후속: HQ-113(쓰기 경로 최적화). HQ-114는 정상 상태 측정이 충분히 빨라 보류
 
 ### HQ-113 — 쓰기 경로 최적화 (Replay·Ingestion 배치·lock 대기)
-- Status: Backlog · Risk: 3 (저장소·Projection) · Role: Architect → Worker → Reviewer
+- Status: In Review (2026-11-26) · Risk: 3 (저장소·Projection) · Role: Architect → Worker → Reviewer
 - Objective: RES-005에서 미충족한 목표를 맞춘다 — Projection 전체 재생성 5만 건 ≤ 60 s(ADR-0002), 동시 full batch에서 500 대신 재시도 가능한 오류.
 - Background: [RES-005](../../research/RES-005-load-measurement.md) §3~§5, TD-005, RSK-019
 - Scope: Replay를 메모리 fold(순수 Projector) + 일괄 쓰기로 변경, Ingestion 배치의 외부 ID 조회와 Projection 쓰기 묶음 처리, lock 대기 초과 시 503 + `Retry-After`
 - Out of Scope: 프로세스 분리, 다른 DB
 - Acceptance Criteria:
-  - [ ] `pnpm measure:load`에서 Replay 5만 건 ≤ 60 s
-  - [ ] 동시 full batch 10건에서 500 없음(성공 또는 503 + `Retry-After`)
-  - [ ] 실시간 = Replay, 순서 무관 테스트 유지
+  - [x] `pnpm measure:load`에서 Replay 5만 건 ≤ 60 s
+  - [x] 동시 full batch 10건에서 500 없음(성공 또는 503 + `Retry-After`)
+  - [x] 실시간 = Replay, 순서 무관 테스트 유지
 - Verification: 위험도 3 Gate + `pnpm measure:load` 전후 비교(세션 간 편차가 커서 같은 세션에서 연달아 측정)
+- 설계 승인: 2026-11-26 사용자 (Replay 메모리 fold, 배치 캐시, lock 대기 5 s + 503)
+- 범위 변경: 오류 계약에 `SERVICE_UNAVAILABLE` 추가(`packages/contracts/src/errors.ts`), 전역 오류 필터(`apps/api/src/http/api-exception.filter.ts`)에서도 바쁨 오류를 503으로, 측정 스위트가 서버 오류 첫 줄을 기록
+- Execution Log:
+  #### Run 2026-11-26-3
+  - agent_id: claude-code:main (Architect·Worker) · status: In Review
+  - result: `applyToProjections(access, event)` 하나로 실시간·배치·Replay가 같은 코드를 씀(DB, `BatchProjections` write-back 캐시, 메모리 `MemoryProjections`), Replay는 메모리 fold 뒤 `insertAll`, Ingestion 배치는 외부 ID 캐시 + 행당 1회 쓰기, `lock_timeout` 5 s + `WorkspaceBusyError`(lock·pool·timeout) → 503 + `Retry-After: 2`(Ingestion과 전역 필터)
+  - 측정(같은 세션 전후): Replay 5만 건 269 s → 1.6~3.0 s, 500개 배치 106 → 870~1,173 events/s, 동시 10건 500×9 → 200×10, 동시 20건 500×18 → 200×15·503×5·500×0, 서버 오류 0
+  - 과정에서 찾은 것: pg-pool `timeout exceeded when trying to connect`가 바쁨 분류에서 빠져 500(트랜잭션 밖 Guard 조회 포함) → 분류 추가, 전역 필터 처리. 임시 재현 테스트로 확인 후 삭제
+  - verification: `pnpm verify`(단위 196), `pnpm test:integration`(69, 503 busy 테스트 포함). 실시간 = Replay·순서 무관 테스트 유지
+  - 로컬 리뷰(보안 검토 포함): Approve (Minor 5, Nit 4) → 반영: 503 테스트가 lock 경로(5 s)임을 시간으로 확인, 바쁨 분류를 코드·정확한 메시지로 좁힘(payload 문자열로 503이 되지 않게, HttpException 제외), 분류가 순환·BigInt 오류에도 throw하지 않음, `lock_timeout TO DEFAULT`로 복원, 재시도 멱등성 문구, TD-005 문구, replay CLI 도움말, RSK-019에 503→429 가능성
+  - PR #12 CodeRabbit 1차: APPROVED (Minor 1: P2028은 시간 초과 외 영구 오류에도 쓰여 코드만으로 503 분류하면 영구 실패를 가림) → Prisma 7.10.1 런타임 소스에서 메시지를 확인해 `expired transaction` 문구일 때만 시간 초과로 분류, 테스트 추가
+  - AC: Replay 5만 건 ≤ 60 s ✅ · 동시 full batch 10건에서 500 없음 ✅ · 실시간 = Replay·순서 무관 테스트 유지 ✅
 
 ### HQ-114 — Gap 감지 증분 검사
 - Status: Backlog (보류) · Risk: 2 · Role: Worker → Reviewer

@@ -35,13 +35,18 @@ if (databaseUrl === undefined)
 const db = createDatabaseClient(databaseUrl);
 const store: EventStore = createEventStore(db);
 const quiet = () => undefined;
+/** First line of each server error (exception class and message only — never payloads). */
+const serverErrors: Record<string, number> = {};
 const logger = {
   log: quiet,
-  error: quiet,
   warn: quiet,
   debug: quiet,
   verbose: quiet,
   fatal: quiet,
+  error: (...parts: unknown[]) => {
+    const line = parts.map(String).join(' ').split('\n')[0]!.slice(0, 200);
+    serverErrors[line] = (serverErrors[line] ?? 0) + 1;
+  },
 };
 const report: Record<string, unknown> = {};
 
@@ -103,6 +108,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   report['failuresRetried'] = retried;
+  report['serverErrors'] = serverErrors;
   report['loadAverageAtEnd'] = loadavg().map((v) => Math.round(v * 10) / 10);
   const text = JSON.stringify(report, null, 2);
   console.log(`\n===== HQ-112 LOAD REPORT =====\n${text}\n`);

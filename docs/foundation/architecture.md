@@ -327,6 +327,7 @@ agent-hq/
 | 409 | `CONFLICT` | 같은 idempotencyKey로 내용이 다른 이벤트가 이미 저장됨, 또는 `id` 중복 |
 | 413 | `PAYLOAD_TOO_LARGE` | 이벤트 500개 초과, 요청 body 4 MiB 초과 |
 | 429 | `RATE_LIMITED` | Connection별 이벤트 수 한도 초과. `Retry-After`(초) 헤더를 준다 |
+| 503 | `SERVICE_UNAVAILABLE` | Workspace가 바쁨: lock을 5초 안에 얻지 못했거나, 연결 풀이 비지 않았거나, 트랜잭션이 시간을 넘김(HQ-113). 아무것도 저장되지 않았으므로 같은 배치를 `Retry-After`(초) 뒤 다시 보내면 된다 |
 
 - **Host/Origin** (security T3): Host는 loopback 이름(`127.0.0.1`, `localhost`, `::1`)과 `API_ALLOWED_HOSTS`만 허용한다. `Origin` 헤더가 있으면 `API_ALLOWED_ORIGINS`에 정확히 있어야 한다. 기본값은 빈 목록이라 브라우저 요청은 모두 거부된다. 모든 경로에 적용되므로, Web UI가 브라우저에서 API를 직접 부르게 되면(HQ-109) 그 Origin을 설정에 추가해야 한다.
 - **Rate limit** (security T8): Connection마다 token bucket을 두고 이벤트 수로 센다. 기본값은 초당 500개, 최대 burst 2000개다(`INGEST_RATE_*`). API 프로세스 메모리에 있으므로 프로세스가 하나일 때만 정확하다 (TD-006).
@@ -343,7 +344,7 @@ agent-hq/
 | `GET /workspaces/:workspaceId/stream` | SSE (`text/event-stream`) |
 
 - 64-bit 정수인 `storeSequence`·`lastStoreSequence`·`nextCursor`는 10진 문자열이다(0 ~ 2^63-1, 넘으면 400). 응답에는 `Cache-Control: no-store`가 붙는다.
-- 오류: 없는 Workspace 404 `NOT_FOUND`, 잘못된 쿼리(음수·문자·int64 초과 cursor, 10진수가 아닌 limit나 범위 밖 limit, 정의되지 않은 파라미터) 400 `VALIDATION_FAILED`, Host/Origin 403 `FORBIDDEN`, 스트림 cursor가 저장된 마지막 이벤트보다 앞섬(DB 초기화 등) 409 `CONFLICT`, 동시 스트림 상한 초과 429 `RATE_LIMITED`. 브라우저 `EventSource`는 200이 아닌 응답을 받으면 재연결을 멈추므로, 클라이언트는 다시 조회한 뒤 cursor 없이 연결한다.
+- 오류: DB가 바쁘면(연결 풀 소진 등) 모든 경로가 503 `SERVICE_UNAVAILABLE` + `Retry-After`(HQ-113). 재시도해도 되지만 같은 요청을 다시 보내도 안전한지(멱등)는 경로에 따른다(조회는 안전, Ingestion 배치는 idempotencyKey로 안전). 없는 Workspace 404 `NOT_FOUND`, 잘못된 쿼리(음수·문자·int64 초과 cursor, 10진수가 아닌 limit나 범위 밖 limit, 정의되지 않은 파라미터) 400 `VALIDATION_FAILED`, Host/Origin 403 `FORBIDDEN`, 스트림 cursor가 저장된 마지막 이벤트보다 앞섬(DB 초기화 등) 409 `CONFLICT`, 동시 스트림 상한 초과 429 `RATE_LIMITED`. 브라우저 `EventSource`는 200이 아닌 응답을 받으면 재연결을 멈추므로, 클라이언트는 다시 조회한 뒤 cursor 없이 연결한다.
 - `EventView`는 Ingestion이 저장한 이벤트 그대로다(파싱됨, 미정의 필드 제거, Secret 마스킹). 원본 입력은 어디에도 없다.
 - **SSE**: 저장된 이벤트 하나가 메시지 하나다 — `id: <storeSequence>`, `event: agent-event`, `data: <EventView JSON>`. 시작 cursor는 `Last-Event-ID` 헤더 → `?after=` → 현재 head(새 이벤트만) 순으로 정한다. 브라우저 `EventSource`는 재연결할 때 `Last-Event-ID`를 자동으로 보내며, 이것이 원래 URL의 `after`보다 우선한다. 처음 연결할 때 `retry: 3000`을 보내고, 15초마다 `: keep-alive` 주석을 보낸다. 스트림은 Event Store를 100건씩 읽고, 느린 클라이언트에는 쓰기 버퍼가 빌 때까지 기다린다(backpressure).
 - **누락·중복이 없는 이유**: 스트림은 마지막으로 보낸 `storeSequence`만 기억하고 Event Store에서 그 이후를 읽는다. 같은 Workspace의 이벤트는 `storeSequence` 순서대로 commit된다(HQ-104 advisory lock). 그래서 cursor 이후를 읽으면 빠지는 이벤트도 두 번 보내는 이벤트도 없다. 새 이벤트 감지는 Outbox relay(기본 200ms 주기)가 Workspace 신호를 보내는 방식이다. 신호를 놓쳐도 각 스트림이 5초마다 스스로 다시 읽으므로 전달이 늦어질 뿐 빠지지 않는다.
