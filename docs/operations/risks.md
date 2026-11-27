@@ -182,8 +182,9 @@
 - Impact: Event 위조, 제어 명령 오남용, Secret 유출.
 - Proposed Solution: [security §4.3](../engineering/security.md#43-local-bridge-명세서-4--추가) — Pairing, 장치별 자격 증명, 로컬 구간 인증, Shell 기본 거부. Phase 2 착수 전 Bridge 보안 ADR.
 - Verification Method: Local Bridge pairing test, Event 위조 거부 테스트.
-- Related Tasks: M2
-- Created / Updated: 2026-11-22
+- 진행 (2026-11-27, HQ-201): [ADR-0007](../decisions/ADR-0007-local-bridge.md) 초안(Proposed). Bridge는 포트를 열지 않고, hook → Bridge 구간은 소유자 전용 spool(0700/0600)로 **다른 OS 사용자**를 막는다. **같은 OS 사용자의 다른 프로세스**(관찰 대상 Claude Code 자신 포함)에 의한 위조·토큰 열람은 수용 위험으로 제안(그 권한은 이미 Claude Code 자격 증명과 작업 파일에 닿음). HQ 표시는 무결성 증명이 아니며, M5 제어·Cloud 도입 때 재검토한다. 승인되면 이 Risk의 대응 범위를 그 기준으로 갱신한다
+- Related Tasks: M2 (HQ-201, HQ-203, HQ-206)
+- Created / Updated: 2026-11-22 / 2026-11-27
 
 ### RSK-017 — 재시도·중복 실행의 외부 부작용
 - Status / Priority / 범위: Open / H×M / Architecture

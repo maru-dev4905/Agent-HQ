@@ -4,7 +4,11 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-27 (2) — M1 종료, M2 계획 (HQ-200, PR)
+## 2026-11-27 (3) — HQ-201 ADR-0007 초안 (PR)
+- [Added] `docs/decisions/ADR-0007-local-bridge.md`(Proposed): 동기 command hook → 소유자 전용 spool → 상주 Bridge → HQ, 새 의존성·열린 포트 없음
+- [Changed] architecture N8, security §4.3, RSK-016, RES-002 §6.1 진행 기록
+
+## 2026-11-27 (2) — M1 종료, M2 계획 (HQ-200, Done, PR #14)
 - [Changed] M1 Done: 종료 조건 9개의 충족 근거 기록(M1 파일 머리말), roadmap·backlog 갱신
 - [Added] `docs/tasks/milestones/M2-local-bridge-claude-code.md`: HQ-200~HQ-211(ADR-0007 Bridge 구조·보안, Adapter 매핑, Bridge pairing·outbox, HQ 쪽 끊김 규칙 반영, hook 명령, 설치, Capability 계약·저장·화면, 실제 세션 검증)
 
