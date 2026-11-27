@@ -15,7 +15,7 @@
 |---|---|---|
 | HQ-200 M1 종료·M2 계획 | In Review | 브랜치 `hq-200-m2-plan`, risk:1 |
 | HQ-201 ADR-0007 Bridge | Backlog | 다음 작업. Accepted는 사용자 승인 |
-| HQ-202 Adapter 매핑 | Backlog | HQ-201과 병행 가능 |
+| HQ-202 Adapter 매핑 | In Review | 브랜치 `hq-202-adapter-claude-code`, risk:3 |
 | HQ-114 Gap 증분 검사 | Backlog (보류) | 정상 상태 Gap 감지가 충분히 빠름 |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 

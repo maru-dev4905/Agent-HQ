@@ -1,6 +1,13 @@
 import { fileURLToPath } from 'node:url';
 
-const workspacePackages = ['domain', 'events', 'contracts', 'database', 'simulator'];
+const workspacePackages = [
+  'domain',
+  'events',
+  'contracts',
+  'database',
+  'simulator',
+  'adapter-claude-code',
+];
 
 /**
  * Resolve workspace packages from source so tests never run against a stale dist build.

@@ -88,7 +88,7 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
 - Risks: 문서만으로 정할 수 없는 값(timeout, 유예 시간)은 측정 Task(HQ-206)로 넘기고 ADR에 "측정 후 확정"으로 둔다
 
 ### HQ-202 — Claude Code Adapter 매핑 패키지 (순수 함수 + 계약 테스트)
-- Status: Backlog · Risk: 3 (공용 패키지, Event 계약 표현 규약) · Role: Worker → Reviewer
+- Status: In Review (2026-11-27) · Risk: 3 (공용 패키지, Event 계약 표현 규약) · Role: Worker → Reviewer
 - Objective: hook 입력 한 건(과 세션 상태)을 받아 공통 Event를 만드는 매핑을 네트워크·파일 없이 결정적으로 구현한다. Bridge 설계와 독립적으로 먼저 진행한다.
 - Background: RES-002 §4 매핑표, §5.3~§5.5, §6 표현 규약, adapter-spec §10
 - Scope:
@@ -98,18 +98,26 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
   - 멱등 키 규칙(§5.5). Runtime 버전은 Envelope에 필드가 없으므로(`source`는 strict) Event에 넣지 않는다 — 버전 기록은 HQ-208 Capability Snapshot에서 정한다
   - Capability 선언(adapter-spec §4): attached만, 제어 unsupported, `features`(subagents·toolEvents true, messageEvents·tokenUsage·artifacts·replay·reconciliation false)
 - Out of Scope: hook 실행·전송·저장(HQ-203~HQ-206), 계약(schemaVersion 1) 변경, D2 길이·해시 필드(필요하면 별도 Task)
-- Interfaces: Consumes `@agent-hq/events` / Produces `mapHook(state, input, meta) → { state, events, ignored }`, `CLAUDE_CODE_CAPABILITIES`
+- Interfaces: Consumes `@agent-hq/events` / Produces `pickAllowed`, `mapHook(state, input, meta) → { state, events, ignored }`, `expirePending`, `mapDropped`, `CLAUDE_CODE_CAPABILITIES`
 - Dependencies: HQ-200. 새 workspace 패키지(외부 의존성은 이미 쓰는 Zod만. 그 밖이 필요하면 승인)
 - Files Expected to Change: `packages/adapter-claude-code/**`, 루트 `package.json`·`pnpm-lock.yaml`·`tsconfig.json`(references), `eslint.config.js`(의존 방향), `vitest.shared.ts`(alias), `apps/api/package.json`(devDependency)·`apps/api/test/claude-code-mapping.int.test.ts`(Projection 확인 — 패키지가 apps에 의존하지 않도록 API 쪽에 둔다), `docs/foundation/adapter-spec.md` 통합 노트
 - Acceptance Criteria:
-  - [ ] RES-002 §4 표의 hook 행마다 매핑 테스트가 있고 결과 Event가 계약 검증을 통과한다
-  - [ ] 같은 입력 순서 → 같은 Event(멱등 키 포함). 재개된 subagent와 뒤늦은 Post가 중복으로 버려지지 않고, 병렬 Tool의 Post가 시작 순서와 다르게 와도(out-of-order) 호출별로 맞게 묶인다
-  - [ ] allowlist 밖 필드(픽스처에 넣은 표식 문자열: D2·경로·오류 원문)가 결과 Event 어디에도 없다
-  - [ ] 매핑 결과를 API에 넣으면 메인 Agent·subagent의 부모 관계와 Tool 상태가 기대대로 조회된다(`apps/api/test` 통합 테스트)
-  - [ ] 모르는 hook 이름·필드는 조용히 잘못 매핑하지 않는다(`ignored`로 보고)
-  - [ ] Capability 선언이 계약 형태 테스트를 통과한다
+  - [x] RES-002 §4 표의 hook 행마다 매핑 테스트가 있고 결과 Event가 계약 검증을 통과한다
+  - [x] 같은 입력 순서 → 같은 Event(멱등 키 포함). 재개된 subagent와 뒤늦은 Post가 중복으로 버려지지 않고, 병렬 Tool의 Post가 시작 순서와 다르게 와도(out-of-order) 호출별로 맞게 묶인다
+  - [x] allowlist 밖 필드(픽스처에 넣은 표식 문자열: D2·경로·오류 원문)가 결과 Event 어디에도 없다
+  - [x] 매핑 결과를 API에 넣으면 메인 Agent·subagent의 부모 관계와 Tool 상태가 기대대로 조회된다(`apps/api/test` 통합 테스트)
+  - [x] 모르는 hook 이름·필드는 조용히 잘못 매핑하지 않는다(`ignored`로 보고)
+  - [x] Capability 선언이 계약 형태 테스트를 통과한다
 - Verification: 위험도 3 기준 + G4(Projection 확인)
 - Risks: 실제 hook 입력과의 차이는 합성 픽스처로 못 잡는다 → HQ-211에서 실제 세션으로 확인
+- 범위 변경: `docs/engineering/coding-standards.md` §4 의존 방향 표. `zod`는 쓰지 않음(allowlist가 형식 검사, 결과 Event는 `parseIncomingEvent`로 검증) → 외부 의존성 추가 없음
+- Execution Log:
+  #### Run 2026-11-27-5
+  - agent_id: claude-code:main (Worker) · status: In Review
+  - result: `packages/adapter-claude-code` — `allowlist.ts`(import 없음), `map.ts`(`mapHook`·`expirePending`·`mapDropped`), `capabilities.ts`. 규약은 adapter-spec N3
+  - verification: 단위 22개(hook 행별 매핑, 결정성, 재개 subagent·유실 Stop, out-of-order Post, `not_executed` 규칙 1~3·늦은 Post, 표식 문자열 비노출, 모르는 입력 보고, Capability), 통합 3개(`apps/api/test/claude-code-mapping.int.test.ts`: 부모 관계·Tool·재전송 중복 0·dropped gap → unknown → 회복). `pnpm verify`(단위 219), `pnpm test:integration`(72)
+  - 로컬 리뷰(보안 포함): Request Changes (Major 3, Minor 7, Nit 4) → 반영: 같은 Tool 병렬 호출에서 PermissionRequest 대상이 모호하면 표시하지 않고 규칙 3으로(실행된 호출에 not_executed가 나가던 문제), 같은 hook 중복 입력은 `ignored: duplicate`(같은 키·다른 내용 → 409 → 가짜 Gap 방지, 대기 중 호출 초기화 방지), 바뀐 세션만 복사 + `pruneSessions`(순번 보존), 시각 사전 검사·숫자 비교, ID 토큰은 `:` 금지·100자, `mapDropped` 입력 검사·모르는 세션 무시, Capability `features` 고정, lint에 `@agent-hq/domain` 금지 추가. ADR-0007과 함께 정한 것: 모호한 subagent Stop은 실행을 지정하지 않음(`unmatched`)
+  - verification(수정 후): 단위 28개, `pnpm verify`(단위 225), `pnpm test:integration`(72)
 
 ### HQ-203 — Local Bridge: Pairing·자격 증명·heartbeat·Capability 보고
 - Status: Backlog · Risk: 3 (자격 증명, 신규 앱) · Role: Worker → Reviewer(보안)

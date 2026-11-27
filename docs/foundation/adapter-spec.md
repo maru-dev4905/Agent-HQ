@@ -211,3 +211,46 @@ Limit을 적용한다.
 - hook을 설치할 때 사용자 전역 설정을 자동으로 수정하지 않는다. 기존 hook(Orca, iTerm2)과 공존해야 한다 ([RSK-009](../operations/risks.md))
 - 이 프로젝트 자체의 개발 세션을 관찰(dogfooding)하는 것은 사용자 동의 후에만 한다
 - Adapter는 HQ 내부 ID(`agentInstanceId`, `taskId`)를 보내지 않는다. Runtime의 외부 ID를 `source.externalAgentId`·`externalTaskId`와 payload의 `externalToolCallId`로 보낸다 ([event-schema N7](event-schema.md#n7-hq-101-계약-구현-2026-11-22), ADR-0006).
+
+### N3. Claude Code Adapter 매핑 (HQ-202, 2026-11-27)
+`packages/adapter-claude-code`. 네트워크·파일 없는 순수 함수다.
+
+**allowlist 필터 `pickAllowed(raw)`**
+- 의존성이 없다(ADR-0007 §3). hook 명령도 이 모듈을 쓴다.
+- 남기는 것은 이름·열거형 토큰(`/^[A-Za-z0-9_.:@-]{1,100}$/`), Runtime ID(`session_id`·`agent_id`·`tool_use_id`, `:` 없이 100자 이하), 정수, 불리언뿐이다.
+- 목록에 있는 필드라도 값이 그 모양이 아니면 버린다.
+- `StopFailure.error`는 실패 종류(matcher 값, 예: `rate_limit`)라 토큰으로 남긴다. 반면 `PostToolUseFailure.error`와 `error_details`는 D2라서 버린다.
+
+**매핑 함수**
+- `mapHook(state, raw, { occurredAt })` → `{ state, events, ignored }`
+  - 입력을 allowlist에 다시 통과시킨 뒤 매핑한다. 읽을 수 없는 시각은 `invalid_input`으로 돌려준다.
+  - 상태는 JSON으로 직렬화할 수 있고 Bridge가 영속한다. 상태에는 세션 순번, subagent 실행 순번, 열린 Tool 호출, 최근 끝난 호출 500개가 들어간다. 바뀐 세션만 복사한다.
+- `expirePending(state, now)`: `not_executed` 유예 만료를 처리한다(RES-002 §5.4 규칙 3).
+- `mapDropped(state, { sessionId, count, occurredAt })`: Source 쪽 `event.gap.detected`를 만든다(`reason: "hook_dropped: <n> signal(s)"`).
+  - Bridge가 `dropped.log`의 세션 키를 알려진 세션으로 먼저 해석한다. 모르는 세션이면 `ignored: unknown_session`이다.
+- `pruneSessions(state, now, retainMs)`: 끝난 세션의 열린 호출과 끝난 목록을 비운다. 순번과 subagent 실행 수는 남기므로, 재개된 세션이 멱등 키를 다시 쓰지 않는다.
+
+**표현 규약 (RES-002 §6)**
+- 식별자:
+  - 메인 Agent 외부 ID는 `main:<session_id>`이고, subagent는 `agent_id`를 쓴다.
+  - `correlationId`는 `session_id`이고, `timestampQuality`는 `collected`다.
+- 멱등 키:
+  - Tool: `<session>:<tool_use_id>:<started|completed|failed|not_executed>`
+  - subagent: `<session>:<agent_id>:<run>:<started|completed>`
+  - 그 밖의 세션 Event: `<session>:<hook>:<sequence>`
+  - 같은 hook이 두 번 오면 키를 새로 만들지 않고 `ignored: duplicate`로 남긴다. 이미 열린 호출의 Pre, 이미 끝난 호출의 Post가 여기에 해당한다. 단, `not_executed` 뒤에 늦게 온 Post는 통과한다.
+- `errorCode`:
+  - `interrupted`, `not_executed`를 쓴다.
+  - 일반 Tool 실패는 오류 원문이 D2라서 `errorCode`를 비운다.
+  - batch에 Tool 이름이 없으면 `toolName`은 `unknown`이다.
+- 상태 매핑:
+  - `Stop`은 `waiting`(`rawStatus: "stop"`)이다.
+  - `Notification`은 `permission_prompt`·`agent_needs_input`만 `waiting`으로 보고, 나머지 유형은 `ignored`로 남긴다.
+  - `PermissionRequest`는 `waiting`(`rawStatus: "permission_request"`)이다. 입력에 `tool_use_id`가 없으므로 같은 Agent의 같은 Tool로 열린 호출이 **정확히 하나**일 때만 권한 요청 표시를 붙인다. 여럿이면 표시하지 않고 유예 시간(규칙 3)에 맡긴다. 잘못 보낸 `not_executed`는 되돌릴 수 없기 때문이다.
+- subagent 실행:
+  - 이전 실행이 열린 채 새 `SubagentStart`가 오면, 다음 `SubagentStop`은 어느 실행 것인지 알 수 없다. 그 Stop은 `<agent_id>:unmatched:<sequence>` 키를 쓰고 새 실행을 열어 둔다(ADR-0007 §10). 짝 없는 Stop도 같은 키를 쓴다.
+- 매핑하지 않는 것:
+  - `PermissionDenied`(RES-002 §4 표 밖), `PreCompact`·`PostCompact` 등은 `ignored: unsupported_hook`으로 남긴다.
+  - Runtime 버전은 Envelope에 필드가 없다(HQ-208에서 다룬다).
+
+**`CLAUDE_CODE_CAPABILITIES`**: attached만 지원하고, 제어는 전부 unsupported, `subagents`·`toolEvents`만 true다.

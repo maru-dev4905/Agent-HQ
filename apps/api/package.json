@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@nestjs/testing": "12.6.0",
+    "@agent-hq/adapter-claude-code": "workspace:*",
     "@agent-hq/simulator": "workspace:*"
   }
 }
