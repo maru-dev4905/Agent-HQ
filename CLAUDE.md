@@ -2,7 +2,7 @@
 
 > 목적: Claude(및 모든 AI Agent)가 이 저장소에서 작업할 때 따라야 할 **최상위 규칙**.
 > 관리 책임: Coordinator(사람 승인 필요). 세부 규칙은 `docs/`에 있으며 여기에는 복사하지 않는다.
-> 최종 갱신: 2026-11-22 (명세서 채택 반영)
+> 최종 갱신: 2026-11-27 (M2 시작 반영)
 
 ## 1. 프로젝트 목적
 
@@ -11,8 +11,8 @@ Agent HQ는 다양한 AI 에이전트의 실행과 협업을 하나의 공간에
 
 ## 2. 현재 단계
 
-- **M1 / Phase 1 (Event Ingestion Core) 진행 중**이다. 제품 기준 문서는 기획 명세서 v0.1.0([ADR-0004](docs/decisions/ADR-0004-adopt-spec-baseline.md)), 스택은 [ADR-0003](docs/decisions/ADR-0003-m1-tech-stack.md)·[ADR-0005](docs/decisions/ADR-0005-adopt-redis-bullmq.md), Event 계약 규칙은 [ADR-0006](docs/decisions/ADR-0006-external-ids-and-lenient-payloads.md)이다.
-- Node 26 필요(`nvm use`). 검증 명령은 [quality-gates](docs/engineering/quality-gates.md)가 단일 원천이다: `pnpm verify`(G1·G2·G3·G6), `pnpm test:integration`(G4, `pnpm infra:up` 필요). 여기 없는 명령을 사용 중인 것처럼 쓰지 않는다.
+- **M2 / Phase 2 (Local Bridge & Claude Code Adapter) 진행 중**이다(M1 Done 2026-11-27). 제품 기준 문서는 기획 명세서 v0.1.0([ADR-0004](docs/decisions/ADR-0004-adopt-spec-baseline.md)), 스택은 [ADR-0003](docs/decisions/ADR-0003-m1-tech-stack.md)·[ADR-0005](docs/decisions/ADR-0005-adopt-redis-bullmq.md), Event 계약 규칙은 [ADR-0006](docs/decisions/ADR-0006-external-ids-and-lenient-payloads.md)이다.
+- Node 26 필요(`nvm use`). 검증 명령은 [quality-gates](docs/engineering/quality-gates.md)가 단일 원천이다: `pnpm verify`(G1·G2·G3·G6), `pnpm test:integration`(G4, `pnpm infra:up` 필요), `pnpm test:e2e`(G5, Local). 여기 없는 명령을 사용 중인 것처럼 쓰지 않는다.
 - 명세서 기반 문서는 하단 "통합 노트"가 본문보다 우선한다. `docs/research/source/` 원본은 수정하지 않는다.
 - 현재 상태와 다음 작업: [docs/operations/current-status.md](docs/operations/current-status.md)
 
