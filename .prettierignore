@@ -4,6 +4,8 @@ packages/database/src/generated/
 packages/database/prisma/migrations/
 .next/
 dist/
+test-results/
+playwright-report/
 
 # Documentation is prose, not code; formatting it creates noisy table diffs.
 **/*.md

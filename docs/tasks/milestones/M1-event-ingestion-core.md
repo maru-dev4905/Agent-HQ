@@ -314,7 +314,7 @@
   - PR #9: CodeRabbit 자동 리뷰 중단(star 10개 미만 정책) → 사용자 상시 승인으로 `@coderabbitai review` 요청(CLAUDE.md §6 예외, review-protocol §6). 1차 CHANGES_REQUESTED (Major 2: `not_executed` 확정 전 발행 위험, subagent 재개 시 멱등 키 충돌. Minor 2: 길이·해시 저장 필드 없음, 상시 승인을 CLAUDE.md §6에 반영) → RES-002 5.2·5.4·5.5·6 보완, CLAUDE.md §6 예외 추가. 함께: backlog HQ-103 Done, roadmap M0·M1 상태 정정. 2차(사용량 한도로 두 번 거절된 뒤 13:00 UTC 재요청): CHANGES_REQUESTED (Major 3: 늦은 실패와 `not_executed`의 키 충돌, 동기 hook timeout, 재개 subagent의 Stop 연결. Minor 1: 한도 거절 시 재요청) → `not_executed` 별도 단계 키, 동기 hook 짧은 timeout과 유실 한계 기록, Stop은 열린 실행 FIFO 연결, review-protocol 재요청 조건 보완. 3차(dffcf5e): CHANGES_REQUESTED (Major 1: 유실된 SubagentStop 뒤 재개 시 FIFO 오연결. Minor 1: 대기 시간 없는 한도 거절의 재요청 기준) → 3라운드 상한 도달, 사용자 결정으로 Major는 RES-002 §6.1 "M2 Bridge 설계 미결 사항"으로 기록, Minor는 review-protocol에 기준 추가(30분 후 1회, 이후 보고). 추가 리뷰 요청 없이 사용자 지시로 관리자 머지
 
 ### HQ-111 — E2E: 시뮬레이터 → Ingestion → Dashboard
-- Status: Backlog · Risk: 2 (새 E2E 도구 도입) · Role: QA → Reviewer
+- Status: In Review (2026-11-27) · Risk: 2 (새 E2E 도구 도입) · Role: QA → Reviewer
 - Objective: M1 파이프라인 전체를 브라우저 테스트로 검증한다.
 - Background: M1 종료 조건 7, [testing-strategy](../../engineering/testing-strategy.md)
 - Scope: E2E 러너 도입, Compose·서버·시뮬레이터 기동 스크립트, 위임 시나리오·끊김 시나리오 테스트, quality-gates의 G5 갱신
@@ -322,10 +322,21 @@
 - Dependencies: HQ-102, HQ-105, HQ-108, HQ-109, E2E 도구 의존성 승인
 - Files Expected to Change: E2E 테스트 디렉터리, 기동 스크립트, `docs/engineering/quality-gates.md`
 - Acceptance Criteria:
-  - [ ] 위임 시나리오를 실행하면 기대한 Agent 수와 상태가 화면에 표시된다
-  - [ ] 끊김 시나리오에서 Unknown과 Gap이 화면에 표시된다
-  - [ ] 단일 명령으로 실행되고, quality-gates.md에 G5가 `Local`로 기록된다
+  - [x] 위임 시나리오를 실행하면 기대한 Agent 수와 상태가 화면에 표시된다
+  - [x] 끊김 시나리오에서 Unknown과 Gap이 화면에 표시된다
+  - [x] 단일 명령으로 실행되고, quality-gates.md에 G5가 `Local`로 기록된다
 - Verification: Medium 기준 Gate + G5
+- 의존성 승인: 2026-11-27 사용자 "HQ-111 작업 진행" (Playwright devDependency 도입 승인이 필요하다고 안내한 뒤의 지시로 해석. `@playwright/test` 1.65.0, Chromium headless shell v1254 다운로드)
+- 범위 변경: 루트 `package.json`(`test:e2e`, devDependency), `playwright.config.ts`, `tsconfig.test.json`·`tsconfig.tools.json`(e2e 포함), `.gitignore`·`.prettierignore`(Playwright 산출물)
+- Execution Log:
+  #### Run 2026-11-27-1
+  - agent_id: claude-code:main (QA·Worker) · status: In Review
+  - result: `e2e/harness.ts`(전용 DB `agent_hq_e2e` 생성·migrate·테스트마다 TRUNCATE, 빌드된 API를 테스트마다 새로 기동, admin CLI로 등록 코드 → `POST /connections`, 시뮬레이터 CLI `--url`로 전송), `e2e/dashboard.spec.ts` 2개. 화면을 먼저 열고(실시간 수신 중) 그 뒤에 보내므로 표시는 SSE로 도착한 것이다
+  - 위임: Agent 3행(main·worker·reviewer) 모두 `유휴`·`원본: completed`, Timeline 항목 수 = 보낸 Event 수, Connection `등록됨(heartbeat 전)`
+  - 끊김: `failure-gap`의 마지막 `agent.disconnected`를 `--cut-after`로 보내지 않고, 전송 **뒤에** heartbeat 1회 후 중단(임계값 1 s/2 s) → main `알 수 없음`·`연결이 끊긴 뒤 소식이 없음`, Connection `끊김`, Timeline에 `⚠ event.gap.detected` 1건(grace 1 s)
+  - 로컬 리뷰: Request Changes (Major 2, Minor 2, Nit 2) → 반영: 끊김 테스트 간헐 실패를 리뷰어가 재현(heartbeat를 Event보다 먼저 보내 2 s 안에 전송이 끝나지 않으면 연결 끊김이 수신보다 먼저 기록돼 Agent가 `작업 중`으로 남음) → heartbeat를 전송 뒤로 옮겨 끊김 기록이 항상 마지막 수신보다 늦게, 기동 중 실패해도 API 프로세스 정리(`stopApi`), `AGENT_HQ_API_URL`이 다른 값이면 즉시 실패, TRUNCATE 전에 `current_database()` 확인·`escapeIdentifier`, 의미 없는 검증 제거, 검증 기록 재측정
+  - verification(수정 후): `playwright test --repeat-each 10` 20 passed, `pnpm verify`(단위 197)
+  - PR #13 CodeRabbit 1차: Minor 2 → 반영: `AGENT_HQ_API_URL`은 미설정 또는 정확히 `http://127.0.0.1:4000`만 허용(빈 값·경로 포함 값은 rewrite를 깨뜨림), 등록 응답을 `registerConnectionResponseSchema`로 검증(계약 패키지를 소스 경로로 import, 새 의존성 없음)
 
 ### HQ-112 — 부하 측정 (RES-005)
 - Status: Done (2026-11-26, PR #11 머지 `32d5014`) · Risk: 1 (측정 스크립트·문서) · Role: QA
@@ -351,7 +362,7 @@
   - 후속: HQ-113(쓰기 경로 최적화). HQ-114는 정상 상태 측정이 충분히 빨라 보류
 
 ### HQ-113 — 쓰기 경로 최적화 (Replay·Ingestion 배치·lock 대기)
-- Status: In Review (2026-11-26) · Risk: 3 (저장소·Projection) · Role: Architect → Worker → Reviewer
+- Status: Done (2026-11-27, PR #12) · Risk: 3 (저장소·Projection) · Role: Architect → Worker → Reviewer
 - Objective: RES-005에서 미충족한 목표를 맞춘다 — Projection 전체 재생성 5만 건 ≤ 60 s(ADR-0002), 동시 full batch에서 500 대신 재시도 가능한 오류.
 - Background: [RES-005](../../research/RES-005-load-measurement.md) §3~§5, TD-005, RSK-019
 - Scope: Replay를 메모리 fold(순수 Projector) + 일괄 쓰기로 변경, Ingestion 배치의 외부 ID 조회와 Projection 쓰기 묶음 처리, lock 대기 초과 시 503 + `Retry-After`

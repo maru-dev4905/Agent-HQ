@@ -4,7 +4,11 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-26 (3) — HQ-113 쓰기 경로 최적화 (PR)
+## 2026-11-27 — HQ-111 E2E (PR)
+- [Added] Playwright 1.65.0 E2E(G5 `Local`): `pnpm test:e2e`가 Compose 기동 → build → 브라우저 테스트. 위임 시나리오(Agent 3개·상태), 끊김 시나리오(Unknown·Gap) (`e2e/`, `playwright.config.ts`)
+- [Changed] quality-gates G5, testing-strategy E2E 도구, HQ-113 Done
+
+## 2026-11-26 (3) — HQ-113 쓰기 경로 최적화 (Done, PR #12)
 - [Changed] Projection 적용을 접근 계층(DB·배치 캐시·메모리)으로 분리해 실시간·배치·Replay가 같은 코드를 씀. Replay는 메모리 fold + 일괄 쓰기(5만 건 269 s → 1.6~3.0 s)
 - [Changed] Ingestion 배치: 외부 ID·Read Model 행 캐시, 행당 1회 쓰기(500개 배치 106 → 870~1,173 events/s)
 - [Added] 오류 코드 `SERVICE_UNAVAILABLE`(503 + `Retry-After`): Workspace lock 대기 5 s 초과, 연결 풀 소진, 트랜잭션 시간 초과 — Ingestion과 전역 오류 필터

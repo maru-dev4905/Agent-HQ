@@ -19,7 +19,7 @@
 | Unit | 순수 함수, Projector의 `apply(state, event)` | 상태 전이, 마스킹 함수 | Vitest (후보) |
 | Contract | Event 스키마 | 유효/무효 Event 샘플 세트, 버전 호환 | 스키마 라이브러리 + Vitest |
 | Integration | Ingestion→Store→Projector (Docker Compose의 테스트용 PostgreSQL) | 멱등성, 거부 사유, Replay | Vitest (후보) |
-| E2E | Simulator→API→Web 브라우저 | 시나리오 실행 후 화면에 Agent 상태 표시 | Playwright (후보) |
+| E2E | Simulator→API→Web 브라우저 | 시나리오 실행 후 화면에 Agent 상태 표시 | Playwright 1.65.0 (HQ-111, `e2e/`) |
 | Property (선택) | Projector | 임의 Event 순서에서 불변식 유지 | fast-check (도입 시 승인) |
 | Performance | Ingestion 처리량 | NFR-003 부하 | 자체 스크립트 |
 
