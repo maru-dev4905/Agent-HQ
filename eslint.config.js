@@ -39,8 +39,16 @@ const forbiddenImports = [
       '@agent-hq/web',
     ],
   ],
+  // The Bridge talks to HQ over HTTP only (ADR-0007): no API, database or web code.
+  [
+    'apps/bridge/**',
+    ['@agent-hq/api', '@agent-hq/web', '@agent-hq/database', '@agent-hq/simulator'],
+  ],
   // The API serves every source alike: adapters run in the Bridge, never in the API.
-  ['apps/api/**', ['@agent-hq/web', '@agent-hq/simulator', '@agent-hq/adapter-claude-code']],
+  [
+    'apps/api/**',
+    ['@agent-hq/web', '@agent-hq/simulator', '@agent-hq/adapter-claude-code', '@agent-hq/bridge'],
+  ],
   [
     'apps/web/**',
     ['@agent-hq/api', '@agent-hq/database', '@agent-hq/simulator', '@agent-hq/adapter-claude-code'],
@@ -67,6 +75,7 @@ export default tseslint.config(
         project: [
           './packages/*/tsconfig.json',
           './apps/api/tsconfig.json',
+          './apps/bridge/tsconfig.json',
           './apps/web/tsconfig.json',
           './tsconfig.test.json',
           './tsconfig.tools.json',
@@ -114,7 +123,9 @@ export default tseslint.config(
                 forbiddenImports.find(([files]) => files === 'apps/api/**')?.[1] ?? []
               ).filter(
                 (name) =>
-                  name !== '@agent-hq/simulator' && name !== '@agent-hq/adapter-claude-code',
+                  name !== '@agent-hq/simulator' &&
+                  name !== '@agent-hq/adapter-claude-code' &&
+                  name !== '@agent-hq/bridge',
               ),
               message:
                 'Violates the dependency direction (docs/engineering/coding-standards.md §4).',

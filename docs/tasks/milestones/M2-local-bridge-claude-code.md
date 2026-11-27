@@ -60,7 +60,7 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
   - 리뷰 지적 중 사실 확인으로 바꾼 것: Runtime 버전은 Envelope `source`가 strict라 Event에 넣을 수 없음 → HQ-208 Snapshot에서 기록
 
 ### HQ-201 — ADR-0007 Local Bridge 구조와 보안 (Proposed)
-- Status: Blocked — ADR-0007 사용자 승인 대기 (PR #15 머지, ADR은 Proposed) · Risk: 3 (보안 경계·제품 결정) · Role: Architect → Reviewer(보안)
+- Status: Done (2026-11-27, PR #15, ADR-0007 Accepted) · Risk: 3 (보안 경계·제품 결정) · Role: Architect → Reviewer(보안)
 - Objective: Bridge 구현 전에 프로세스 구조, hook → Bridge 로컬 구간, 자격 증명, 전송·재연결 규칙을 하나의 결정으로 묶는다. 사용자 승인 후 HQ-203~HQ-207이 시작된다.
 - Background: RSK-016("Phase 2 착수 전 Bridge 보안 ADR"), security §4.3, RES-002 §5·§6.1, architecture §5
 - Scope: 다음 항목마다 선택지·장단점·추천을 담은 ADR 초안. 필요하면 저장소 밖 scratch에서 짧은 검증 스파이크(측정값과 삭제 기록 남김)
@@ -83,12 +83,12 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
   - [x] 위 11개 항목마다 결정(또는 명시적 보류와 이유)이 있다
   - [x] 위협(위조 — 다른 OS 사용자·같은 사용자 프로세스, 토큰 유출, Bridge 정지 중 hook)마다 대응 또는 수용 근거가 있다
   - [x] hook이 Agent 실행을 막지 않는 조건(종료 코드, timeout, Bridge 부재)이 명시된다
-  - [ ] 사용자가 Accepted/수정 결정을 내린다
+  - [x] 사용자가 Accepted/수정 결정을 내린다 (2026-11-27 Accepted)
 - Verification: 위험도 3 기준(보안 검토 포함)
 - Risks: 문서만으로 정할 수 없는 값(timeout, 유예 시간)은 측정 Task(HQ-206)로 넘기고 ADR에 "측정 후 확정"으로 둔다
 - Execution Log:
   #### Run 2026-11-27-3
-  - agent_id: claude-code:main (Architect) · status: Blocked (사용자 승인 대기)
+  - agent_id: claude-code:main (Architect) · status: succeeded (2026-11-27 사용자 승인으로 Accepted)
   - result: [ADR-0007](../../decisions/ADR-0007-local-bridge.md) 초안. 핵심: 동기 `command` hook이 allowlist 필드만 남겨 소유자 전용 spool에 원자적으로 쓰고, 상주 Bridge가 매핑·순번·outbox(JSONL)·전송, 새 의존성 없음·열린 포트 없음, 같은 OS 사용자 프로세스 위조는 수용 위험, 끊김 해제 기준 현행 유지, 세션 생존은 Stale + 조건부 `ppid` 관찰
   - 근거 확인: 공식 hooks 문서(2026-11-27, `http` hook 헤더의 `allowedEnvVars`, 실패 비차단, timeout 기본값, 버전 필드 없음), HQ-103 Guard는 폐기·만료에 401
   - 스파이크: 하지 않음(지연 측정은 HQ-206으로)
@@ -99,7 +99,7 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
   - HQ-206으로 넘긴 확인: 병렬 hook 동시 실행 여부, `hrtime` 프로세스 간 비교, `ppid`, stdout이 컨텍스트에 들어가는 hook 범위(공식 문서), 지연·상한 값
 
 ### HQ-202 — Claude Code Adapter 매핑 패키지 (순수 함수 + 계약 테스트)
-- Status: In Review (2026-11-27) · Risk: 3 (공용 패키지, Event 계약 표현 규약) · Role: Worker → Reviewer
+- Status: Done (2026-11-27, PR #16) · Risk: 3 (공용 패키지, Event 계약 표현 규약) · Role: Worker → Reviewer
 - Objective: hook 입력 한 건(과 세션 상태)을 받아 공통 Event를 만드는 매핑을 네트워크·파일 없이 결정적으로 구현한다. Bridge 설계와 독립적으로 먼저 진행한다.
 - Background: RES-002 §4 매핑표, §5.3~§5.5, §6 표현 규약, adapter-spec §10
 - Scope:
@@ -124,7 +124,7 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
 - 범위 변경: `docs/engineering/coding-standards.md` §4 의존 방향 표. `zod`는 쓰지 않음(allowlist가 형식 검사, 결과 Event는 `parseIncomingEvent`로 검증) → 외부 의존성 추가 없음
 - Execution Log:
   #### Run 2026-11-27-5
-  - agent_id: claude-code:main (Worker) · status: In Review
+  - agent_id: claude-code:main (Worker) · status: succeeded
   - result: `packages/adapter-claude-code` — `allowlist.ts`(import 없음), `map.ts`(`mapHook`·`expirePending`·`mapDropped`), `capabilities.ts`. 규약은 adapter-spec N3
   - verification: 단위 22개(hook 행별 매핑, 결정성, 재개 subagent·유실 Stop, out-of-order Post, `not_executed` 규칙 1~3·늦은 Post, 표식 문자열 비노출, 모르는 입력 보고, Capability), 통합 3개(`apps/api/test/claude-code-mapping.int.test.ts`: 부모 관계·Tool·재전송 중복 0·dropped gap → unknown → 회복). `pnpm verify`(단위 219), `pnpm test:integration`(72)
   - 로컬 리뷰(보안 포함): Request Changes (Major 3, Minor 7, Nit 4) → 반영: 같은 Tool 병렬 호출에서 PermissionRequest 대상이 모호하면 표시하지 않고 규칙 3으로(실행된 호출에 not_executed가 나가던 문제), 같은 hook 중복 입력은 `ignored: duplicate`(같은 키·다른 내용 → 409 → 가짜 Gap 방지, 대기 중 호출 초기화 방지), 바뀐 세션만 복사 + `pruneSessions`(순번 보존), 시각 사전 검사·숫자 비교, ID 토큰은 `:` 금지·100자, `mapDropped` 입력 검사·모르는 세션 무시, Capability `features` 고정, lint에 `@agent-hq/domain` 금지 추가. ADR-0007과 함께 정한 것: 모호한 subagent Stop은 실행을 지정하지 않음(`unmatched`)
@@ -132,7 +132,7 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
   - PR #16 CodeRabbit 1차: CHANGES_REQUESTED (Major 3, Minor 8) → 반영(단위 34, `pnpm verify` 231, `pnpm test:integration` 72): 중복 PreToolUse는 진행 신호가 아님, 거부된 SessionEnd는 `endedAt`을 남기지 않음·SessionStart가 `endedAt`을 지움, 권한 요청 후보에 이미 표시된 호출 포함, 재전달 batch는 첫 마감 유지, 모르는 hook은 세션을 만들지 않음, own property 조회·`__proto__` ID 거부, 통합 테스트 teardown이 시작 실패에도 DB 연결 해제, N3에 중복 판정·정리 범위 명시
 
 ### HQ-203 — Local Bridge: Pairing·자격 증명·heartbeat·Capability 보고
-- Status: Backlog · Risk: 3 (자격 증명, 신규 앱) · Role: Worker → Reviewer(보안)
+- Status: In Review (2026-11-27) · Risk: 3 (자격 증명, 신규 앱) · Role: Worker → Reviewer(보안)
 - Objective: Bridge가 등록 코드로 HQ에 연결해 토큰을 안전하게 보관하고, heartbeat와 Capability를 보고하며, 폐기·만료를 올바르게 처리한다.
 - Background: security §4.3·§4.6(Local Bridge pairing, Token expiration/revocation), HQ-103, ADR-0007 5·6
 - Scope: `apps/bridge` 골격(ADR-0007 구조), pairing 명령, 토큰 저장(소유자 전용), heartbeat 루프, Capability 보고(전달 경로는 HQ-208 계약), 폐기·만료 시 전송 중단과 상태 출력, 종료 처리
@@ -141,12 +141,20 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
 - Dependencies: HQ-201 Accepted, HQ-202 Capability 선언 (ADR-0007 제안대로면 새 의존성 없음)
 - Files Expected to Change: `apps/bridge/**`, 루트 `package.json`·`pnpm-lock.yaml`·`tsconfig.json`·`eslint.config.js`, `docs/engineering/quality-gates.md`(Bridge 테스트 위치)
 - Acceptance Criteria:
-  - [ ] 등록 코드로 한 번만 등록되고, 같은 코드 재사용·만료 코드는 거부된다
-  - [ ] 토큰 파일이 소유자 전용 권한이고, 토큰이 로그·오류 메시지에 없다
-  - [ ] heartbeat를 멈추면 Query API에서 Connection `disconnected`, Agent `unknown`이 된다(HQ-108)
-  - [ ] 토큰을 폐기(`admin revoke`)하거나 만료되면 Bridge가 전송을 멈추고 재등록이 필요하다고 알린다
+  - [x] 등록 코드로 한 번만 등록되고, 같은 코드 재사용·만료 코드는 거부된다
+  - [x] 토큰 파일이 소유자 전용 권한이고, 토큰이 로그·오류 메시지에 없다
+  - [x] heartbeat를 멈추면 Query API에서 Connection `disconnected`, Agent `unknown`이 된다(HQ-108)
+  - [x] 토큰을 폐기(`admin revoke`)하거나 만료되면 Bridge가 전송을 멈추고 재등록이 필요하다고 알린다
 - Verification: 위험도 3 기준 + G4(Bridge ↔ 실제 API)
 - Risks: Bridge 테스트를 CI에 넣으려면 workflow 변경 승인이 필요하다
+- 범위 변경: **Capability 보고는 HQ-209로 옮긴다.** 전달 계약(HQ-208)이 아직 없고, 등록 요청 스키마가 strict라 미정 필드를 보낼 수 없다. `apps/api/package.json`(devDependency `@agent-hq/bridge`), `vitest.shared.ts`·`vitest.config.ts`·`tsconfig.test.json`(테스트 경로), `apps/api/test/bridge.int.test.ts`(G4 — Bridge를 실제 API에 HTTP로 연결)
+- Execution Log:
+  #### Run 2026-11-27-6
+  - agent_id: claude-code:main (Worker) · status: In Review
+  - result: `apps/bridge` — `home.ts`(경로 보안 검사: Bridge 소유 경로 엄격, 상위는 소유자 euid/root·group/other 쓰기 금지·sticky 예외, 생성 전후 재검사), `credentials.ts`(0600 `O_EXCL` tmp + rename, 읽을 때 소유자·권한 검사), `api.ts`(등록·heartbeat, 응답 분류: 401·403·429/503·5xx·기타, 본문을 메시지에 넣지 않음, `--api` URL 검사), `heartbeat.ts`(15 s, full jitter 백오프, `Retry-After`, 401·404 → 정지, 403 → 느린 재시도), `cli.ts`(`pair`는 코드를 stdin으로, `--replace` 없이는 덮어쓰지 않음, `run`, `status`). 새 외부 의존성 없음(`@agent-hq/contracts`만)
+  - verification: Docker를 켠 뒤 `pnpm test:integration`(75, Bridge 3 포함) 통과
+  - 로컬 리뷰(보안 포함): Request Changes (Major 2, Minor 9, Nit 5) → 반영: 경로 중간 symlink를 바꿔치기해 상위 검사를 우회하던 문제 → `resolvePaths`로 실제 경로를 확정해 그 뒤 모든 작업에 사용, `pair` 입력을 EOF 대신 한 줄(Enter)로·TTY면 stderr 프롬프트, http는 loopback만(원격은 https), `Retry-After: 0` 하한 1 s, heartbeat 송신 예외에도 루프 유지, stop→start 때 이전 beat 무시(generation), Ctrl-C는 `run`에서만 정상 종료 처리·진행 중 fetch 취소, 상태가 바뀔 때만 출력, 자격 증명 tmp 정리·rename 실패 시 삭제, `credentials.json`은 `O_NOFOLLOW`+`fstat`, 만료 토큰 통합 테스트, 인자 오류에 입력값을 출력하지 않음, `run`도 디렉터리 생성(ADR §2), `--help` 종료 코드 0, `--replace` 안내 문구
+  - verification(수정 후): 단위 29개(`apps/bridge`), `pnpm verify`(단위 260), `pnpm test:integration`(77, Bridge 5: 1회 등록·재사용/만료 코드 거부, heartbeat → connected·침묵 → disconnected·unknown, 정상 상태는 한 번만 출력, 만료 → 정지, 폐기 → 정지·재등록 안내)
 
 ### HQ-204 — Local Bridge: Outbox·전송·재연결
 - Status: Backlog · Risk: 3 (Event 유실·중복 경로) · Role: Worker → Reviewer
@@ -228,7 +236,7 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
 - Status: Backlog · Risk: 3 (migration) · Role: Worker → Reviewer
 - Objective: 계약대로 받은 Capability를 저장하고 Query API로 제공한다.
 - Background: HQ-208
-- Scope: migration, 저장소, 등록·보고 경로 처리, `GET /workspaces/:id/connections` 응답
+- Scope: migration, 저장소, 등록·보고 경로 처리, `GET /workspaces/:id/connections` 응답, Bridge가 `CLAUDE_CODE_CAPABILITIES`를 보고(HQ-203에서 이관)
 - Out of Scope: 화면(HQ-210)
 - Interfaces: Consumes HQ-208 계약
 - Dependencies: HQ-208, migration 승인

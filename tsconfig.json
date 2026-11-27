@@ -7,6 +7,7 @@
     { "path": "packages/database" },
     { "path": "packages/simulator" },
     { "path": "packages/adapter-claude-code" },
-    { "path": "apps/api" }
+    { "path": "apps/api" },
+    { "path": "apps/bridge" }
   ]
 }
