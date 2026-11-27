@@ -4,6 +4,9 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
+## 2026-11-27 (6) — NFR-002a 확정
+- [Changed] NFR-002a 목표 수치 Confirmed(사용자): Workspace당 50 events/s 기준, 8개 지표 (requirements, RES-005 §3)
+
 ## 2026-11-27 (4) — HQ-202 Claude Code Adapter 매핑 (PR)
 - [Added] `packages/adapter-claude-code`: allowlist 필터, hook → Event 매핑(`mapHook`·`expirePending`·`mapDropped`·`pruneSessions`), Capability 선언. 외부 의존성 없음 (adapter-spec N3)
 - [Added] `apps/api/test/claude-code-mapping.int.test.ts`. lint 의존 방향: API·Web은 adapter를 import하지 않음(API 테스트만 허용)

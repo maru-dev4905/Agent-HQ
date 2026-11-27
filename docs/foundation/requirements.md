@@ -45,7 +45,7 @@ P1/P2(Pipeline, Approval Inbox, 제어, MCP 관리, 팀 RBAC 등)는 [product.md
 | NFR-001 | MVP는 로컬 셀프호스트에서 Cloud 계정이나 외부 네트워크 없이 동작한다 | ADR-0003, 제품 원칙 4 |
 | NFR-002 | Event 수신부터 화면 반영까지의 지연을 측정한다. 목표 수치는 측정 후 정한다 | 명세서 roadmap §13 "수치 목표는 실제 측정 후" |
 | NFR-003 | 측정 항목: ingestion latency, duplicate rate, reconnect recovery, projection correctness, dashboard update latency, event gap frequency | roadmap §13 |
-| NFR-002a (Proposed) | 목표 수치 제안(HQ-112): dashboard update latency p95 ≤ 500 ms, Event 1개 요청 ingestion p95 ≤ 100 ms, Workspace당 ≥ 50 events/s, 중복 저장 0건, 재연결 시 5,000건 2 s 이내 무손실, Projection 전체 재생성 5만 건 ≤ 60 s, 동시 full batch 5건까지 500 없음(그 이상은 503 + `Retry-After`), Gap 감지 정상 상태 1회 5만 건 ≤ 1 s | [RES-005](../research/RES-005-load-measurement.md) §3·§7 — 사용자 확인 후 확정. HQ-113 뒤 8개 모두 충족 |
+| NFR-002a (Confirmed 2026-11-27, 사용자) | 기준 부하: 로컬 사용자 1명, 동시 Agent 10개 안팎, Workspace당 50 events/s. 목표: dashboard update latency p95 ≤ 500 ms, Event 1개 요청 ingestion p95 ≤ 100 ms, Workspace당 ≥ 50 events/s, 중복 저장 0건, 재연결 시 5,000건 2 s 이내 무손실, Projection 전체 재생성 5만 건 ≤ 60 s, 동시 full batch 5건까지 500 없음(그 이상은 503 + `Retry-After`), Gap 감지 정상 상태 1회 5만 건 ≤ 1 s | [RES-005](../research/RES-005-load-measurement.md) §3·§7. HQ-113 뒤 8개 모두 충족(dashboard 지연은 저부하 측정). 측정 명령 `pnpm measure:load`(Gate 아님) |
 | NFR-004 | 관찰된 상태와 추정 상태를 구분한다. 이벤트가 없다는 이유로 Idle로 추론하지 않는다 | product §8, README 원칙 4 |
 | NFR-005 | Secret과 민감한 Tool 인자는 기본적으로 마스킹하고, `secret` 등급은 저장하지 않는다 | product §8, data-governance |
 | NFR-006 | 모든 Event는 `schemaVersion`을 가진다. 하위 호환을 깨는 변경은 새 버전과 변환 로직을 요구한다 | event-schema §11 |
