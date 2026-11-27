@@ -4,7 +4,11 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-27 (4) — HQ-202 Claude Code Adapter 매핑 (PR)
+## 2026-11-27 (5) — ADR-0007 Accepted, HQ-203 Bridge pairing (진행)
+- [Changed] ADR-0007 Accepted(사용자 승인). architecture N8, security §4.3·T10, RSK-016 갱신. HQ-201·HQ-202 Done
+- [Added] `apps/bridge`: 경로 보안 검사, 자격 증명(0600), 등록·heartbeat, `pair`(코드는 stdin)·`run`·`status`. 새 외부 의존성 없음
+
+## 2026-11-27 (4) — HQ-202 Claude Code Adapter 매핑 (Done, PR #16)
 - [Added] `packages/adapter-claude-code`: allowlist 필터, hook → Event 매핑(`mapHook`·`expirePending`·`mapDropped`·`pruneSessions`), Capability 선언. 외부 의존성 없음 (adapter-spec N3)
 - [Added] `apps/api/test/claude-code-mapping.int.test.ts`. lint 의존 방향: API·Web은 adapter를 import하지 않음(API 테스트만 허용)
 

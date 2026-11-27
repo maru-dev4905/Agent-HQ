@@ -81,12 +81,21 @@ importers:
       '@agent-hq/adapter-claude-code':
         specifier: workspace:*
         version: link:../../packages/adapter-claude-code
+      '@agent-hq/bridge':
+        specifier: workspace:*
+        version: link:../bridge
       '@agent-hq/simulator':
         specifier: workspace:*
         version: link:../../packages/simulator
       '@nestjs/testing':
         specifier: 12.6.0
         version: 12.6.0(@nestjs/common@12.6.0(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.6.0(@nestjs/common@12.6.0(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))
+
+  apps/bridge:
+    dependencies:
+      '@agent-hq/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
 
   apps/web:
     dependencies:

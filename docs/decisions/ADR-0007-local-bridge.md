@@ -1,6 +1,6 @@
 # ADR-0007: Local Bridge 구조 — command hook → 소유자 전용 spool → 상주 Bridge → HQ
 
-- Status: Proposed
+- Status: Accepted (2026-11-27, 사용자 승인)
 - Date: 2026-11-27
 - Deciders: 사용자 / 제안: Claude (Architect, HQ-201)
 - Supersedes: 없음. architecture §5(Local Bridge)와 security §4.3을 M2 범위에서 구체화한다

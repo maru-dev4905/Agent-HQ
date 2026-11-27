@@ -13,7 +13,14 @@ const workspacePackages = [
  * Resolve workspace packages from source so tests never run against a stale dist build.
  * Scoped to @agent-hq/* only; third-party resolution is untouched.
  */
-export const workspaceAliases = workspacePackages.map((name) => ({
-  find: `@agent-hq/${name}`,
-  replacement: fileURLToPath(new URL(`./packages/${name}/src/index.ts`, import.meta.url)),
-}));
+export const workspaceAliases = [
+  ...workspacePackages.map((name) => ({
+    find: `@agent-hq/${name}`,
+    replacement: fileURLToPath(new URL(`./packages/${name}/src/index.ts`, import.meta.url)),
+  })),
+  // API integration tests drive the Bridge against a real server (HQ-203).
+  {
+    find: '@agent-hq/bridge',
+    replacement: fileURLToPath(new URL('./apps/bridge/src/index.ts', import.meta.url)),
+  },
+];

@@ -7,6 +7,7 @@ export default defineConfig({
     include: [
       'packages/*/src/**/*.test.ts',
       'apps/api/src/**/*.test.ts',
+      'apps/bridge/src/**/*.test.ts',
       'apps/web/{app,lib}/**/*.test.{ts,tsx}',
     ],
     environment: 'node',

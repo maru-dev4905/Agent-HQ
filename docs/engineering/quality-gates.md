@@ -11,7 +11,7 @@
 | G1 TypeScript | 타입 오류 0 (패키지, 테스트, 도구 설정, Web) | **CI** | `pnpm typecheck` | HQ-003 |
 | G2 Lint/Format | 규칙 위반 0, 의존 방향 규칙 포함 | **CI** | `pnpm lint`, `pnpm format:check` (Markdown은 대상 아님) | HQ-003 |
 | G3 Unit Test | 단위 테스트 통과 | **CI** | `pnpm test` (Vitest 5) | HQ-003 |
-| G4 Integration Test | 실제 PostgreSQL 통합 | **CI** | `pnpm test:integration` (먼저 `pnpm infra:up`. 테스트 DB `agent_hq_test`를 자동 생성·migrate) | HQ-104 |
+| G4 Integration Test | 실제 PostgreSQL 통합 | **CI** | `pnpm test:integration` (먼저 `pnpm infra:up`. 테스트 DB `agent_hq_test`를 자동 생성·migrate. Bridge ↔ API는 `apps/api/test/bridge.int.test.ts`가 실제 HTTP로 검증하고, Bridge 단위 테스트는 G3에 포함) | HQ-104 |
 | G5 E2E Test | 사용자 시나리오 (시뮬레이터 → Ingestion → Dashboard, 브라우저) | **Local** | `pnpm test:e2e` (Compose 기동 → build → Playwright 1.65.0 Chromium. 처음 한 번 `pnpm exec playwright install chromium`. E2E DB `agent_hq_e2e`·Redis DB 1을 쓰고, API를 테스트마다 4000 포트에 새로 띄우므로 dev API를 먼저 멈춘다. `AGENT_HQ_API_URL`은 비우거나 `http://127.0.0.1:4000`. Docker Compose를 호출하므로 Agent 세션에서는 CLAUDE.md §6 승인 대상) | HQ-111 |
 | G6 Build | 배포 산출물 생성 | **CI** | `pnpm build` (tsc -b + next build) | HQ-003 |
 | G6b Dependency Audit | 알려진 취약점 | **Not introduced** | — | HQ-003/HQ-004 |

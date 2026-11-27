@@ -41,9 +41,9 @@
 
 ### 4.3 Local Bridge (명세서 §4 + 추가)
 - 명세서 요구 (MVP 로컬 셀프호스트에서는 Bridge가 localhost API에 연결하므로 TLS는 선택 사항이다. Cloud 연결 시 필수): outbound TLS 우선, 일회성 Pairing 코드, 장치별 자격 증명 발급·폐기, 제어 명령의 Workspace/Device/Agent 범위 검증, 허용 경로만 파일 접근, Shell 기본 거부, 업데이트 서명 검증 고려, 로그에 Secret 미기록.
-- **추가 (Proposed, RES-007 S2 — [ADR-0007](../decisions/ADR-0007-local-bridge.md)이 승인되면 그 범위로 대체)**: Claude Code hook → Bridge 로컬 구간 인증. 소유자 전용 로컬 소켓이나 로컬 토큰을 써서 같은 머신의 다른 프로세스가 Event를 위조하지 못하게 한다 ([RSK-016](../operations/risks.md)).
+- ~~추가 (Proposed, RES-007 S2): hook → Bridge 로컬 구간 인증(로컬 소켓·토큰)~~ → [ADR-0007](../decisions/ADR-0007-local-bridge.md)(Accepted)로 대체: 아래 "M2 구조".
 - **추가 (Proposed)**: hook은 짧은 timeout을 두고, 실패하면 무시한다. 관찰 실패가 Agent 실행을 막지 않는다.
-- **M2 구조 (Proposed, [ADR-0007](../decisions/ADR-0007-local-bridge.md))**: 동기 `command` hook → 소유자 전용 spool → 포트를 열지 않는 상주 Bridge → HQ. 원문 콘텐츠는 hook이 디스크에 쓰기 전에 버린다. 같은 OS 사용자 프로세스(관찰 대상 Claude Code 포함)의 위조는 수용 위험으로 제안하고, M5 제어·Cloud 도입 때 재검토한다(RSK-016). 따라서 HQ 표시는 관찰 대상 Agent에 대한 무결성 증명이 아니다.
+- **M2 구조 (Accepted 2026-11-27, [ADR-0007](../decisions/ADR-0007-local-bridge.md))**: 동기 `command` hook → 소유자 전용 spool → 포트를 열지 않는 상주 Bridge → HQ. 원문 콘텐츠는 hook이 디스크에 쓰기 전에 버린다. 같은 OS 사용자 프로세스(관찰 대상 Claude Code 포함)의 위조는 수용 위험이며(사용자 승인), M5 제어·Cloud 도입 때 재검토한다(RSK-016). 따라서 HQ 표시는 관찰 대상 Agent에 대한 무결성 증명이 아니다.
 
 ### 4.4 Cloud Managed Runtime, MCP, Approval, Audit
 명세서 §5~§8을 그대로 따른다 ([원본](../research/source/chatgpt-spec-v0.1/security.md)). 핵심만 옮긴다:
@@ -62,7 +62,7 @@
 | T5 저장 XSS | Agent 출력(메시지, 파일명)을 UI에 그대로 렌더링 | 모든 Event 콘텐츠를 신뢰하지 않는 텍스트로 렌더링, CSP로 inline script 금지 | HQ-109 |
 | T8 수집 과부하 | 폭주한 로컬 프로세스가 Event를 대량 전송 | payload·배치 크기 상한, Connection별 rate limit | HQ-105 |
 | T9 로컬 저장 데이터 노출 | DB 볼륨·로그 파일이 다른 사용자에게 읽히거나 저장소에 커밋됨 | 데이터 디렉터리는 저장소 밖, 권한 최소화, `.gitignore` | HQ-003, HQ-104 |
-| T10 hook 이벤트 위조 | 다른 로컬 프로세스가 Bridge에 가짜 Event 주입 | §4.3 로컬 구간 인증. ADR-0007(Proposed): 다른 OS 사용자는 차단, 같은 OS 사용자 프로세스(관찰 대상 Agent 포함)는 수용 위험 — HQ 표시는 무결성 증명이 아님 | Phase 2 |
+| T10 hook 이벤트 위조 | 다른 로컬 프로세스가 Bridge에 가짜 Event 주입 | §4.3 로컬 구간 인증. ADR-0007(Accepted): 다른 OS 사용자는 차단, 같은 OS 사용자 프로세스(관찰 대상 Agent 포함)는 수용 위험 — HQ 표시는 무결성 증명이 아님 | Phase 2 |
 
 ### 4.6 필수 보안 테스트
 명세서 §10의 11종을 해당 Phase의 수용 조건에 넣는다: Cross-workspace authorization, Unauthorized control command, Secret redaction, Path traversal, Command allowlist, Webhook signature/replay, Approval bypass, Token expiration/revocation, Local Bridge pairing, Runtime isolation, Data deletion propagation. Phase 1 대상은 Secret redaction과 Token expiration/revocation(Connection 토큰)이다.

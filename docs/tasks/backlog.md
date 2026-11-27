@@ -44,9 +44,9 @@ M1 Done (2026-11-27, 종료 조건 점검은 M1 파일 머리말). HQ-114는 보
 | ID | 제목 | 상태 | 위험도 | 의존성 | 병렬 그룹 |
 |---|---|---|---|---|---|
 | HQ-200 | M1 종료 점검과 M2 Task 분해 | Done | 1 | M1 종료 | — |
-| HQ-201 | ADR-0007 Local Bridge 구조와 보안 (Proposed) | Blocked (승인 대기) | 3 | HQ-200, Accepted는 사용자 승인 | A |
-| HQ-202 | Claude Code Adapter 매핑 패키지 | In Review | 3 | HQ-200 (subagent 재개 연결 규칙만 HQ-201 결정을 따름) | A |
-| HQ-203 | Local Bridge: Pairing·자격 증명·heartbeat·Capability 보고 | Backlog | 3 | HQ-201 Accepted, HQ-202 Capability 선언 (ADR-0007 제안대로면 새 의존성 없음) | B |
+| HQ-201 | ADR-0007 Local Bridge 구조와 보안 | Done | 3 | HQ-200, Accepted는 사용자 승인 | A |
+| HQ-202 | Claude Code Adapter 매핑 패키지 | Done | 3 | HQ-200 (subagent 재개 연결 규칙만 HQ-201 결정을 따름) | A |
+| HQ-203 | Local Bridge: Pairing·자격 증명·heartbeat·Capability 보고 | In Progress | 3 | HQ-201 Accepted, HQ-202 Capability 선언 (ADR-0007 제안대로면 새 의존성 없음) | B |
 | HQ-204 | Local Bridge: Outbox·전송·재연결 | Backlog | 3 | HQ-203 | C |
 | HQ-205 | ADR-0007 결정의 HQ 쪽 반영 (끊김 해제·세션 생존) | Backlog | 3 | HQ-201 Accepted | B |
 | HQ-206 | Claude Code hook 수집 명령 | Backlog | 3 | HQ-201 Accepted, HQ-202, HQ-204 outbox 인터페이스 | D |

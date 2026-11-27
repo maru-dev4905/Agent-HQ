@@ -22,7 +22,7 @@
 | [ADR-0004](ADR-0004-adopt-spec-baseline.md) | 기획 명세서 v0.1.0을 제품 기준 문서로 채택 (D-001~D-009 Confirmed) | Accepted | 2026-11-22 |
 | [ADR-0005](ADR-0005-adopt-redis-bullmq.md) | MVP에 Redis + BullMQ 도입 (ADR-0003의 보류 항목 대체) | Accepted | 2026-11-22 |
 | [ADR-0006](ADR-0006-external-ids-and-lenient-payloads.md) | Event 계약: 외부 ID는 `source`로, 미정의 payload 필드는 버리고 보고 | Accepted | 2026-11-22 |
-| [ADR-0007](ADR-0007-local-bridge.md) | Local Bridge 구조: command hook → 소유자 전용 spool → 상주 Bridge → HQ | Proposed | 2026-11-27 |
+| [ADR-0007](ADR-0007-local-bridge.md) | Local Bridge 구조: command hook → 소유자 전용 spool → 상주 Bridge → HQ | Accepted | 2026-11-27 |
 
 > 요청된 구조의 `ADR-0001-example.md`는 예시 대신 실제 첫 결정(ADR 프로세스 채택)으로 작성했다. 템플릿은 아래에 있다.
 
