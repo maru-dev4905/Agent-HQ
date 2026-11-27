@@ -2,6 +2,8 @@ node_modules/
 dist/
 *.tsbuildinfo
 coverage/
+test-results/
+playwright-report/
 .next/
 next-env.d.ts
 packages/database/src/generated/

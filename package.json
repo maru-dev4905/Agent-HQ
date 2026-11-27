@@ -21,17 +21,19 @@
     "dev:api": "pnpm --filter @agent-hq/api dev",
     "dev:web": "pnpm --filter @agent-hq/web dev",
     "test:integration": "pnpm generate && vitest run --config vitest.integration.config.ts",
+    "test:e2e": "pnpm infra:up && pnpm build && playwright test",
     "measure:load": "pnpm generate && vitest run --config vitest.load.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.0",
     "@types/node": "26.6.6",
+    "@types/pg": "8.23.1",
     "eslint": "10.15.0",
+    "pg": "8.23.1",
     "prettier": "3.10.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.73.0",
-    "vitest": "5.1.1",
-    "pg": "8.23.1",
-    "@types/pg": "8.23.1"
+    "vitest": "5.1.1"
   }
 }
