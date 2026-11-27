@@ -13,8 +13,8 @@
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-201 ADR-0007 Bridge | Blocked (승인 대기) | 브랜치 `hq-201-adr-local-bridge`, risk:3 |
-| HQ-202 Adapter 매핑 | Backlog | HQ-201과 병행 가능 |
+| HQ-201 ADR-0007 Bridge | Blocked (승인 대기) | PR #15 머지됨, ADR-0007은 아직 Proposed — Accepted는 사용자 승인 |
+| HQ-202 Adapter 매핑 | In Review | 브랜치 `hq-202-adapter-claude-code`(PR #16), risk:3 |
 | HQ-114 Gap 증분 검사 | Backlog (보류) | 정상 상태 Gap 감지가 충분히 빠름 |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 

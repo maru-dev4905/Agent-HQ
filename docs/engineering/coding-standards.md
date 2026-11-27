@@ -52,6 +52,7 @@ packages/database → packages/{domain, events}
 packages/events   → packages/domain
 packages/contracts → packages/{domain, events}
 packages/simulator → packages/{events, contracts}
+packages/adapter-claude-code → packages/events   (HQ-202. apps/api·apps/web는 import 금지, API 테스트만 허용)
 packages/domain   → (의존 없음)
 ```
 - `apps/*`끼리는 코드로 서로 import하지 않는다. 통신은 계약(`packages/contracts`)으로만 한다.

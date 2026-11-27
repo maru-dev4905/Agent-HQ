@@ -28,8 +28,23 @@ const forbiddenImports = [
     ['@agent-hq/contracts', '@agent-hq/simulator', '@agent-hq/api', '@agent-hq/web'],
   ],
   ['packages/simulator/**', ['@agent-hq/database', '@agent-hq/api', '@agent-hq/web']],
-  ['apps/api/**', ['@agent-hq/web', '@agent-hq/simulator']],
-  ['apps/web/**', ['@agent-hq/api', '@agent-hq/database', '@agent-hq/simulator']],
+  [
+    'packages/adapter-claude-code/**',
+    [
+      '@agent-hq/domain',
+      '@agent-hq/contracts',
+      '@agent-hq/database',
+      '@agent-hq/simulator',
+      '@agent-hq/api',
+      '@agent-hq/web',
+    ],
+  ],
+  // The API serves every source alike: adapters run in the Bridge, never in the API.
+  ['apps/api/**', ['@agent-hq/web', '@agent-hq/simulator', '@agent-hq/adapter-claude-code']],
+  [
+    'apps/web/**',
+    ['@agent-hq/api', '@agent-hq/database', '@agent-hq/simulator', '@agent-hq/adapter-claude-code'],
+  ],
 ];
 
 export default tseslint.config(
@@ -85,8 +100,8 @@ export default tseslint.config(
     ];
     return { files: [files], rules: { 'no-restricted-imports': rule } };
   }),
-  // Tests may use the simulator as a fixture source (testing-strategy §1); production code may
-  // not. Derived from the apps/api entry so other restrictions keep applying to tests.
+  // Tests may use the simulator and the adapter as fixture sources (testing-strategy §1);
+  // production code may not. Derived from the apps/api entry so other restrictions keep applying to tests.
   {
     files: ['apps/api/**/*.test.ts', 'apps/api/test/**/*.ts'],
     rules: {
@@ -97,7 +112,10 @@ export default tseslint.config(
             {
               group: (
                 forbiddenImports.find(([files]) => files === 'apps/api/**')?.[1] ?? []
-              ).filter((name) => name !== '@agent-hq/simulator'),
+              ).filter(
+                (name) =>
+                  name !== '@agent-hq/simulator' && name !== '@agent-hq/adapter-claude-code',
+              ),
               message:
                 'Violates the dependency direction (docs/engineering/coding-standards.md §4).',
             },

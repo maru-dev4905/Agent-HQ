@@ -1,0 +1,19 @@
+{
+  "name": "@agent-hq/adapter-claude-code",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./allowlist": {
+      "types": "./dist/allowlist.d.ts",
+      "default": "./dist/allowlist.js"
+    }
+  },
+  "dependencies": {
+    "@agent-hq/events": "workspace:*"
+  }
+}
