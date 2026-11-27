@@ -14,7 +14,7 @@
 | HQ-200 | M1 종료 |
 | HQ-201 | HQ-200, Accepted는 사용자 승인 |
 | HQ-202 | HQ-200 (subagent 재개 연결 규칙만 HQ-201 결정을 따른다) |
-| HQ-203 | HQ-201 Accepted, HQ-202 Capability 선언, 새 의존성 승인(ADR-0007에서 제안) |
+| HQ-203 | HQ-201 Accepted, HQ-202 Capability 선언 (ADR-0007 제안대로면 새 의존성 없음) |
 | HQ-204 | HQ-203 |
 | HQ-205 | HQ-201 Accepted |
 | HQ-206 | HQ-201 Accepted, HQ-202, HQ-204 outbox 인터페이스 |
@@ -38,7 +38,7 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
 ---
 
 ### HQ-200 — M1 종료 점검과 M2 Task 분해
-- Status: In Review (2026-11-27) · Risk: 1 (계획 문서) · Role: Coordinator → Reviewer
+- Status: Done (2026-11-27, PR #14) · Risk: 1 (계획 문서) · Role: Coordinator → Reviewer
 - Objective: M1 종료 조건을 근거와 함께 확인해 닫고, M2를 실행 가능한 Task로 나눈다.
 - Background: M1 마지막 Task(HQ-111) 완료, backlog "M1이 끝나면 M2 Task를 상세화한다"
 - Scope: M1 종료 기록(milestone·roadmap·backlog), 이 파일 작성, current-status·changelog, CLAUDE.md §2 현재 단계 문구
@@ -54,13 +54,13 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
 - Risks: CLAUDE.md는 Coordinator 관리 문서(사람 승인)다 — §2 문구 변경을 PR에서 사용자에게 확인받는다
 - Execution Log:
   #### Run 2026-11-27-2
-  - agent_id: claude-code:main (Coordinator) · status: In Review
+  - agent_id: claude-code:main (Coordinator) · status: succeeded
   - result: M1 종료 근거 표(M1 파일 머리말), M2 Task HQ-200~HQ-211
   - 로컬 리뷰: Request Changes (Major 6, Minor 10, Nit 7) → 반영: 의존성 표·backlog 일치, RES-002 §6.1 미결(유실 Stop·재개, timeout 유실 감지)과 세션 생존 판정을 HQ-201에 추가, 끊김 해제 기준 구현 Task(HQ-205) 신설, Capability를 계약·저장·화면(HQ-208~210)으로 분리하고 Bridge 보고를 HQ-203에, Bridge 코어를 pairing(HQ-203)과 outbox(HQ-204)로 분리, Projection 확인을 `apps/api/test`로(의존 방향), 위조 위협 범위를 다른 OS 사용자로 한정하고 같은 사용자 프로세스는 ADR에서 수용 여부 결정, security §4.6·adapter-spec §10 테스트 대응표, allowlist 필드 AC, HQ-211 위험도 3, 승인 공통 문구, 필수 필드(Background·Interfaces·Risks), M1 파일 HQ-103 상태·조건 3 근거 수정
   - 리뷰 지적 중 사실 확인으로 바꾼 것: Runtime 버전은 Envelope `source`가 strict라 Event에 넣을 수 없음 → HQ-208 Snapshot에서 기록
 
 ### HQ-201 — ADR-0007 Local Bridge 구조와 보안 (Proposed)
-- Status: Backlog · Risk: 3 (보안 경계·제품 결정) · Role: Architect → Reviewer(보안)
+- Status: Blocked — ADR-0007 사용자 승인 대기 (2026-11-27 초안 PR) · Risk: 3 (보안 경계·제품 결정) · Role: Architect → Reviewer(보안)
 - Objective: Bridge 구현 전에 프로세스 구조, hook → Bridge 로컬 구간, 자격 증명, 전송·재연결 규칙을 하나의 결정으로 묶는다. 사용자 승인 후 HQ-203~HQ-207이 시작된다.
 - Background: RSK-016("Phase 2 착수 전 Bridge 보안 ADR"), security §4.3, RES-002 §5·§6.1, architecture §5
 - Scope: 다음 항목마다 선택지·장단점·추천을 담은 ADR 초안. 필요하면 저장소 밖 scratch에서 짧은 검증 스파이크(측정값과 삭제 기록 남김)
@@ -80,12 +80,21 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
 - Dependencies: HQ-200. **Accepted는 사용자 승인**(CLAUDE.md §6)
 - Files Expected to Change: `docs/decisions/ADR-0007-local-bridge.md`, `docs/decisions/README.md`, `docs/foundation/architecture.md` 통합 노트, `docs/engineering/security.md` §4.3, `docs/operations/risks.md`(RSK-016), `docs/research/RES-002-claude-code-signals.md` §6.1
 - Acceptance Criteria:
-  - [ ] 위 11개 항목마다 결정(또는 명시적 보류와 이유)이 있다
-  - [ ] 위협(위조 — 다른 OS 사용자·같은 사용자 프로세스, 토큰 유출, Bridge 정지 중 hook)마다 대응 또는 수용 근거가 있다
-  - [ ] hook이 Agent 실행을 막지 않는 조건(종료 코드, timeout, Bridge 부재)이 명시된다
+  - [x] 위 11개 항목마다 결정(또는 명시적 보류와 이유)이 있다
+  - [x] 위협(위조 — 다른 OS 사용자·같은 사용자 프로세스, 토큰 유출, Bridge 정지 중 hook)마다 대응 또는 수용 근거가 있다
+  - [x] hook이 Agent 실행을 막지 않는 조건(종료 코드, timeout, Bridge 부재)이 명시된다
   - [ ] 사용자가 Accepted/수정 결정을 내린다
 - Verification: 위험도 3 기준(보안 검토 포함)
 - Risks: 문서만으로 정할 수 없는 값(timeout, 유예 시간)은 측정 Task(HQ-206)로 넘기고 ADR에 "측정 후 확정"으로 둔다
+- Execution Log:
+  #### Run 2026-11-27-3
+  - agent_id: claude-code:main (Architect) · status: Blocked (사용자 승인 대기)
+  - result: [ADR-0007](../../decisions/ADR-0007-local-bridge.md) 초안. 핵심: 동기 `command` hook이 allowlist 필드만 남겨 소유자 전용 spool에 원자적으로 쓰고, 상주 Bridge가 매핑·순번·outbox(JSONL)·전송, 새 의존성 없음·열린 포트 없음, 같은 OS 사용자 프로세스 위조는 수용 위험, 끊김 해제 기준 현행 유지, 세션 생존은 Stale + 조건부 `ppid` 관찰
+  - 근거 확인: 공식 hooks 문서(2026-11-27, `http` hook 헤더의 `allowedEnvVars`, 실패 비차단, timeout 기본값, 버전 필드 없음), HQ-103 Guard는 폐기·만료에 401
+  - 스파이크: 하지 않음(지연 측정은 HQ-206으로)
+  - 로컬 리뷰(보안 포함): Request Changes (Major 8, Minor 8) → 반영: 유실 표시를 순번 건너뛰기에서 Source 쪽 `event.gap.detected`로(세션 끝·처음 유실도 드러남), spool 항목 ID와 세션 상태를 outbox 한 줄에 함께 기록해 재시작 중복 방지, 400(issues 유무)·403·409·413 처리 규칙과 격리 보관, `BRIDGE_HOME` 시작 검사(lstat·소유자·권한·symlink)·`O_EXCL` tmp·`O_NOFOLLOW`·용량 상한, `dropped` 기록에 stdin 값 대신 해시, 등록 코드를 argv 대신 stdin, 관찰 대상 Agent 자신을 같은 사용자 위협에 명시하고 재검토 조건, 병렬 hook 순서 미확인 → FIFO + 새 Start 규칙, hook stdout 금지, allowlist 구체화, node·경로 절대 고정, `ppid`의 `sh -c` 경우
+  - 재검토: Request Changes(경미, Major 1: 시작 검사를 홈까지 엄격히 적용하면 기본 경로도 거부) → Bridge 소유 경로는 엄격, 상위는 소유자 euid/root + group·other 쓰기 금지 + sticky 예외로 분리. Minor 반영: gap 개수는 `reason` 문자열에(계약에 개수 필드 없음), outbox 스냅샷에 열린 Tool·`not_executed` 대기 포함과 잘린 줄 처리, `dropped.log` `O_APPEND`·inode offset·rename 회전, spool 상한은 `.full` 표시 파일, `pair` 전 유실 한계
+  - HQ-206으로 넘긴 확인: 병렬 hook 동시 실행 여부, `hrtime` 프로세스 간 비교, `ppid`, stdout이 컨텍스트에 들어가는 hook 범위(공식 문서), 지연·상한 값
 
 ### HQ-202 — Claude Code Adapter 매핑 패키지 (순수 함수 + 계약 테스트)
 - Status: Backlog · Risk: 3 (공용 패키지, Event 계약 표현 규약) · Role: Worker → Reviewer
@@ -118,7 +127,7 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
 - Scope: `apps/bridge` 골격(ADR-0007 구조), pairing 명령, 토큰 저장(소유자 전용), heartbeat 루프, Capability 보고(전달 경로는 HQ-208 계약), 폐기·만료 시 전송 중단과 상태 출력, 종료 처리
 - Out of Scope: outbox·Event 전송(HQ-204), hook 명령(HQ-206)
 - Interfaces: Consumes `POST /connections`·heartbeat API, `CLAUDE_CODE_CAPABILITIES` / Produces Bridge 설정·자격 증명 모듈(HQ-204가 사용)
-- Dependencies: HQ-201 Accepted, HQ-202 Capability 선언, 새 의존성 승인(ADR-0007 제안)
+- Dependencies: HQ-201 Accepted, HQ-202 Capability 선언 (ADR-0007 제안대로면 새 의존성 없음)
 - Files Expected to Change: `apps/bridge/**`, 루트 `package.json`·`pnpm-lock.yaml`·`tsconfig.json`·`eslint.config.js`, `docs/engineering/quality-gates.md`(Bridge 테스트 위치)
 - Acceptance Criteria:
   - [ ] 등록 코드로 한 번만 등록되고, 같은 코드 재사용·만료 코드는 거부된다
