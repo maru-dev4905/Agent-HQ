@@ -21,9 +21,8 @@
 ## 3. 사용자 결정 대기
 1. 남은 Open Questions: OQ-5(Orca 등 기존 도구와의 관계), OQ-6(MVP 3D 최소 범위), 명세서 Open Decisions
 2. HQ-005(프로젝트 `.claude/settings.json`, subagent 정의) 도입 여부
-3. RES-005 NFR 목표 수치 제안(NFR-002a) 확정 여부
-4. PR #4에서 물은 결정: `agent.completed → idle` 매핑(domain-model N4), 세션 내 시계 역행 시 시각 우선(event-schema N8), `apps/api`의 `@agent-hq/simulator` devDependency — 머지로 현재 방식 수용으로 간주, 이의가 있으면 새 Task
-5. M2: **ADR-0007 승인**(초안 PR), hook 설치 위치, 실제 Claude Code 세션 관찰 동의(HQ-211), Bridge 새 의존성(ADR-0007 제안대로면 없음)
+3. PR #4에서 물은 결정: `agent.completed → idle` 매핑(domain-model N4), 세션 내 시계 역행 시 시각 우선(event-schema N8), `apps/api`의 `@agent-hq/simulator` devDependency — 머지로 현재 방식 수용으로 간주, 이의가 있으면 새 Task
+4. M2: hook 설치 위치(ADR-0007 Accepted: 프로젝트별 `.claude/settings.local.json`), 실제 Claude Code 세션 관찰 동의(HQ-211), Bridge 새 의존성(ADR-0007 제안대로면 없음)
 
 ## 4. 인계 사항 (직전 세션 → 다음 세션)
 - **M2 시작점**: [M2 파일](../tasks/milestones/M2-local-bridge-claude-code.md). 다음은 HQ-201(ADR-0007 초안, Proposed)과 HQ-202(Adapter 매핑, ADR과 무관하게 병행). Bridge 구현(HQ-203~207)은 ADR-0007 Accepted 뒤에만 시작한다.
