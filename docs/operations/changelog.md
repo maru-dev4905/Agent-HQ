@@ -5,10 +5,14 @@
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
 ## 2026-11-27 (4) — HQ-202 Claude Code Adapter 매핑 (PR)
-- [Added] `packages/adapter-claude-code`: allowlist 필터, hook → Event 매핑(`mapHook`·`expirePending`·`mapDropped`), Capability 선언. 외부 의존성 없음 (adapter-spec N3)
+- [Added] `packages/adapter-claude-code`: allowlist 필터, hook → Event 매핑(`mapHook`·`expirePending`·`mapDropped`·`pruneSessions`), Capability 선언. 외부 의존성 없음 (adapter-spec N3)
 - [Added] `apps/api/test/claude-code-mapping.int.test.ts`. lint 의존 방향: API·Web은 adapter를 import하지 않음(API 테스트만 허용)
 
-## 2026-11-27 (2) — M1 종료, M2 계획 (HQ-200, PR)
+## 2026-11-27 (3) — HQ-201 ADR-0007 초안 (PR #15 머지, ADR은 Proposed)
+- [Added] `docs/decisions/ADR-0007-local-bridge.md`(Proposed): 동기 command hook → 소유자 전용 spool → 상주 Bridge → HQ, 새 의존성·열린 포트 없음
+- [Changed] architecture N8, security §4.3, RSK-016, RES-002 §6.1 진행 기록
+
+## 2026-11-27 (2) — M1 종료, M2 계획 (HQ-200, Done, PR #14)
 - [Changed] M1 Done: 종료 조건 9개의 충족 근거 기록(M1 파일 머리말), roadmap·backlog 갱신
 - [Added] `docs/tasks/milestones/M2-local-bridge-claude-code.md`: HQ-200~HQ-211(ADR-0007 Bridge 구조·보안, Adapter 매핑, Bridge pairing·outbox, HQ 쪽 끊김 규칙 반영, hook 명령, 설치, Capability 계약·저장·화면, 실제 세션 검증)
 

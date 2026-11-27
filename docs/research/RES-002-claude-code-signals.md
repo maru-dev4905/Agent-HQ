@@ -120,5 +120,7 @@ scratch 프로젝트(저장소 밖)의 `.claude/settings.local.json`에만 `asyn
 - **`not_executed` 유예 시간 값**(5.4)과 **D2 길이·해시 선택 필드 추가 여부**(5.2).
 - **연결 끊김 해제 기준**(HQ-108 Open, §6).
 
+> 진행 (2026-11-27): [ADR-0007](../decisions/ADR-0007-local-bridge.md)(Proposed) §Decision 7~10이 위 항목에 답을 제안한다 — 유실 Stop은 새 Start가 이전 열린 실행을 연결 대상에서 빼는 FIFO(병렬 hook 순서는 미확인), timeout 유실은 감지 못함(한계), 상한 초과 유실은 Bridge가 Source 쪽 `event.gap.detected`를 그 위치에 보냄, `not_executed` 유예 5 s로 시작, D2 길이·해시 필드 미추가, 끊김 해제 기준 현행 유지. 측정 값은 HQ-206에서 확정한다.
+
 ## 7. 수집 파일 삭제 기록
 - 2026-11-25T10:23:33Z: scratch 디렉터리 `hq110/`(기록 파일 `log.jsonl` 55줄, scratch 프로젝트와 그 `.claude/settings.local.json`, 기록 스크립트, 실행 출력)를 `rm -rf`로 삭제하고 존재하지 않음을 확인했다. 기록 파일에는 원문 콘텐츠가 없었다(필드 이름·타입·길이, 식별자, 열거형 값만). 저장소에는 아무 실험 데이터도 커밋하지 않았다.
