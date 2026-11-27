@@ -3,6 +3,11 @@ import { connect } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import pg from 'pg';
+// Source import: the root workspace has no dependency on the contracts package.
+import {
+  registerConnectionResponseSchema,
+  type RegisterConnectionResponse,
+} from '../packages/contracts/src/index.js';
 
 /**
  * E2E harness (HQ-111): a dedicated database, a fresh API process per test and the real
@@ -16,11 +21,14 @@ export const API_PORT = 4000;
 export const WEB_PORT = 3100;
 const API_URL = `http://127.0.0.1:${API_PORT}`;
 
-/** `pnpm build` bakes the dashboard's proxy target in; any other target breaks every test. */
+/**
+ * `pnpm build` bakes the dashboard's proxy target in (next.config.ts keeps an empty value and
+ * appends paths to it), so anything but unset or exactly the E2E API breaks every test.
+ */
 export function checkProxyTarget(): void {
   const target = process.env['AGENT_HQ_API_URL'];
-  if (target !== undefined && target !== '' && new URL(target).origin !== API_URL) {
-    throw new Error(`AGENT_HQ_API_URL must be unset or ${API_URL} for the E2E tests`);
+  if (target !== undefined && target !== API_URL) {
+    throw new Error(`AGENT_HQ_API_URL must be unset or exactly ${API_URL} for the E2E tests`);
   }
 }
 
@@ -111,10 +119,7 @@ function portInUse(port: number): Promise<boolean> {
   });
 }
 
-export interface Connection {
-  connectionId: string;
-  token: string;
-}
+export type Connection = RegisterConnectionResponse;
 
 export interface RunningApi {
   register(): Promise<Connection>;
@@ -190,7 +195,7 @@ export async function startApi(settings: Record<string, string> = {}): Promise<R
         body: JSON.stringify({ registrationCode, adapterId: 'simulator', runtime: 'simulator' }),
       });
       if (response.status !== 201) throw new Error(`register: HTTP ${response.status}`);
-      return (await response.json()) as Connection;
+      return registerConnectionResponseSchema.parse(await response.json());
     },
     async heartbeat(connection) {
       const response = await fetch(`${API_URL}/connections/${connection.connectionId}/heartbeat`, {

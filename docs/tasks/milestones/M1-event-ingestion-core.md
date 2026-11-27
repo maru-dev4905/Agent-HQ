@@ -336,6 +336,7 @@
   - 끊김: `failure-gap`의 마지막 `agent.disconnected`를 `--cut-after`로 보내지 않고, 전송 **뒤에** heartbeat 1회 후 중단(임계값 1 s/2 s) → main `알 수 없음`·`연결이 끊긴 뒤 소식이 없음`, Connection `끊김`, Timeline에 `⚠ event.gap.detected` 1건(grace 1 s)
   - 로컬 리뷰: Request Changes (Major 2, Minor 2, Nit 2) → 반영: 끊김 테스트 간헐 실패를 리뷰어가 재현(heartbeat를 Event보다 먼저 보내 2 s 안에 전송이 끝나지 않으면 연결 끊김이 수신보다 먼저 기록돼 Agent가 `작업 중`으로 남음) → heartbeat를 전송 뒤로 옮겨 끊김 기록이 항상 마지막 수신보다 늦게, 기동 중 실패해도 API 프로세스 정리(`stopApi`), `AGENT_HQ_API_URL`이 다른 값이면 즉시 실패, TRUNCATE 전에 `current_database()` 확인·`escapeIdentifier`, 의미 없는 검증 제거, 검증 기록 재측정
   - verification(수정 후): `playwright test --repeat-each 10` 20 passed, `pnpm verify`(단위 197)
+  - PR #13 CodeRabbit 1차: Minor 2 → 반영: `AGENT_HQ_API_URL`은 미설정 또는 정확히 `http://127.0.0.1:4000`만 허용(빈 값·경로 포함 값은 rewrite를 깨뜨림), 등록 응답을 `registerConnectionResponseSchema`로 검증(계약 패키지를 소스 경로로 import, 새 의존성 없음)
 
 ### HQ-112 — 부하 측정 (RES-005)
 - Status: Done (2026-11-26, PR #11 머지 `32d5014`) · Risk: 1 (측정 스크립트·문서) · Role: QA
