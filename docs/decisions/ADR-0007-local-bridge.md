@@ -89,7 +89,8 @@ hook 신호를 **Agent를 막지 않고, Bridge가 꺼져 있어도 잃지 않�
 - **용량 상한(DoS): hook이 직접 지킨다. Bridge가 꺼져 있어도 적용된다.**
   - 항목 하나는 4 KiB 이하다. allowlist를 거친 항목은 수백 바이트이므로 이를 넘으면 쓰지 않는다.
   - hook은 쓰기 전에 `spool/`의 항목 수를 센다(`readdir`). 10,000개 이상이면 쓰지 않고 유실만 기록한다(7항).
-  - 그래서 spool은 최대 약 40 MiB(10,000 × 4 KiB)로 제한된다. 별도 표시 파일이나 카운터가 필요 없어 경쟁도 없다.
+  - 그래서 spool은 최대 약 40 MiB(10,000 × 4 KiB)로 제한된다. 별도 표시 파일이나 카운터가 필요 없다.
+  - 이 상한은 **근사치**다. 세기와 쓰기 사이에 잠금을 두지 않으므로, 동시에 실행된 hook 수만큼 넘을 수 있다(병렬 Tool 호출 수 정도, 수십 개 이하). 잠금은 hook 지연과 교착 위험을 늘리므로 두지 않는다. 목적은 디스크를 채우지 않는 것이라 이 오차로 충분하다.
   - `readdir` 비용(최대 10,000개)은 HQ-206에서 측정한다. 비용이 크면 같은 규칙을 지키는 더 싼 방법으로 바꾸고 기록한다.
   - `dropped.log`는 1 MiB까지 쓴다. 그 위로는 기록되지 않는다(한계).
 
@@ -141,7 +142,9 @@ hook 신호를 **Agent를 막지 않고, Bridge가 꺼져 있어도 잃지 않�
   - `409`(같은 `id` 또는 같은 `idempotencyKey`에 다른 내용): issues 경로(`events.N.id`, `events.N.idempotencyKey`)가 가리키는 Event만 격리한다.
 - 격리 규칙:
   - 격리한 Event는 HQ에 저장되지 않는다.
-  - **격리를 Source 쪽 Gap으로 드러낸다.** Bridge는 격리한 세션마다 `event.gap.detected`(`reason: "bridge_quarantined: <n> event(s)"`, `fromSequence`·`toSequence` = 격리한 순번 범위)를 새 순번으로 만들어 보낸다.
+  - **격리를 Source 쪽 Gap으로 드러낸다.** Bridge는 격리한 순번의 **연속 구간마다** `event.gap.detected`를 새 순번으로 만들어 보낸다.
+    - payload는 `reason: "bridge_quarantined: <n> event(s)"`이고, `fromSequence`·`toSequence`는 그 구간이다.
+    - 예: 3, 4, 7이 격리되면 `3~4`와 `7~7` 두 개를 보낸다. 범위 하나로 합치면 격리되지 않은 5, 6까지 유실로 보이기 때문이다.
     - 세션의 마지막 Event가 격리되어 뒤따르는 Event가 없을 때도 유실이 보인다.
     - 같은 구멍을 HQ의 Gap 감지도 따로 기록할 수 있다. 중복 표시는 숨김보다 낫다. 실제 동작은 HQ-204 테스트로 확인해 기록한다.
     - 이 gap Event 자체가 격리되면 다시 만들지 않는다. `status`의 격리 개수로만 드러난다.
