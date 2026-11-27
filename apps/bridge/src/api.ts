@@ -25,7 +25,13 @@ export type ApiResult<T> =
   /** Any other refusal: retrying the same request gives the same answer. */
   | { kind: 'rejected'; status: number };
 
-/** Rejects addresses that could leak the token: credentials in the URL, non-HTTP schemes. */
+const LOOPBACK = new Set(['127.0.0.1', '[::1]', 'localhost']);
+
+/**
+ * Rejects addresses that could leak the token: credentials in the URL, non-HTTP schemes,
+ * and plain HTTP to anything but this machine (TLS may be skipped only on loopback,
+ * security §4.3).
+ */
 export function parseApiUrl(raw: string): string {
   let url: URL;
   try {
@@ -35,6 +41,9 @@ export function parseApiUrl(raw: string): string {
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error('--api must use http or https');
+  }
+  if (url.protocol === 'http:' && !LOOPBACK.has(url.hostname)) {
+    throw new Error('--api over http must be a loopback address; use https for other hosts');
   }
   if (url.username !== '' || url.password !== '') {
     throw new Error('--api must not contain credentials');
@@ -56,10 +65,15 @@ async function call<T>(
   init: RequestInit,
   parse: (body: unknown) => T,
   timeoutMs: number,
+  cancel?: AbortSignal,
 ): Promise<ApiResult<T>> {
   let response: Response;
+  const timeout = AbortSignal.timeout(timeoutMs);
   try {
-    response = await doFetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+    response = await doFetch(url, {
+      ...init,
+      signal: cancel === undefined ? timeout : AbortSignal.any([cancel, timeout]),
+    });
   } catch (error) {
     const name = error instanceof Error ? error.name : 'Error';
     return { kind: 'retry', reason: name === 'TimeoutError' ? 'timeout' : 'unreachable' };
@@ -110,6 +124,7 @@ export function register(
 export function heartbeat(
   doFetch: typeof fetch,
   credentials: Credentials,
+  cancel?: AbortSignal,
 ): Promise<ApiResult<HeartbeatResponse>> {
   return call(
     doFetch,
@@ -117,5 +132,6 @@ export function heartbeat(
     { method: 'POST', headers: { authorization: `Bearer ${credentials.token}` } },
     (body) => heartbeatResponseSchema.parse(body),
     TIMEOUT_MS,
+    cancel,
   );
 }

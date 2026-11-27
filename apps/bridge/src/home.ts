@@ -1,5 +1,5 @@
 import { chmodSync, lstatSync, mkdirSync, realpathSync, type Stats } from 'node:fs';
-import { basename, dirname, isAbsolute, join } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 
 /**
  * Bridge home and its security checks (ADR-0007 §2). Everything the Bridge keeps lives
@@ -94,7 +94,8 @@ export function checkOwnedFile(path: string, euid: number): void {
  * user could swap a directory on the way.
  */
 export function checkAncestors(firstOwned: string, euid: number, allowMissing = false): void {
-  // `/tmp` is a symlink on macOS: check the real directories, not the link.
+  // `/tmp` is a symlink on macOS: check the real directories, not the link. Callers pass
+  // paths from `resolvePaths`, so this is already the real location.
   let dir = realpathSync(dirname(firstOwned));
   let child = join(dir, basename(firstOwned));
   for (;;) {
@@ -118,16 +119,53 @@ export function checkAncestors(firstOwned: string, euid: number, allowMissing = 
   }
 }
 
-/** Every check without creating anything (hook command, `status`). */
-export function checkHome(paths: BridgePaths, euid: number): void {
+/**
+ * Rebuilds the paths on the real location of the Bridge's parent directory. Every later
+ * operation uses these, so a symlink on the way (for example under `/tmp`) that someone
+ * swaps after the checks no longer redirects where the token and spool go.
+ */
+export function resolvePaths(paths: BridgePaths): BridgePaths {
+  const [first] = paths.owned;
+  if (first === undefined) throw new Error('no Bridge directories');
+  const parent = dirname(first);
+  let real: string;
+  try {
+    real = realpathSync(parent);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new InsecurePathError(parent, 'does not exist (create it first)');
+    }
+    throw error;
+  }
+  if (real === parent) return paths;
+  const move = (path: string) => join(real, relative(parent, path));
+  return {
+    owned: paths.owned.map(move),
+    home: move(paths.home),
+    spool: move(paths.spool),
+    spoolTmp: move(paths.spoolTmp),
+    outbox: move(paths.outbox),
+    credentials: move(paths.credentials),
+    droppedLog: move(paths.droppedLog),
+  };
+}
+
+/** Every check without creating anything (hook command, `status`). Returns the real paths. */
+export function checkHome(input: BridgePaths, euid: number): BridgePaths {
+  const paths = resolvePaths(input);
   const [first] = paths.owned;
   if (first === undefined) throw new Error('no Bridge directories');
   checkAncestors(first, euid);
   for (const dir of paths.owned) checkOwnedDir(dir, euid);
+  return paths;
 }
 
-/** Creates missing directories as 0700 (regardless of umask), then checks everything. */
-export function ensureHome(paths: BridgePaths, euid: number): void {
+/**
+ * Creates missing directories as 0700 (regardless of umask), then checks everything.
+ * Returns the real paths, which callers must use from then on.
+ */
+export function ensureHome(input: BridgePaths, euid: number): BridgePaths {
+  const paths = resolvePaths(input);
   const [first] = paths.owned;
   if (first === undefined) throw new Error('no Bridge directories');
   // Check the way there before creating anything under it, and again after: a directory
@@ -142,4 +180,5 @@ export function ensureHome(paths: BridgePaths, euid: number): void {
     checkOwnedDir(dir, euid);
   }
   checkAncestors(first, euid);
+  return paths;
 }

@@ -4,7 +4,7 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-27 (5) — ADR-0007 Accepted, HQ-203 Bridge pairing (진행)
+## 2026-11-27 (5) — ADR-0007 Accepted, HQ-203 Bridge pairing (PR)
 - [Changed] ADR-0007 Accepted(사용자 승인). architecture N8, security §4.3·T10, RSK-016 갱신. HQ-201·HQ-202 Done
 - [Added] `apps/bridge`: 경로 보안 검사, 자격 증명(0600), 등록·heartbeat, `pair`(코드는 stdin)·`run`·`status`. 새 외부 의존성 없음
 

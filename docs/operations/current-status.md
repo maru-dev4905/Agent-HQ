@@ -13,7 +13,7 @@
 ## 2. 진행 중 / 대기
 | Task | 상태 | 비고 |
 |---|---|---|
-| HQ-203 Bridge pairing·heartbeat | In Progress | 브랜치 `hq-203-bridge-pairing`, risk:3. G4 미실행(Docker 꺼짐) |
+| HQ-203 Bridge pairing·heartbeat | In Review | 브랜치 `hq-203-bridge-pairing`, risk:3 |
 | HQ-114 Gap 증분 검사 | Backlog (보류) | 정상 상태 Gap 감지가 충분히 빠름 |
 | HQ-005 Claude Code 설정 | Backlog | 설정 변경 승인 필요 |
 

@@ -132,7 +132,7 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
   - PR #16 CodeRabbit 1차: CHANGES_REQUESTED (Major 3, Minor 8) → 반영(단위 34, `pnpm verify` 231, `pnpm test:integration` 72): 중복 PreToolUse는 진행 신호가 아님, 거부된 SessionEnd는 `endedAt`을 남기지 않음·SessionStart가 `endedAt`을 지움, 권한 요청 후보에 이미 표시된 호출 포함, 재전달 batch는 첫 마감 유지, 모르는 hook은 세션을 만들지 않음, own property 조회·`__proto__` ID 거부, 통합 테스트 teardown이 시작 실패에도 DB 연결 해제, N3에 중복 판정·정리 범위 명시
 
 ### HQ-203 — Local Bridge: Pairing·자격 증명·heartbeat·Capability 보고
-- Status: In Progress (2026-11-27) · Risk: 3 (자격 증명, 신규 앱) · Role: Worker → Reviewer(보안)
+- Status: In Review (2026-11-27) · Risk: 3 (자격 증명, 신규 앱) · Role: Worker → Reviewer(보안)
 - Objective: Bridge가 등록 코드로 HQ에 연결해 토큰을 안전하게 보관하고, heartbeat와 Capability를 보고하며, 폐기·만료를 올바르게 처리한다.
 - Background: security §4.3·§4.6(Local Bridge pairing, Token expiration/revocation), HQ-103, ADR-0007 5·6
 - Scope: `apps/bridge` 골격(ADR-0007 구조), pairing 명령, 토큰 저장(소유자 전용), heartbeat 루프, Capability 보고(전달 경로는 HQ-208 계약), 폐기·만료 시 전송 중단과 상태 출력, 종료 처리
@@ -141,18 +141,20 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
 - Dependencies: HQ-201 Accepted, HQ-202 Capability 선언 (ADR-0007 제안대로면 새 의존성 없음)
 - Files Expected to Change: `apps/bridge/**`, 루트 `package.json`·`pnpm-lock.yaml`·`tsconfig.json`·`eslint.config.js`, `docs/engineering/quality-gates.md`(Bridge 테스트 위치)
 - Acceptance Criteria:
-  - [ ] 등록 코드로 한 번만 등록되고, 같은 코드 재사용·만료 코드는 거부된다
-  - [ ] 토큰 파일이 소유자 전용 권한이고, 토큰이 로그·오류 메시지에 없다
-  - [ ] heartbeat를 멈추면 Query API에서 Connection `disconnected`, Agent `unknown`이 된다(HQ-108)
-  - [ ] 토큰을 폐기(`admin revoke`)하거나 만료되면 Bridge가 전송을 멈추고 재등록이 필요하다고 알린다
+  - [x] 등록 코드로 한 번만 등록되고, 같은 코드 재사용·만료 코드는 거부된다
+  - [x] 토큰 파일이 소유자 전용 권한이고, 토큰이 로그·오류 메시지에 없다
+  - [x] heartbeat를 멈추면 Query API에서 Connection `disconnected`, Agent `unknown`이 된다(HQ-108)
+  - [x] 토큰을 폐기(`admin revoke`)하거나 만료되면 Bridge가 전송을 멈추고 재등록이 필요하다고 알린다
 - Verification: 위험도 3 기준 + G4(Bridge ↔ 실제 API)
 - Risks: Bridge 테스트를 CI에 넣으려면 workflow 변경 승인이 필요하다
 - 범위 변경: **Capability 보고는 HQ-209로 옮긴다.** 전달 계약(HQ-208)이 아직 없고, 등록 요청 스키마가 strict라 미정 필드를 보낼 수 없다. `apps/api/package.json`(devDependency `@agent-hq/bridge`), `vitest.shared.ts`·`vitest.config.ts`·`tsconfig.test.json`(테스트 경로), `apps/api/test/bridge.int.test.ts`(G4 — Bridge를 실제 API에 HTTP로 연결)
 - Execution Log:
   #### Run 2026-11-27-6
-  - agent_id: claude-code:main (Worker) · status: In Progress
+  - agent_id: claude-code:main (Worker) · status: In Review
   - result: `apps/bridge` — `home.ts`(경로 보안 검사: Bridge 소유 경로 엄격, 상위는 소유자 euid/root·group/other 쓰기 금지·sticky 예외, 생성 전후 재검사), `credentials.ts`(0600 `O_EXCL` tmp + rename, 읽을 때 소유자·권한 검사), `api.ts`(등록·heartbeat, 응답 분류: 401·403·429/503·5xx·기타, 본문을 메시지에 넣지 않음, `--api` URL 검사), `heartbeat.ts`(15 s, full jitter 백오프, `Retry-After`, 401·404 → 정지, 403 → 느린 재시도), `cli.ts`(`pair`는 코드를 stdin으로, `--replace` 없이는 덮어쓰지 않음, `run`, `status`). 새 외부 의존성 없음(`@agent-hq/contracts`만)
-  - verification: 단위 20개(`apps/bridge/src/*.test.ts`), `pnpm verify`(단위 251). **G4 미실행**: Docker Desktop이 꺼져 있어 PostgreSQL에 연결할 수 없음 — `apps/api/test/bridge.int.test.ts` 3개(1회 등록·재사용/만료 코드 거부, heartbeat → connected, 침묵 → disconnected·unknown, 폐기 → 정지·재등록 안내)는 아직 실행하지 않음
+  - verification: Docker를 켠 뒤 `pnpm test:integration`(75, Bridge 3 포함) 통과
+  - 로컬 리뷰(보안 포함): Request Changes (Major 2, Minor 9, Nit 5) → 반영: 경로 중간 symlink를 바꿔치기해 상위 검사를 우회하던 문제 → `resolvePaths`로 실제 경로를 확정해 그 뒤 모든 작업에 사용, `pair` 입력을 EOF 대신 한 줄(Enter)로·TTY면 stderr 프롬프트, http는 loopback만(원격은 https), `Retry-After: 0` 하한 1 s, heartbeat 송신 예외에도 루프 유지, stop→start 때 이전 beat 무시(generation), Ctrl-C는 `run`에서만 정상 종료 처리·진행 중 fetch 취소, 상태가 바뀔 때만 출력, 자격 증명 tmp 정리·rename 실패 시 삭제, `credentials.json`은 `O_NOFOLLOW`+`fstat`, 만료 토큰 통합 테스트, 인자 오류에 입력값을 출력하지 않음, `run`도 디렉터리 생성(ADR §2), `--help` 종료 코드 0, `--replace` 안내 문구
+  - verification(수정 후): 단위 29개(`apps/bridge`), `pnpm verify`(단위 260), `pnpm test:integration`(77, Bridge 5: 1회 등록·재사용/만료 코드 거부, heartbeat → connected·침묵 → disconnected·unknown, 정상 상태는 한 번만 출력, 만료 → 정지, 폐기 → 정지·재등록 안내)
 
 ### HQ-204 — Local Bridge: Outbox·전송·재연결
 - Status: Backlog · Risk: 3 (Event 유실·중복 경로) · Role: Worker → Reviewer

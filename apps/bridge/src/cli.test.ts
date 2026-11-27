@@ -1,11 +1,20 @@
-import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parseApiUrl } from './api.js';
 import { runCli, type CliIo } from './cli.js';
 import { readCredentials } from './credentials.js';
-import { backoffMs, HeartbeatLoop, type HeartbeatState } from './heartbeat.js';
+import { backoffMs, HeartbeatLoop, type HeartbeatDeps, type HeartbeatState } from './heartbeat.js';
 import { bridgePaths } from './home.js';
 
 const euid = process.geteuid?.() ?? -1;
@@ -113,6 +122,11 @@ describe('parseApiUrl', () => {
     expect(() => parseApiUrl('http://u:p@127.0.0.1:4000')).toThrow(/credentials/);
     expect(() => parseApiUrl('file:///etc/passwd')).toThrow(/http/);
     expect(() => parseApiUrl('http://127.0.0.1:4000/?x=1')).toThrow(/query/);
+    // The token must not travel in clear text beyond this machine.
+    expect(() => parseApiUrl('http://hq.example.com')).toThrow(/loopback/);
+    expect(parseApiUrl('https://hq.example.com')).toBe('https://hq.example.com');
+    expect(parseApiUrl('http://localhost:4000')).toBe('http://localhost:4000');
+    expect(parseApiUrl('http://[::1]:4000')).toBe('http://[::1]:4000');
   });
 });
 
@@ -201,6 +215,99 @@ describe('HeartbeatLoop (ADR-0007 §6)', () => {
     expect(backoffMs(0, 60_000, () => 0)).toBe(1000);
     expect(backoffMs(10, 60_000, () => 0.999)).toBe(59_940);
     expect(backoffMs(3, 60_000, () => 0.5)).toBe(4000);
+  });
+});
+
+describe('HeartbeatLoop robustness (review)', () => {
+  const base = (
+    s: ReturnType<typeof scheduler>,
+    send: () => Promise<never> | Promise<unknown>,
+  ) => ({
+    send: send as HeartbeatDeps['send'],
+    intervalMs: 15_000,
+    maxBackoffMs: 60_000,
+    now: () => new Date(),
+    random: () => 0,
+    setTimer: s.setTimer,
+    clearTimer: s.clearTimer,
+  });
+
+  it('never retries immediately on Retry-After: 0', async () => {
+    const s = scheduler();
+    const loop = new HeartbeatLoop({
+      ...base(s, () => Promise.resolve({ kind: 'retry', reason: 'HTTP 503', retryAfterMs: 0 })),
+      onState: () => undefined,
+    });
+    loop.start();
+    await s.next();
+    expect(s.queue.map((q) => q.ms)).toEqual([1000]);
+    loop.stop();
+  });
+
+  it('keeps going when sending throws', async () => {
+    const s = scheduler();
+    const states: HeartbeatState[] = [];
+    const loop = new HeartbeatLoop({
+      ...base(s, () => Promise.reject(new Error('boom'))),
+      onState: (x) => states.push(x),
+    });
+    loop.start();
+    await s.next();
+    expect(states).toEqual([{ kind: 'retrying', reason: 'internal error', nextInMs: 1000 }]);
+    expect(s.queue).toHaveLength(1);
+    loop.stop();
+  });
+
+  it('ignores a beat still in flight from before a stop and restart', async () => {
+    const s = scheduler();
+    let release: (value: unknown) => void = () => undefined;
+    const loop = new HeartbeatLoop({
+      ...base(s, () => new Promise((resolve) => (release = resolve))),
+      onState: () => undefined,
+    });
+    loop.start();
+    const first = s.queue.shift();
+    first?.fn(); // beat in flight
+    loop.stop();
+    loop.start(); // schedules a new beat at 0
+    release({ kind: 'ok', value: {} }); // the old beat answers late
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Only the new loop's beat is pending: the late answer scheduled nothing.
+    expect(s.queue.map((q) => q.ms)).toEqual([0]);
+    loop.stop();
+  });
+});
+
+describe('cli details (review)', () => {
+  it('--help prints usage and succeeds', async () => {
+    await runCli(['--help'], io(registered));
+    expect(out.join('')).toContain('Usage: agent-hq-bridge');
+  });
+
+  it('does not echo an unexpected argument (it may be a code)', async () => {
+    const error = await runCli(['pair', '--code', 'hqr_typed_secret'], io(registered)).catch(
+      (e: unknown) => e,
+    );
+    expect(String(error)).not.toContain('hqr_typed_secret');
+  });
+
+  it('removes credential temp files left by an interrupted write', async () => {
+    await runCli(['pair'], io(registered));
+    const paths = bridgePaths({ AGENT_HQ_BRIDGE_HOME: join(root, 'home') }, root);
+    const leftover = join(paths.home, 'credentials.json.123.abcdef.tmp');
+    writeFileSync(leftover, TOKEN, { mode: 0o600 });
+    await runCli(['pair', '--replace'], io(registered));
+    expect(existsSync(leftover)).toBe(false);
+  });
+
+  it('refuses credentials.json replaced by a symlink', async () => {
+    await runCli(['pair'], io(registered));
+    const paths = bridgePaths({ AGENT_HQ_BRIDGE_HOME: join(root, 'home') }, root);
+    const elsewhere = join(root, 'elsewhere.json');
+    writeFileSync(elsewhere, readFileSync(paths.credentials), { mode: 0o600 });
+    rmSync(paths.credentials);
+    symlinkSync(elsewhere, paths.credentials);
+    expect(() => readCredentials(paths, euid)).toThrow(/symlink/);
   });
 });
 

@@ -2,6 +2,7 @@ import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -102,6 +103,28 @@ describe('ensureHome and checkHome (ADR-0007 §2)', () => {
 
   it('checkHome fails when the directories were never created', () => {
     expect(() => checkHome(custom(join(root, 'missing')), euid)).toThrow(/does not exist/);
+  });
+});
+
+describe('symlinks on the way (review M1)', () => {
+  it('uses the real location, so swapping a link afterwards redirects nothing', () => {
+    const real = join(root, 'real');
+    mkdirSync(real, { mode: 0o700 });
+    const link = join(root, 'link');
+    symlinkSync(real, link);
+    const paths = ensureHome(custom(join(link, 'home')), euid);
+    expect(paths.home).toBe(join(realpathSync(real), 'home'));
+    expect(paths.credentials.startsWith(realpathSync(real))).toBe(true);
+    // The link now points elsewhere; the resolved paths do not follow it.
+    const other = join(root, 'other');
+    mkdirSync(other, { mode: 0o700 });
+    rmSync(link);
+    symlinkSync(other, link);
+    expect(checkHome(paths, euid).home).toBe(paths.home);
+  });
+
+  it('reports a missing parent of a custom home plainly', () => {
+    expect(() => ensureHome(custom(join(root, 'nope', 'home')), euid)).toThrow(/does not exist/);
   });
 });
 

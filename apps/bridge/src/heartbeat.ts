@@ -36,31 +36,42 @@ export class HeartbeatLoop {
   private timer: unknown;
   private failures = 0;
   private running = false;
+  /** Bumped on every start/stop, so a beat still in flight from an earlier run is ignored. */
+  private generation = 0;
 
   constructor(private readonly deps: HeartbeatDeps) {}
 
   start(): void {
     if (this.running) return;
     this.running = true;
+    this.generation += 1;
     this.schedule(0);
   }
 
   stop(): void {
     if (!this.running) return;
     this.running = false;
+    this.generation += 1;
     if (this.timer !== undefined) this.deps.clearTimer(this.timer);
     this.timer = undefined;
     this.deps.onState({ kind: 'stopped' });
   }
 
   private schedule(ms: number): void {
-    this.timer = this.deps.setTimer(() => void this.beat(), ms);
+    const generation = this.generation;
+    this.timer = this.deps.setTimer(() => void this.beat(generation), ms);
   }
 
-  private async beat(): Promise<void> {
+  private async beat(generation: number): Promise<void> {
     this.timer = undefined;
-    const result = await this.deps.send();
-    if (!this.running) return;
+    let result: Awaited<ReturnType<HeartbeatDeps['send']>>;
+    try {
+      result = await this.deps.send();
+    } catch {
+      // A bug or unexpected failure in sending must not end the loop silently.
+      result = { kind: 'retry', reason: 'internal error' };
+    }
+    if (!this.running || generation !== this.generation) return;
     switch (result.kind) {
       case 'ok':
         this.failures = 0;
@@ -79,7 +90,7 @@ export class HeartbeatLoop {
       case 'rejected': {
         const delay =
           result.kind === 'retry' && result.retryAfterMs !== undefined
-            ? Math.min(result.retryAfterMs, this.deps.maxBackoffMs)
+            ? Math.max(1000, Math.min(result.retryAfterMs, this.deps.maxBackoffMs))
             : backoffMs(this.failures, this.deps.maxBackoffMs, this.deps.random);
         this.failures += 1;
         const reason = result.kind === 'retry' ? result.reason : `HTTP ${result.status}`;

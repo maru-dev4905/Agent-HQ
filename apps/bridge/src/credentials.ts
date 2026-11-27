@@ -1,14 +1,18 @@
 import { randomBytes } from 'node:crypto';
 import {
   closeSync,
+  constants,
+  fstatSync,
   fsyncSync,
   openSync,
+  readdirSync,
   readFileSync,
   renameSync,
-  unlinkSync,
+  rmSync,
   writeSync,
 } from 'node:fs';
-import { checkOwnedFile, type BridgePaths } from './home.js';
+import { join } from 'node:path';
+import { InsecurePathError, type BridgePaths } from './home.js';
 
 /**
  * The connection token, stored only in `<BRIDGE_HOME>/credentials.json` (0600, ADR-0007 §5).
@@ -50,29 +54,59 @@ function parse(text: string): Credentials {
 
 /** Returns null when the Bridge is not paired yet. Refuses a file others could read. */
 export function readCredentials(paths: BridgePaths, euid: number): Credentials | null {
-  let text: string;
+  let fd: number;
   try {
-    checkOwnedFile(paths.credentials, euid);
-    text = readFileSync(paths.credentials, 'utf8');
+    // O_NOFOLLOW: a symlink in place of the file is refused rather than followed.
+    fd = openSync(paths.credentials, constants.O_RDONLY | constants.O_NOFOLLOW);
   } catch (error) {
-    if (error instanceof Error && error.message.endsWith('does not exist')) return null;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return null;
+    if (code === 'ELOOP') throw new InsecurePathError(paths.credentials, 'is a symlink');
     throw error;
   }
-  return parse(text);
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile()) throw new InsecurePathError(paths.credentials, 'is not a regular file');
+    if (stat.uid !== euid)
+      throw new InsecurePathError(paths.credentials, 'is owned by another user');
+    if ((stat.mode & 0o077) !== 0) {
+      throw new InsecurePathError(
+        paths.credentials,
+        'is accessible by group or others (expected 0600)',
+      );
+    }
+    return parse(readFileSync(fd, 'utf8'));
+  } finally {
+    closeSync(fd);
+  }
+}
+
+const TMP_PATTERN = /^credentials\.json\.\d+\.[0-9a-f]+\.tmp$/;
+
+/** Removes temporary credential files left by an interrupted write (they hold a token). */
+export function removeStaleCredentialTmp(paths: BridgePaths): void {
+  for (const name of readdirSync(paths.home)) {
+    if (TMP_PATTERN.test(name)) rmSync(join(paths.home, name), { force: true });
+  }
 }
 
 /** Writes atomically: a new 0600 file (never an existing one), then rename over the old. */
 export function writeCredentials(paths: BridgePaths, credentials: Credentials): void {
-  const tmp = `${paths.credentials}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
+  const tmp = join(
+    paths.home,
+    `credentials.json.${process.pid}.${randomBytes(6).toString('hex')}.tmp`,
+  );
   const fd = openSync(tmp, 'wx', 0o600);
   try {
-    writeSync(fd, `${JSON.stringify(credentials)}\n`);
-    fsyncSync(fd);
+    try {
+      writeSync(fd, `${JSON.stringify(credentials)}\n`);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    renameSync(tmp, paths.credentials);
   } catch (error) {
-    closeSync(fd);
-    unlinkSync(tmp);
+    rmSync(tmp, { force: true });
     throw error;
   }
-  closeSync(fd);
-  renameSync(tmp, paths.credentials);
 }

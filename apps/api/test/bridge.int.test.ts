@@ -125,9 +125,9 @@ async function pair(code: string) {
 }
 
 /** Runs the Bridge until `until` holds for its output, then stops it. */
-async function runUntil(until: (out: string) => boolean) {
+async function runUntil(until: (out: string) => boolean, extra: Partial<CliIo> = {}) {
   const stop = new AbortController();
-  const io = bridgeIo({ stopSignal: stop.signal });
+  const io = bridgeIo({ stopSignal: stop.signal, ...extra });
   const running = runCli(['run'], io).catch((error: unknown) => error);
   for (let i = 0; i < 200 && !until(io.out.join('')); i++) {
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -210,6 +210,31 @@ describe('Bridge pairing and heartbeat (HQ-203)', () => {
       (await api().inject({ method: 'GET', url: '/workspaces/local/agents' })).json(),
     ).agents;
     expect(agents.map((a) => a.observedStatus)).toEqual(['unknown']);
+  });
+
+  it('prints connected once, not on every heartbeat', async () => {
+    await pair(await registrationCode());
+    let beats = 0;
+    const counting: typeof fetch = (input, init) => {
+      beats += 1;
+      return fetch(input, init);
+    };
+    const { io } = await runUntil(() => beats >= 4, { fetch: counting });
+    expect(beats).toBeGreaterThanOrEqual(4);
+    const connectedLines = io.out
+      .join('')
+      .split('\n')
+      .filter((l) => l.startsWith('connected'));
+    expect(connectedLines).toHaveLength(1);
+  });
+
+  it('stops and asks to pair again once the token has expired', async () => {
+    await pair(await registrationCode());
+    // Connection tokens live 30 days by default (CONNECTION_TOKEN_TTL_DAYS).
+    now = new Date(now.getTime() + 31 * 86_400_000);
+    const { io, result } = await runUntil((out) => out.includes('revoked or has expired'));
+    expect(String(result)).toMatch(/pair again/);
+    expect(io.out.join('')).not.toContain(readCredentials(paths(), euid)?.token);
   });
 
   it('stops and asks to pair again once the token is revoked', async () => {
