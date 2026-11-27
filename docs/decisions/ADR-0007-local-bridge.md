@@ -86,16 +86,20 @@ hook 신호를 **Agent를 막지 않고, Bridge가 꺼져 있어도 잃지 않�
   - **HQ 표시는 관찰 대상 Agent에 대해 무결성을 보장하지 않는다.** 관찰 기록이지 증명이 아니다. 이 문구를 security §4.3과 사용자 안내에 둔다.
   - 위조 항목은 일반 Event와 같이 데이터로만 처리된다. 텍스트로만 렌더링하고(T5), 크기·rate limit을 건다(T8).
   - **재검토 조건:** 이 수용은 M5 제어 명령(HQ가 로컬에서 실행)이나 Cloud 연결을 도입할 때 다시 결정한다. Event가 실행을 일으키기 시작하면 위조의 영향이 달라진다.
-- **용량 상한(DoS):** spool은 항목 10,000개 또는 50 MiB, `dropped.log`는 1 MiB로 시작한다.
-  - 상한을 넘으면 hook은 쓰지 않고 유실만 기록한다(7항).
-  - hook은 매번 디렉터리를 세지 않는다. Bridge가 상한 상태를 `spool/.full` 표시 파일로 갱신하고, hook은 그 파일이 있는지만 본다. Bridge가 꺼져 있는 동안에는 상한이 갱신되지 않으므로, hook이 `spool/.count`를 대략적으로 증가시키는 방식은 HQ-206에서 측정해 정한다.
-  - `dropped.log`도 가득 차면 그 뒤 유실은 기록되지 않는다(한계). 값은 HQ-206에서 조정한다.
+- **용량 상한(DoS): hook이 직접 지킨다. Bridge가 꺼져 있어도 적용된다.**
+  - 항목 하나는 4 KiB 이하다. allowlist를 거친 항목은 수백 바이트이므로 이를 넘으면 쓰지 않는다.
+  - hook은 쓰기 전에 `spool/`의 항목 수를 센다(`readdir`). 10,000개 이상이면 쓰지 않고 유실만 기록한다(7항).
+  - 그래서 spool은 최대 약 40 MiB(10,000 × 4 KiB)로 제한된다. 별도 표시 파일이나 카운터가 필요 없어 경쟁도 없다.
+  - `readdir` 비용(최대 10,000개)은 HQ-206에서 측정한다. 비용이 크면 같은 규칙을 지키는 더 싼 방법으로 바꾸고 기록한다.
+  - `dropped.log`는 1 MiB까지 쓴다. 그 위로는 기록되지 않는다(한계).
 
 **3. 매핑 위치와 allowlist**
 - hook 명령: 상태 없이 **allowlist 필드만** 남기고 나머지는 디스크에 쓰기 전에 버린다.
   - allowlist 목록은 HQ-202 계약(`packages/adapter-claude-code`)에 정의하고, hook 스크립트가 그 목록을 쓴다.
-  - 남기는 것은 식별자·열거형·숫자다. 예: `session_id`, `hook_event_name`, `agent_id`, `agent_type`, `tool_name`, `tool_use_id`, `mcp_server.name`, `duration_ms`, `is_interrupt`, `notification_type`, `reason`의 열거형 값, `source`, `tool_calls[].tool_use_id`.
-  - **자유 텍스트는 전부 버린다.** D2(`prompt`, `tool_input`, `tool_response`, `last_assistant_message`), `error`, `error_details`, `Notification.message`, `PermissionDenied.reason`, 경로(`cwd`, `transcript_path`)가 여기에 든다.
+  - 남기는 것은 식별자·열거형·숫자다. 예: `session_id`, `hook_event_name`, `agent_id`, `agent_type`, `tool_name`, `tool_use_id`, `mcp_server.name`, `duration_ms`, `is_interrupt`, `notification_type`, `reason`의 열거형 값, `source`, `tool_calls[].tool_use_id`·`tool_name`.
+  - **자유 텍스트는 전부 버린다.** D2(`prompt`, `tool_input`, `tool_response`, `last_assistant_message`), `PostToolUseFailure.error`, `error_details`, `Notification.message`, `PermissionDenied.reason`, 경로(`cwd`, `transcript_path`)가 여기에 든다.
+  - `StopFailure.error`는 자유 텍스트가 아니라 실패 종류(matcher 값, 예: `rate_limit`)이므로 토큰으로 남긴다(RES-002 §4).
+  - 목록에 있는 필드라도 값이 토큰 모양(공백·경로 구분자 없음, 100자 이하)이 아니면 버린다. Runtime ID에는 `:`도 허용하지 않는다(멱등 키 구분).
   - 남긴 항목에 `capturedAt`(ms wall clock), `hrtime`, `ppid`(9항)를 붙인다.
   - `ppid`는 spool에만 두고 HQ Event로는 보내지 않는다(Envelope `source`가 strict).
 - 상태가 필요한 매핑은 Bridge가 HQ-202 `mapHook`으로 한다. 세션 순번, subagent 실행 순번, 열린 Tool 호출이 여기에 든다.
@@ -107,14 +111,19 @@ hook 신호를 **Agent를 막지 않고, Bridge가 꺼져 있어도 잃지 않�
   - 원본 spool 파일 이름(`spoolId`). Event를 하나도 만들지 않는 항목도 줄을 남긴다.
   - 그 항목이 만든 Event들
   - 그 시점의 세션 상태 스냅샷: 다음 순번, subagent 실행 순번, 열린 Tool 호출, `not_executed` 확정을 기다리는 호출
-- 줄을 append한 뒤 바로 spool 파일을 지운다. 그래서 재시작할 때 중복 여부는 **마지막 줄의 `spoolId`만** 확인하면 된다.
+- Bridge는 항목을 **하나씩 차례로** 처리한다. 줄을 append한 뒤 바로 spool 파일을 지우고, 그다음 항목이나 타이머로 넘어간다.
+  - 그래서 재시작할 때 중복 여부는 **마지막 spool 줄**(`spoolId`가 `timer:`로 시작하지 않는 마지막 줄)의 `spoolId`만 확인하면 된다.
+  - 타이머 줄은 spool 파일을 지운 뒤에만 append되므로, 둘 사이에 끼어들 수 없다.
 - 재시작 순서:
   1. 잘린 마지막 줄(JSON 파싱 실패)은 버리고, 그 항목은 처리하지 않은 것으로 다룬다.
   2. 마지막 온전한 줄의 상태로 이어 간다.
   3. spool에 그 `spoolId`가 남아 있으면 다시 매핑하지 않고 지운다.
 - `not_executed`는 spool 항목이 아니라 타이머로 생긴다. 타이머가 만료되면 Bridge가 `spoolId: "timer:<호출 ID>"` 줄을 같은 방식으로 append한다.
   - 그래서 "outbox에는 썼지만 spool을 지우기 전에 죽은" 경우에도 같은 항목이 새 순번(= 새 멱등 키)으로 두 번 나가지 않는다(RES-002 §5.5의 세션 이벤트 키는 순번을 포함한다).
-- 전송 cursor는 별도 파일에 원자적으로(tmp + rename) 갱신한다. 전송이 끝난 세그먼트는 7일 뒤 삭제한다.
+- 전송 cursor는 별도 파일에 원자적으로(tmp + rename) 갱신한다.
+- 세그먼트는 1 MiB마다 새로 연다. 전송이 끝난 **이전** 세그먼트는 7일 뒤 삭제한다.
+  - **가장 최근 세그먼트는 삭제하지 않는다.** 그 마지막 줄이 재시작 때 복원할 상태이기 때문이다.
+  - 새 세그먼트를 열 때는 첫 줄에 현재 상태 스냅샷(`spoolId: "checkpoint"`)을 쓴다. 이전 세그먼트가 지워져도 상태가 남는다.
 - SQLite(`node:sqlite`)는 쓰지 않는다. 안정성 등급을 확인하지 않았고, 세션당 Event가 4~18건(RES-002 §3)이라 필요 없다.
 
 **5. Pairing·자격 증명**
@@ -126,10 +135,16 @@ hook 신호를 **Agent를 막지 않고, Bridge가 꺼져 있어도 잃지 않�
   - `401`(토큰 없음·무효·폐기·만료, HQ-103 Guard): 전송과 heartbeat를 멈추고, outbox는 보존하고, "재등록 필요"를 출력한다.
   - `400`(계약 위반): issues가 있으면 `issues[].path`가 가리키는 Event만 격리하고 나머지를 다시 보낸다. issues가 없으면 배치를 반으로 나눠 다시 보내고, 단건이면 격리한다.
   - `413`(body 상한): 배치를 반으로 나눠 다시 보내고, 단건이면 격리한다.
-  - `403`(소유권 불일치): 배치를 격리한다.
+  - `403`은 두 경우를 나눈다.
+    - **issues가 Event를 가리키면**(`events.N.workspaceId` 등 소유권 불일치): 그 Event만 격리하고 나머지를 다시 보낸다.
+    - **issues가 없으면**(Host·Origin 거부 — Bridge의 API 주소 설정 문제): 격리하지 않는다. 전송을 멈추고 outbox를 보존한 뒤 "API 주소 설정 확인"을 출력하고, 백오프 최대 간격으로 계속 다시 시도한다. 설정을 고치면 그대로 이어서 전송된다.
   - `409`(같은 `id` 또는 같은 `idempotencyKey`에 다른 내용): issues 경로(`events.N.id`, `events.N.idempotencyKey`)가 가리키는 Event만 격리한다.
 - 격리 규칙:
-  - 격리한 Event는 HQ에 저장되지 않는다. 그 순번은 HQ에 Gap으로 남는다(올바른 표시).
+  - 격리한 Event는 HQ에 저장되지 않는다.
+  - **격리를 Source 쪽 Gap으로 드러낸다.** Bridge는 격리한 세션마다 `event.gap.detected`(`reason: "bridge_quarantined: <n> event(s)"`, `fromSequence`·`toSequence` = 격리한 순번 범위)를 새 순번으로 만들어 보낸다.
+    - 세션의 마지막 Event가 격리되어 뒤따르는 Event가 없을 때도 유실이 보인다.
+    - 같은 구멍을 HQ의 Gap 감지도 따로 기록할 수 있다. 중복 표시는 숨김보다 낫다. 실제 동작은 HQ-204 테스트로 확인해 기록한다.
+    - 이 gap Event 자체가 격리되면 다시 만들지 않는다. `status`의 격리 개수로만 드러난다.
   - 격리 기록에는 개수, 오류 코드, Event Type만 남기고 Event 내용은 남기지 않는다. 30일 뒤 삭제한다.
   - `agent-hq-bridge status`가 격리 개수를 보여 준다.
   - 격리는 Bridge 버그 신호이므로 테스트로 막는다.
@@ -165,6 +180,7 @@ hook 신호를 **Agent를 막지 않고, Bridge가 꺼져 있어도 잃지 않�
     - `dropped.log`도 쓰지 못하면 감지하지 못한다.
     - 유실된 신호가 어느 세션의 것인지만 알고 내용은 모른다.
     - `dropped.log`에는 `agent_id`가 없어서, subagent의 유실도 메인 Agent에 붙는다.
+    - **첫 신호 전에 전부 유실된 세션**은 Bridge가 모르는 세션이라 Event로 표시할 수 없다(붙일 Agent가 없음). 이런 유실은 세션 키별 개수로 `agent-hq-bridge status`에 "알 수 없는 세션의 유실"로 보여 준다(운영자 경고).
 
 **8. 연결 끊김 해제 기준**
 - **현행 유지.** Agent별 규칙(`shownAgentStatus`)이다. Connection이 끊긴 시각(`connectionLostAt`)이 **그 Agent의** 마지막 수신(`lastReceivedAt`)보다 늦으면 `unknown`이고, 그 Agent의 Event를 새로 받으면 풀린다. heartbeat로는 풀리지 않는다(HQ-108).
@@ -191,7 +207,10 @@ hook 신호를 **Agent를 막지 않고, Bridge가 꺼져 있어도 잃지 않�
 **10. RES-002 §6.1 미결 사항**
 - 유실된 `SubagentStop`:
   - 병렬 Tool 호출의 hook이 동시에 실행되는지는 **확인하지 않았다**(RES-002 §2.1 "같은 이벤트의 hook은 병렬", §6.1). 그래서 시작 순서 보장을 전제하지 않는다.
-  - 규칙: 새 `SubagentStart`가 오면 같은 `agent_id`의 열린 이전 실행을 연결 대상에서 빼고, `SubagentStop`은 남은 열린 실행 중 가장 먼저 시작한 것(FIFO)에 연결한다. 이전 실행의 Stop이 유실되어도 다음 실행의 Stop이 엉뚱하게 붙지 않는다.
+  - 규칙(HQ-202 구현):
+    - 이전 실행이 아직 열려 있는데 새 `SubagentStart`가 오면, 다음 `SubagentStop`은 **어느 실행의 것인지 알 수 없다.** 이전 실행의 늦은 Stop일 수도 있고 새 실행 자신의 Stop일 수도 있다.
+    - 그 Stop은 실행을 지정하지 않는 키(`<agent_id>:unmatched:<sequence>`)로 보내고, 새 실행은 열어 둔다. 그다음 Stop은 새 실행에 연결한다.
+    - 이렇게 하면 늦게 도착한 이전 Stop이 새 실행에 붙지 않는다. `agent.completed`는 어느 경우든 그대로 보낸다(관찰한 사실).
   - 빠진 실행은 열린 채 남는다. Agent 상태는 다음 Event로 갱신되고, "종료 미확인" 상태는 만들지 않는다(Event Type 없음).
   - HQ-206 측정에서 순서가 보장되면 규칙을 단순화할 수 있다.
 - timeout 유실 감지: 7항의 한계다.
