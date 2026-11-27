@@ -515,6 +515,75 @@ describe('dropped hook signals (ADR-0007 §7)', () => {
   });
 });
 
+describe('review fixes (PR #16)', () => {
+  it('a redelivered PreToolUse is not a progress signal', () => {
+    const { events } = run([
+      hook('PreToolUse', { tool_name: 'Bash', tool_use_id: 'toolu_p' }),
+      hook('PermissionRequest', { tool_name: 'Bash' }),
+      hook('PostToolBatch', { tool_calls: [{ tool_use_id: 'toolu_p' }] }),
+      // The same Pre again must not confirm toolu_p as not executed.
+      hook('PreToolUse', { tool_name: 'Bash', tool_use_id: 'toolu_p' }),
+    ]);
+    expect(events.filter((e) => e.type === 'tool.call.failed')).toEqual([]);
+  });
+
+  it('a second permission prompt with two open calls of the same tool marks neither', () => {
+    const { events } = run([
+      hook('PreToolUse', { tool_name: 'Bash', tool_use_id: 'toolu_a' }),
+      hook('PermissionRequest', { tool_name: 'Bash' }),
+      hook('PreToolUse', { tool_name: 'Bash', tool_use_id: 'toolu_b' }),
+      // toolu_a is already marked; this prompt may be about either call.
+      hook('PermissionRequest', { tool_name: 'Bash' }),
+      hook('PostToolBatch', {
+        tool_calls: [{ tool_use_id: 'toolu_a' }, { tool_use_id: 'toolu_b' }],
+      }),
+      hook('UserPromptSubmit'),
+    ]);
+    // Only toolu_a, marked when it was the single candidate, is confirmed by progress.
+    expect(
+      events.filter((e) => e.type === 'tool.call.failed').map((e) => e.idempotencyKey),
+    ).toEqual([`${SESSION}:toolu_a:not_executed`]);
+  });
+
+  it('a redelivered batch keeps the first deadline', () => {
+    const batch = hook('PostToolBatch', { tool_calls: [{ tool_use_id: 'toolu_w' }] });
+    const { state } = run([
+      hook('PreToolUse', { tool_name: 'Bash', tool_use_id: 'toolu_w' }),
+      batch,
+    ]);
+    const again = mapHook(state, batch, { occurredAt: at(4) }).state;
+    // First batch at at(1) → deadline at(6), not at(9).
+    expect(expirePending(again, at(6)).events).toHaveLength(1);
+  });
+
+  it('runtime IDs named like Object.prototype members are ordinary IDs', () => {
+    for (const id of ['toString', 'constructor', 'hasOwnProperty']) {
+      const { events } = run([hook('PreToolUse', { tool_name: 'Bash', tool_use_id: id })]);
+      expect(events.map((e) => e.type)).toEqual(['tool.call.started']);
+    }
+    expect(pickAllowed(hook('PreToolUse', { tool_use_id: '__proto__' }))).not.toHaveProperty(
+      'tool_use_id',
+    );
+    const other = { ...hook('SessionStart'), session_id: 'toString' };
+    expect(run([other]).events).toHaveLength(1);
+  });
+
+  it('an unsupported hook does not register a session', () => {
+    const result = mapHook({}, hook('PreCompact'), { occurredAt: at(0) });
+    expect(result.state).toEqual({});
+  });
+
+  it('a resumed session is not compacted, and a rejected SessionEnd does not end it', () => {
+    const ended = run([hook('SessionStart'), hook('SessionEnd')]).state;
+    const resumed = mapHook(ended, hook('SessionStart', { source: 'resume' }), {
+      occurredAt: at(2),
+    }).state;
+    expect(resumed[SESSION]?.endedAt).toBeUndefined();
+    const rejected = mapHook({}, hook('SessionEnd'), { occurredAt: '2026-11-27T18:00:00+09:00' });
+    expect(rejected.state[SESSION]?.endedAt).toBeUndefined();
+  });
+});
+
 describe('dropped signals — input checks', () => {
   it('gives no event for an unknown session or an invalid count', () => {
     const { state } = run([hook('SessionStart')]);

@@ -118,6 +118,7 @@ adapter-spec §10 테스트 요구: mapping·duplicate·out-of-order·secret →
   - verification: 단위 22개(hook 행별 매핑, 결정성, 재개 subagent·유실 Stop, out-of-order Post, `not_executed` 규칙 1~3·늦은 Post, 표식 문자열 비노출, 모르는 입력 보고, Capability), 통합 3개(`apps/api/test/claude-code-mapping.int.test.ts`: 부모 관계·Tool·재전송 중복 0·dropped gap → unknown → 회복). `pnpm verify`(단위 219), `pnpm test:integration`(72)
   - 로컬 리뷰(보안 포함): Request Changes (Major 3, Minor 7, Nit 4) → 반영: 같은 Tool 병렬 호출에서 PermissionRequest 대상이 모호하면 표시하지 않고 규칙 3으로(실행된 호출에 not_executed가 나가던 문제), 같은 hook 중복 입력은 `ignored: duplicate`(같은 키·다른 내용 → 409 → 가짜 Gap 방지, 대기 중 호출 초기화 방지), 바뀐 세션만 복사 + `pruneSessions`(순번 보존), 시각 사전 검사·숫자 비교, ID 토큰은 `:` 금지·100자, `mapDropped` 입력 검사·모르는 세션 무시, Capability `features` 고정, lint에 `@agent-hq/domain` 금지 추가. ADR-0007과 함께 정한 것: 모호한 subagent Stop은 실행을 지정하지 않음(`unmatched`)
   - verification(수정 후): 단위 28개, `pnpm verify`(단위 225), `pnpm test:integration`(72)
+  - PR #16 CodeRabbit 1차: CHANGES_REQUESTED (Major 3, Minor 8) → 반영: 중복 PreToolUse는 진행 신호가 아님, 거부된 SessionEnd는 `endedAt`을 남기지 않음·SessionStart가 `endedAt`을 지움, 권한 요청 후보에 이미 표시된 호출 포함, 재전달 batch는 첫 마감 유지, 모르는 hook은 세션을 만들지 않음, own property 조회·`__proto__` ID 거부, 통합 테스트 teardown이 시작 실패에도 DB 연결 해제, N3에 중복 판정·정리 범위 명시
 
 ### HQ-203 — Local Bridge: Pairing·자격 증명·heartbeat·Capability 보고
 - Status: Backlog · Risk: 3 (자격 증명, 신규 앱) · Role: Worker → Reviewer(보안)

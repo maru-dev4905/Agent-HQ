@@ -217,7 +217,7 @@ Limit을 적용한다.
 
 **allowlist 필터 `pickAllowed(raw)`**
 - 의존성이 없다(ADR-0007 §3). hook 명령도 이 모듈을 쓴다.
-- 남기는 것은 이름·열거형 토큰(`/^[A-Za-z0-9_.:@-]{1,100}$/`), Runtime ID(`session_id`·`agent_id`·`tool_use_id`, `:` 없이 100자 이하), 정수, 불리언뿐이다.
+- 남기는 것은 이름·열거형 토큰(`/^[A-Za-z0-9_.:@-]{1,100}$/`), Runtime ID(`session_id`·`agent_id`·`tool_use_id`, `:` 없이 100자 이하, `__proto__` 제외), 정수, 불리언뿐이다. 상태 객체는 own property로만 조회한다(`toString` 같은 ID도 일반 ID로 다룬다).
 - 목록에 있는 필드라도 값이 그 모양이 아니면 버린다.
 - `StopFailure.error`는 실패 종류(matcher 값, 예: `rate_limit`)라 토큰으로 남긴다. 반면 `PostToolUseFailure.error`와 `error_details`는 D2라서 버린다.
 
@@ -228,7 +228,11 @@ Limit을 적용한다.
 - `expirePending(state, now)`: `not_executed` 유예 만료를 처리한다(RES-002 §5.4 규칙 3).
 - `mapDropped(state, { sessionId, count, occurredAt })`: Source 쪽 `event.gap.detected`를 만든다(`reason: "hook_dropped: <n> signal(s)"`).
   - Bridge가 `dropped.log`의 세션 키를 알려진 세션으로 먼저 해석한다. 모르는 세션이면 `ignored: unknown_session`이다.
-- `pruneSessions(state, now, retainMs)`: 끝난 세션의 열린 호출과 끝난 목록을 비운다. 순번과 subagent 실행 수는 남기므로, 재개된 세션이 멱등 키를 다시 쓰지 않는다.
+- `pruneSessions(state, now, retainMs)`: `SessionEnd`(실제로 보낸 경우만) 뒤 `retainMs`가 지난 세션의 열린 호출과 끝난 목록을 비운다.
+  - 순번과 subagent 실행 수는 남긴다. 그래서 순번을 쓰는 키(`<hook>:<sequence>`, `unmatched`, `dropped`)와 실행 키는 재개 후에도 겹치지 않는다.
+  - 정리하면 Tool 키(`<tool_use_id>:…`)의 중복 판정 이력이 사라진다. 정리 뒤 같은 `tool_use_id`의 hook이 다시 오면 새 Event로 보내고, HQ가 멱등 키 충돌(409)로 거부한다. 그래서 Bridge는 충분히 지난 세션만 정리한다.
+  - 재개된 세션(`SessionStart`)은 정리 대상에서 빠진다.
+- 모르는 hook은 상태를 바꾸지 않는다(세션도 만들지 않는다).
 
 **표현 규약 (RES-002 §6)**
 - 식별자:
@@ -238,7 +242,11 @@ Limit을 적용한다.
   - Tool: `<session>:<tool_use_id>:<started|completed|failed|not_executed>`
   - subagent: `<session>:<agent_id>:<run>:<started|completed>`
   - 그 밖의 세션 Event: `<session>:<hook>:<sequence>`
-  - 같은 hook이 두 번 오면 키를 새로 만들지 않고 `ignored: duplicate`로 남긴다. 이미 열린 호출의 Pre, 이미 끝난 호출의 Post가 여기에 해당한다. 단, `not_executed` 뒤에 늦게 온 Post는 통과한다.
+  - 같은 hook이 두 번 오면 키를 새로 만들지 않고 `ignored: duplicate`로 남긴다. 판정 대상은 Tool hook뿐이다.
+    - `PreToolUse`: 그 호출이 열려 있거나 최근 끝난 목록(500개)에 있을 때. 중복 Pre는 진행 신호로도 치지 않는다.
+    - `PostToolUse`·`PostToolUseFailure`: 그 호출이 이미 completed·failed로 끝났을 때. `not_executed` 뒤에 늦게 온 Post는 통과한다.
+    - `PostToolBatch`를 다시 받아도 처음 정한 유예 마감을 유지한다.
+    - 세션·상태 hook(`Stop` 등)은 hook 입력에 이벤트 ID가 없어 중복인지 알 수 없다. 받은 대로 새 순번으로 보낸다(관찰한 사실).
 - `errorCode`:
   - `interrupted`, `not_executed`를 쓴다.
   - 일반 Tool 실패는 오류 원문이 D2라서 `errorCode`를 비운다.
@@ -246,7 +254,7 @@ Limit을 적용한다.
 - 상태 매핑:
   - `Stop`은 `waiting`(`rawStatus: "stop"`)이다.
   - `Notification`은 `permission_prompt`·`agent_needs_input`만 `waiting`으로 보고, 나머지 유형은 `ignored`로 남긴다.
-  - `PermissionRequest`는 `waiting`(`rawStatus: "permission_request"`)이다. 입력에 `tool_use_id`가 없으므로 같은 Agent의 같은 Tool로 열린 호출이 **정확히 하나**일 때만 권한 요청 표시를 붙인다. 여럿이면 표시하지 않고 유예 시간(규칙 3)에 맡긴다. 잘못 보낸 `not_executed`는 되돌릴 수 없기 때문이다.
+  - `PermissionRequest`는 `waiting`(`rawStatus: "permission_request"`)이다. 입력에 `tool_use_id`가 없으므로 같은 Agent의 같은 Tool로 열린 호출이 **정확히 하나**일 때만(이미 표시된 호출도 셈에 넣는다) 권한 요청 표시를 붙인다. 여럿이면 표시하지 않고 유예 시간(규칙 3)에 맡긴다. 잘못 보낸 `not_executed`는 되돌릴 수 없기 때문이다.
 - subagent 실행:
   - 이전 실행이 열린 채 새 `SubagentStart`가 오면, 다음 `SubagentStop`은 어느 실행 것인지 알 수 없다. 그 Stop은 `<agent_id>:unmatched:<sequence>` 키를 쓰고 새 실행을 열어 둔다(ADR-0007 §10). 짝 없는 Stop도 같은 키를 쓴다.
 - 매핑하지 않는 것:

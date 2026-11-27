@@ -93,9 +93,34 @@ function emptySession(): SessionState {
 
 const isTimestamp = (value: string) => !Number.isNaN(Date.parse(value));
 
+/**
+ * Own-property lookup. Keys come from runtime IDs; `toString` or `__proto__` must not
+ * resolve to inherited members of a plain object.
+ */
+function own<T>(record: Record<string, T>, key: string): T | undefined {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
+}
+
+/** Hooks this mapping handles; any other hook leaves the state untouched. */
+const SUPPORTED_HOOKS = new Set([
+  'SessionStart',
+  'SessionEnd',
+  'UserPromptSubmit',
+  'Stop',
+  'StopFailure',
+  'Notification',
+  'PermissionRequest',
+  'PreToolUse',
+  'PostToolUse',
+  'PostToolUseFailure',
+  'PostToolBatch',
+  'SubagentStart',
+  'SubagentStop',
+]);
+
 /** Copies only the session being changed; other sessions are shared, never mutated. */
 function withSession(state: AdapterState, sessionId: string) {
-  const current = state[sessionId];
+  const current = own(state, sessionId);
   const session = current === undefined ? emptySession() : structuredClone(current);
   return { next: { ...state, [sessionId]: session }, session };
 }
@@ -206,13 +231,22 @@ export function mapHook(
   }
   const sessionId = input['session_id'] as string;
   const hook = input['hook_event_name'] as string;
+  if (!SUPPORTED_HOOKS.has(hook)) {
+    return { state, events: [], ignored: [{ reason: 'unsupported_hook', detail: hook }] };
+  }
   const { next, session } = withSession(state, sessionId);
   const b = new Builder(sessionId, session);
   const main = mainAgentId(sessionId);
   const agent = str(input, 'agent_id') ?? main;
 
+  // A redelivered PreToolUse is not progress: it must not confirm anything.
+  const preId = hook === 'PreToolUse' ? str(input, 'tool_use_id') : undefined;
+  const duplicatePre =
+    preId !== undefined &&
+    (own(session.tools, preId) !== undefined || finishedCall(session, preId) !== undefined);
+
   // A progress signal confirms calls that waited on a permission prompt (RES-002 §5.4 rule 2).
-  if (PROGRESS_HOOKS.has(hook)) {
+  if (PROGRESS_HOOKS.has(hook) && !duplicatePre) {
     for (const [id, call] of Object.entries(session.tools)) {
       if (call.phase === 'pending' && call.permissionRequested)
         notExecuted(b, session, id, call, at);
@@ -228,17 +262,19 @@ export function mapHook(
         at,
         'SessionStart:#seq',
       );
+      // A resumed session is live again: it must not be compacted as ended.
+      delete session.endedAt;
       break;
     case 'SessionEnd': {
       const reason = str(input, 'reason');
-      b.emit(
+      const sent = b.emit(
         'agent.disconnected',
         main,
         reason === undefined ? {} : { reason },
         at,
         'SessionEnd:#seq',
       );
-      session.endedAt = at;
+      if (sent) session.endedAt = at;
       break;
     }
     case 'UserPromptSubmit':
@@ -287,7 +323,8 @@ export function mapHook(
       // rather than guess, since a wrong not_executed can never be taken back.
       const toolName = str(input, 'tool_name');
       const candidates = Object.values(session.tools).filter(
-        (c) => c.agentId === agent && c.toolName === toolName && !c.permissionRequested,
+        // Already marked calls count too: a second prompt may be about either call.
+        (c) => c.agentId === agent && c.toolName === toolName,
       );
       if (candidates.length === 1 && candidates[0] !== undefined) {
         candidates[0].permissionRequested = true;
@@ -308,7 +345,7 @@ export function mapHook(
         b.ignored.push({ reason: 'invalid_input', detail: 'tool_use_id,tool_name' });
         break;
       }
-      if (session.tools[id] !== undefined || finishedCall(session, id) !== undefined) {
+      if (duplicatePre) {
         // The same hook delivered twice (e.g. installed in two settings files): nothing new.
         b.ignored.push({ reason: 'duplicate', detail: `${hook}:${id}` });
         break;
@@ -338,7 +375,7 @@ export function mapHook(
     case 'PostToolUseFailure': {
       const id = str(input, 'tool_use_id');
       const done = id === undefined ? undefined : finishedCall(session, id);
-      const known = id === undefined ? undefined : (session.tools[id] ?? done);
+      const known = id === undefined ? undefined : (own(session.tools, id) ?? done);
       const toolName = str(input, 'tool_name') ?? known?.toolName;
       if (id === undefined || toolName === undefined) {
         b.ignored.push({ reason: 'invalid_input', detail: 'tool_use_id,tool_name' });
@@ -384,11 +421,14 @@ export function mapHook(
         : [];
       for (const call of calls) {
         const id = call.tool_use_id;
-        const open = session.tools[id];
+        const open = own(session.tools, id);
         if (open !== undefined) {
-          // Started but no Post yet: wait (rules 2 and 3), never guess now.
-          open.phase = 'pending';
-          open.deadline = new Date(Date.parse(at) + options.notExecutedGraceMs).toISOString();
+          // Started but no Post yet: wait (rules 2 and 3), never guess now. A redelivered
+          // batch keeps the first deadline.
+          if (open.phase !== 'pending') {
+            open.phase = 'pending';
+            open.deadline = new Date(Date.parse(at) + options.notExecutedGraceMs).toISOString();
+          }
         } else if (finishedCall(session, id) === undefined) {
           // Rule 1: no PreToolUse at all — refused before it ran. The batch may not name
           // the tool; the contract requires one, so it is reported as `unknown`.
@@ -409,7 +449,8 @@ export function mapHook(
         b.ignored.push({ reason: 'invalid_input', detail: 'agent_id' });
         break;
       }
-      const sub = (session.subagents[id] ??= { runs: 0, open: null, ambiguous: false });
+      const sub = own(session.subagents, id) ?? { runs: 0, open: null, ambiguous: false };
+      session.subagents[id] = sub;
       sub.runs += 1;
       // An earlier run still open (its Stop lost or late): the next Stop is ambiguous (ADR-0007 §10).
       sub.ambiguous = sub.open !== null;
@@ -433,7 +474,7 @@ export function mapHook(
         b.ignored.push({ reason: 'invalid_input', detail: 'agent_id' });
         break;
       }
-      const sub = session.subagents[id];
+      const sub = own(session.subagents, id);
       let key = `${id}:unmatched:#seq`;
       if (sub !== undefined && sub.open !== null) {
         if (sub.ambiguous) {
@@ -448,8 +489,6 @@ export function mapHook(
       b.emit('agent.completed', id, {}, at, key);
       break;
     }
-    default:
-      b.ignored.push({ reason: 'unsupported_hook', detail: hook });
   }
   return { state: next, events: b.events, ignored: b.ignored };
 }
@@ -494,7 +533,7 @@ export function mapDropped(
   if (!isIdToken(sessionId) || !Number.isInteger(count) || count < 1 || !isTimestamp(occurredAt)) {
     return { state, events: [], ignored: [{ reason: 'invalid_input', detail: 'dropped' }] };
   }
-  if (state[sessionId] === undefined) {
+  if (own(state, sessionId) === undefined) {
     return { state, events: [], ignored: [{ reason: 'unknown_session', detail: 'dropped' }] };
   }
   const { next, session } = withSession(state, sessionId);

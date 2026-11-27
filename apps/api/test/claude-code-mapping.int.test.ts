@@ -30,7 +30,7 @@ const logger = {
   verbose: quiet,
   fatal: quiet,
 };
-let app: NestFastifyApplication;
+let app: NestFastifyApplication | undefined;
 
 beforeAll(async () => {
   const config = loadConfig({
@@ -43,14 +43,26 @@ beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule.forConfig(config)],
   }).compile();
-  app = moduleRef.createNestApplication<NestFastifyApplication>(createHttpAdapter(), { logger });
-  await app.init();
-  await app.getHttpAdapter().getInstance().ready();
+  const created = moduleRef.createNestApplication<NestFastifyApplication>(createHttpAdapter(), {
+    logger,
+  });
+  app = created;
+  await created.init();
+  await created.getHttpAdapter().getInstance().ready();
 });
 
+function api(): NestFastifyApplication {
+  if (app === undefined) throw new Error('app failed to start (see beforeAll)');
+  return app;
+}
+
 afterAll(async () => {
-  await app.close();
-  await db.$disconnect();
+  try {
+    // `app` is unset if beforeAll failed; the connection must still be released.
+    if (app !== undefined) await app.close();
+  } finally {
+    await db.$disconnect();
+  }
 });
 
 beforeEach(async () => {
@@ -68,7 +80,7 @@ async function connect(): Promise<string> {
     stdout: (text) => out.push(text),
     now: () => new Date(),
   });
-  const response = await app.inject({
+  const response = await api().inject({
     method: 'POST',
     url: '/connections',
     payload: {
@@ -81,7 +93,7 @@ async function connect(): Promise<string> {
 }
 
 async function ingest(token: string, events: IncomingAgentEvent[]) {
-  return app.inject({
+  return api().inject({
     method: 'POST',
     url: '/events',
     headers: { authorization: `Bearer ${token}` },
@@ -110,7 +122,7 @@ function mapAll(inputs: unknown[]): { state: AdapterState; events: IncomingAgent
 
 const agents = async () =>
   agentListSchema.parse(
-    (await app.inject({ method: 'GET', url: '/workspaces/local/agents' })).json(),
+    (await api().inject({ method: 'GET', url: '/workspaces/local/agents' })).json(),
   ).agents;
 
 describe('Claude Code mapping → ingestion → read models (HQ-202)', () => {
@@ -144,7 +156,7 @@ describe('Claude Code mapping → ingestion → read models (HQ-202)', () => {
     });
 
     const stored = eventPageSchema.parse(
-      (await app.inject({ method: 'GET', url: '/workspaces/local/events' })).json(),
+      (await api().inject({ method: 'GET', url: '/workspaces/local/events' })).json(),
     ).events;
     const tools = stored
       .filter((e) => e.type.startsWith('tool.call.'))
@@ -170,7 +182,7 @@ describe('Claude Code mapping → ingestion → read models (HQ-202)', () => {
     expect((await ingest(token, events)).statusCode).toBe(200);
     expect((await ingest(token, events)).statusCode).toBe(200);
     const stored = eventPageSchema.parse(
-      (await app.inject({ method: 'GET', url: '/workspaces/local/events' })).json(),
+      (await api().inject({ method: 'GET', url: '/workspaces/local/events' })).json(),
     ).events;
     expect(stored).toHaveLength(3);
   });

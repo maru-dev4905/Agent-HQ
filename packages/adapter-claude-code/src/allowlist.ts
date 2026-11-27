@@ -20,8 +20,9 @@ const ID = /^[A-Za-z0-9_.@-]{1,100}$/;
 
 type FieldKind = 'id' | 'token' | 'count' | 'flag';
 
+/** `__proto__` would set an object's prototype when used as a state key. */
 export const isIdToken = (value: unknown): value is string =>
-  typeof value === 'string' && ID.test(value);
+  typeof value === 'string' && ID.test(value) && value !== '__proto__';
 
 const COMMON: Readonly<Record<string, FieldKind>> = {
   session_id: 'id',
