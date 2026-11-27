@@ -11,8 +11,8 @@ Claude Code에서 실행되는 외부 에이전트와 Subagent의 관찰 가능�
 | 마일스톤 | 명세서 Phase | 목표 | 종료 조건 (요약, 상세는 명세서와 milestone 파일) | 상태 |
 |---|---|---|---|---|
 | **M0** | Phase 0 Foundation & Decisions | Harness, ADR, Monorepo, 개발 환경 | 의존성 방향 명시, 기본 빌드·테스트 통과, 로컬 DB migration 실행 (Event Schema contract test는 M1 첫 Task HQ-101로 넘김) | Done (HQ-005 선택 Task만 남음) |
-| **M1** | Phase 1 Event Ingestion Core | 인증된 연결로 Event를 받아 저장·Projection·Realtime 처리 | 무효 Event 거부, 중복 방지, 수신·발생 시각 분리, Workspace 권한 검증, Cursor Replay, Gap/Unknown 표시 | In Progress (HQ-111·112 남음) |
-| **M2** | Phase 2 Local Bridge & Claude Code Adapter | 로컬 Claude Code 이벤트 수집 | 연결·해제, 지원 hook 수신, Agent/Session 식별, Tool 매핑, 재연결 중복·누락 처리, Capability 표시, Secret 비노출 | Backlog |
+| **M1** | Phase 1 Event Ingestion Core | 인증된 연결로 Event를 받아 저장·Projection·Realtime 처리 | 무효 Event 거부, 중복 방지, 수신·발생 시각 분리, Workspace 권한 검증, Cursor Replay, Gap/Unknown 표시 | **Done** (2026-11-27, HQ-114 보류만 남음) |
+| **M2** | Phase 2 Local Bridge & Claude Code Adapter | 로컬 Claude Code 이벤트 수집 | 연결·해제, 지원 hook 수신, Agent/Session 식별, Tool 매핑, 재연결 중복·누락 처리, Capability 표시, Secret 비노출 | In Progress (HQ-200~211) |
 | **M3** | Phase 3 Operations Dashboard | 실제 Event를 이해할 수 있는 UI | 상태 반영, 원본 Event 추적, 끊김·누락 표현, Dashboard·API 일치 | Backlog |
 | **M4** | Phase 4 3D Office | 같은 Projection의 3D 표현 | Event 기반 상태 변화, Unknown/Idle 구분, Dashboard와 일치, 3D를 꺼도 기능 유지, 폭주 시 수집 비방해 | Backlog |
 | **M5** | Phase 5 Initial Control & Pipeline | 제한된 범위의 HQ 실행·제어 | Pipeline Version 고정, Run 상태 전이 검증, 승인 전 위험 작업 차단 등 | Backlog |

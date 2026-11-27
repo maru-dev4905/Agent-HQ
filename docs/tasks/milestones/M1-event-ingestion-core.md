@@ -11,7 +11,19 @@
 > 7. 시뮬레이터 시나리오가 Dashboard v0에 실시간으로 표시된다 (FR-006, FR-030)
 > 8. Replay 동일성 테스트를 통과한다 (FR-005)
 > 9. RES-002 결과로 Event Schema를 점검했다
-> 상태: Backlog · 전제: HQ-003 완료 (ADR-0002·0003·0004 Accepted)
+> 상태: **Done (2026-11-27, HQ-200 점검)** · 전제: HQ-003 완료 (ADR-0002·0003·0004 Accepted). HQ-114(보류)는 이 파일에 남고 M2 파일 "M1에서 이어 가는 항목"에서 참조한다
+>
+> | 종료 조건 | 충족 근거 |
+> |---|---|
+> | 1 무효 Event 거부 | HQ-101 계약 테스트, HQ-105 `apps/api/test/ingestion.int.test.ts`(배치 원자적 거부, 크기·Unicode·예약 adapterId) |
+> | 2 중복 미저장 | HQ-104 `packages/database/test/event-store.contract.ts`(멱등 키), HQ-105 재전송 테스트, HQ-111 E2E(Timeline 항목 수 = 보낸 수) |
+> | 3 수신·발생 시각 분리 | HQ-101 Envelope(`receivedAt`은 서버 전용 필드), HQ-105 `apps/api/test/ingestion.int.test.ts`("keeps occurredAt and receivedAt apart") |
+> | 4 Connection 토큰 권한 검증 | HQ-103 `apps/api/test/connections.int.test.ts`, HQ-105 소유권 검사 |
+> | 5 재연결 후 Cursor Replay | HQ-107 `apps/api/test/query-stream.int.test.ts`(`Last-Event-ID` 재연결 — testing-strategy TS-07), HQ-109 `WorkspaceStream` 재연결 |
+> | 6 Gap·Unknown 표시 | HQ-108 `apps/api/test/gap-stale.int.test.ts`, HQ-111 E2E 끊김 시나리오 |
+> | 7 시뮬레이터 → Dashboard 실시간 | HQ-109 수동 확인, HQ-111 E2E 위임 시나리오(G5 `Local`) |
+> | 8 Replay 동일성 | HQ-106 `apps/api/test/projection.int.test.ts`(실시간 = Replay, 순서 무관), HQ-113 유지 |
+> | 9 RES-002로 Event Schema 점검 | HQ-110 [RES-002 §6](../../research/RES-002-claude-code-signals.md) — 계약 변경 불필요 |
 > 경로는 [architecture 통합 노트 N3](../../foundation/architecture.md#n3-monorepo-8-채택-단계적-생성) 기준이며 HQ-003에서 확정된다.
 > 각 Task의 Verification은 [quality-gates §3](../../engineering/quality-gates.md#3-위험도별-필수-gate)의 위험도별 필수 Gate를 따른다. 아래에는 Task 고유 확인만 적는다.
 > 이 파일은 2026-11-22 명세서 채택에 따라 재작성했다 (이전 버전 `M1-simulated-event-pipeline.md`는 커밋 `1234b4b`).
@@ -92,7 +104,7 @@
   - PR #2: CodeRabbit 1차 CHANGES_REQUESTED(Major 2: 리디렉션을 전송 성공으로 처리, 루프백 외 HTTP 평문 토큰 전송. Minor 4: seed별 idempotency 키 분리, startAt 시간대, NaN, M0 상태) → 전부 반영 → APPROVED → 사용자 머지 (`77aef9f`)
 
 ### HQ-103 — Connection 모델 + 토큰 인증
-- Status: In Review (PR, 2026-11-23) · Risk: High · Role: Worker → Reviewer (+ Security Review)
+- Status: Done (PR #3, 2026-11-23) · Risk: High · Role: Worker → Reviewer (+ Security Review)
 - Objective: Source가 Connection을 등록해 토큰을 받고, heartbeat로 상태를 보고한다.
 - Background: FR-001, FR-009, [security §5](../../engineering/security.md#5-인증--권한--mvp-범위-proposed-res-007-s4), domain-model AgentConnection
 - Scope: 로컬 단일 Workspace 시드, Connection 등록 부트스트랩([security §5](../../engineering/security.md#5-인증--권한--mvp-범위-proposed-res-007-s4)의 일회성 등록 코드 방식), 토큰 발급(저장은 해시)·폐기·만료, heartbeat 엔드포인트, Connection 상태 전이, 토큰 검증 Guard(Ingestion에서 사용), `packages/contracts/src/connections/`
@@ -314,7 +326,7 @@
   - PR #9: CodeRabbit 자동 리뷰 중단(star 10개 미만 정책) → 사용자 상시 승인으로 `@coderabbitai review` 요청(CLAUDE.md §6 예외, review-protocol §6). 1차 CHANGES_REQUESTED (Major 2: `not_executed` 확정 전 발행 위험, subagent 재개 시 멱등 키 충돌. Minor 2: 길이·해시 저장 필드 없음, 상시 승인을 CLAUDE.md §6에 반영) → RES-002 5.2·5.4·5.5·6 보완, CLAUDE.md §6 예외 추가. 함께: backlog HQ-103 Done, roadmap M0·M1 상태 정정. 2차(사용량 한도로 두 번 거절된 뒤 13:00 UTC 재요청): CHANGES_REQUESTED (Major 3: 늦은 실패와 `not_executed`의 키 충돌, 동기 hook timeout, 재개 subagent의 Stop 연결. Minor 1: 한도 거절 시 재요청) → `not_executed` 별도 단계 키, 동기 hook 짧은 timeout과 유실 한계 기록, Stop은 열린 실행 FIFO 연결, review-protocol 재요청 조건 보완. 3차(dffcf5e): CHANGES_REQUESTED (Major 1: 유실된 SubagentStop 뒤 재개 시 FIFO 오연결. Minor 1: 대기 시간 없는 한도 거절의 재요청 기준) → 3라운드 상한 도달, 사용자 결정으로 Major는 RES-002 §6.1 "M2 Bridge 설계 미결 사항"으로 기록, Minor는 review-protocol에 기준 추가(30분 후 1회, 이후 보고). 추가 리뷰 요청 없이 사용자 지시로 관리자 머지
 
 ### HQ-111 — E2E: 시뮬레이터 → Ingestion → Dashboard
-- Status: In Review (2026-11-27) · Risk: 2 (새 E2E 도구 도입) · Role: QA → Reviewer
+- Status: Done (2026-11-27, PR #13) · Risk: 2 (새 E2E 도구 도입) · Role: QA → Reviewer
 - Objective: M1 파이프라인 전체를 브라우저 테스트로 검증한다.
 - Background: M1 종료 조건 7, [testing-strategy](../../engineering/testing-strategy.md)
 - Scope: E2E 러너 도입, Compose·서버·시뮬레이터 기동 스크립트, 위임 시나리오·끊김 시나리오 테스트, quality-gates의 G5 갱신
@@ -330,13 +342,13 @@
 - 범위 변경: 루트 `package.json`(`test:e2e`, devDependency), `playwright.config.ts`, `tsconfig.test.json`·`tsconfig.tools.json`(e2e 포함), `.gitignore`·`.prettierignore`(Playwright 산출물)
 - Execution Log:
   #### Run 2026-11-27-1
-  - agent_id: claude-code:main (QA·Worker) · status: In Review
+  - agent_id: claude-code:main (QA·Worker) · status: succeeded
   - result: `e2e/harness.ts`(전용 DB `agent_hq_e2e` 생성·migrate·테스트마다 TRUNCATE, 빌드된 API를 테스트마다 새로 기동, admin CLI로 등록 코드 → `POST /connections`, 시뮬레이터 CLI `--url`로 전송), `e2e/dashboard.spec.ts` 2개. 화면을 먼저 열고(실시간 수신 중) 그 뒤에 보내므로 표시는 SSE로 도착한 것이다
   - 위임: Agent 3행(main·worker·reviewer) 모두 `유휴`·`원본: completed`, Timeline 항목 수 = 보낸 Event 수, Connection `등록됨(heartbeat 전)`
   - 끊김: `failure-gap`의 마지막 `agent.disconnected`를 `--cut-after`로 보내지 않고, 전송 **뒤에** heartbeat 1회 후 중단(임계값 1 s/2 s) → main `알 수 없음`·`연결이 끊긴 뒤 소식이 없음`, Connection `끊김`, Timeline에 `⚠ event.gap.detected` 1건(grace 1 s)
   - 로컬 리뷰: Request Changes (Major 2, Minor 2, Nit 2) → 반영: 끊김 테스트 간헐 실패를 리뷰어가 재현(heartbeat를 Event보다 먼저 보내 2 s 안에 전송이 끝나지 않으면 연결 끊김이 수신보다 먼저 기록돼 Agent가 `작업 중`으로 남음) → heartbeat를 전송 뒤로 옮겨 끊김 기록이 항상 마지막 수신보다 늦게, 기동 중 실패해도 API 프로세스 정리(`stopApi`), `AGENT_HQ_API_URL`이 다른 값이면 즉시 실패, TRUNCATE 전에 `current_database()` 확인·`escapeIdentifier`, 의미 없는 검증 제거, 검증 기록 재측정
   - verification(수정 후): `playwright test --repeat-each 10` 20 passed, `pnpm verify`(단위 197)
-  - PR #13 CodeRabbit 1차: Minor 2 → 반영: `AGENT_HQ_API_URL`은 미설정 또는 정확히 `http://127.0.0.1:4000`만 허용(빈 값·경로 포함 값은 rewrite를 깨뜨림), 등록 응답을 `registerConnectionResponseSchema`로 검증(계약 패키지를 소스 경로로 import, 새 의존성 없음)
+  - PR #13 CodeRabbit 1차 APPROVED(Minor 2) → 반영, 2차(사용량 한도로 51분 뒤 재요청) APPROVED: `AGENT_HQ_API_URL`은 미설정 또는 정확히 `http://127.0.0.1:4000`만 허용(빈 값·경로 포함 값은 rewrite를 깨뜨림), 등록 응답을 `registerConnectionResponseSchema`로 검증(계약 패키지를 소스 경로로 import, 새 의존성 없음)
 
 ### HQ-112 — 부하 측정 (RES-005)
 - Status: Done (2026-11-26, PR #11 머지 `32d5014`) · Risk: 1 (측정 스크립트·문서) · Role: QA

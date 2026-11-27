@@ -4,7 +4,11 @@
 > 관리 책임: Documenter. 최신 항목이 위.
 > 형식: `## YYYY-MM-DD` 아래 `- [Added|Changed|Deprecated|Removed|Fixed|Security] 내용 (Task/ADR ID)`
 
-## 2026-11-27 — HQ-111 E2E (PR)
+## 2026-11-27 (2) — M1 종료, M2 계획 (HQ-200, PR)
+- [Changed] M1 Done: 종료 조건 9개의 충족 근거 기록(M1 파일 머리말), roadmap·backlog 갱신
+- [Added] `docs/tasks/milestones/M2-local-bridge-claude-code.md`: HQ-200~HQ-211(ADR-0007 Bridge 구조·보안, Adapter 매핑, Bridge pairing·outbox, HQ 쪽 끊김 규칙 반영, hook 명령, 설치, Capability 계약·저장·화면, 실제 세션 검증)
+
+## 2026-11-27 — HQ-111 E2E (Done, PR #13)
 - [Added] Playwright 1.65.0 E2E(G5 `Local`): `pnpm test:e2e`가 Compose 기동 → build → 브라우저 테스트. 위임 시나리오(Agent 3개·상태), 끊김 시나리오(Unknown·Gap) (`e2e/`, `playwright.config.ts`)
 - [Changed] quality-gates G5, testing-strategy E2E 도구, HQ-113 Done
 
